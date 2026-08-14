@@ -81,10 +81,13 @@ Item {
         }
     }
 
+    property var _connectedItems: []
+
     function connectNavigationSignals() {
         for (let i = 0; i < swipeView.count; i++) {
             let item = swipeView.itemAt(i);
-            if (item && item.navigateLeft) {
+            if (item && item.navigateLeft && !_connectedItems.includes(item)) {
+                _connectedItems.push(item);
                 item.navigateLeft.connect(() => swipeView.decrementCurrentIndex());
                 item.navigateRight.connect(() => swipeView.incrementCurrentIndex());
                 item.navigateNext.connect(() => swipeView.incrementCurrentIndex());
