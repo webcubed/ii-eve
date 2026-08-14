@@ -64,12 +64,17 @@ Item {
 
     readonly property string artSource: activePlayer?.trackArtUrl && activePlayer.trackArtUrl !== "" ? activePlayer.trackArtUrl : ""
 
-    WaveVisualizer {
+    Item {
         anchors.fill: parent
-        points: root.visualizerPoints
-        live: activePlayer?.isPlaying ?? false
-        color: Appearance.colors.colPrimary
-        visible: root.visualizerPoints.length > 0
+        clip: true
+
+        WaveVisualizer {
+            anchors.fill: parent
+            points: root.visualizerPoints
+            live: activePlayer?.isPlaying ?? false
+            color: Appearance.colors.colPrimary
+            visible: root.visualizerPoints.length > 0
+        }
     }
 
     Item {
