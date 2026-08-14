@@ -81,6 +81,11 @@ Item {
         }
     }
 
+    Shortcut { sequence: "Ctrl+Tab"; onActivated: swipeView.incrementCurrentIndex() }
+    Shortcut { sequence: "Ctrl+Shift+Tab"; onActivated: swipeView.decrementCurrentIndex() }
+    Shortcut { sequence: "Ctrl+PageDown"; onActivated: swipeView.incrementCurrentIndex() }
+    Shortcut { sequence: "Ctrl+PageUp"; onActivated: swipeView.decrementCurrentIndex() }
+
     property var _connectedItems: []
 
     function connectNavigationSignals() {

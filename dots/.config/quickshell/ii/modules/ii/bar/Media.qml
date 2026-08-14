@@ -68,6 +68,14 @@ Item {
         anchors.fill: parent
         clip: true
         z: -1
+        layer.enabled: true
+        layer.effect: OpacityMask {
+            maskSource: Rectangle {
+                width: root.width
+                height: root.height
+                radius: Appearance.rounding.small
+            }
+        }
 
         WaveVisualizer {
             anchors.fill: parent
