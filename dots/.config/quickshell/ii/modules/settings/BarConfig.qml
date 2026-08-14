@@ -821,6 +821,11 @@ ContentPage {
                         value: "pill"
                     },
                     {
+                        displayName: Translation.tr("Rounded square"),
+                        icon: "rounded_corner",
+                        value: "roundedSquare"
+                    },
+                    {
                         displayName: Translation.tr("Rectangle"),
                         icon: "crop_square",
                         value: "rectangle"

@@ -429,7 +429,7 @@ Singleton {
                     property int activeIndicatorOpacity: 100 // 0-100
                     property bool dynamicWorkspaces: false
                     // Eve custom: indicator appearance
-                    property string activeIndicatorShape: "pill" // "pill", "rectangle", "circle"
+                    property string activeIndicatorShape: "pill" // "pill", "rectangle", "roundedSquare", "circle"
                     property real activeIndicatorScale: 1.0 // Scale factor for active indicator (0.5 - 2.0)
                     property bool activeIndicatorUseAccent: false // true = colPrimary (accent), false = m3secondaryContainer (ii-vynx default)
                     property bool useMaterialShapeForActiveIndicator: false // Use MaterialShape component (minimal style)
