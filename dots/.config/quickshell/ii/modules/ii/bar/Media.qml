@@ -13,15 +13,6 @@ import Quickshell.Io
 
 Item {
     id: root
-    Layout.fillHeight: true
-    layer.enabled: true
-    layer.effect: OpacityMask {
-        maskSource: Rectangle {
-            width: root.width
-            height: root.height
-            radius: Appearance.rounding.small
-        }
-    }
 
     readonly property MprisPlayer activePlayer: MprisController.activePlayer
     readonly property string cleanedTitle: StringUtils.cleanMusicTitle(activePlayer?.trackTitle) || Translation.tr("No media")
@@ -75,8 +66,8 @@ Item {
     Item {
         anchors.left: parent.left
         anchors.right: parent.right
-        y: 0
-        height: Appearance.sizes.barHeight
+        height: Appearance.sizes.baseBarHeight - 8
+        y: (root.height - height) / 2
         clip: true
         z: -1
 
