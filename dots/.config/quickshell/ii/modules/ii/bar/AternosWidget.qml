@@ -62,6 +62,7 @@ Item {
     }
 
     MouseArea {
+        id: mouseArea
         anchors.fill: parent
         hoverEnabled: !Config.options.bar.tooltips.clickToShow
         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
@@ -95,6 +96,7 @@ Item {
     }
 
     StyledToolTip {
+        alternativeVisibleCondition: mouseArea.containsMouse
         text: {
             if (Aternos.servers.length === 0) return "No servers found\nRight-click to refresh";
             let lines = [];
