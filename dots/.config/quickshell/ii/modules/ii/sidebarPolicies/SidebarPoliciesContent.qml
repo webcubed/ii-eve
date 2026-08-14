@@ -31,11 +31,16 @@ Item {
         function onExtensionToggled() { root.extensionPages = ExtensionManager.getContributionPoint("sidebarLeftPages") }
     }
 
+    property var enabledExtensionPages: root.extensionPages.filter(p => {
+        let key = p.extensionId + ":" + (p.identifier || p.title);
+        return !Config.options.policies.disabledExtensionTabs.includes(key);
+    })
+
     property var tabButtonList: [  
         ...(root.aiChatEnabled ? [{"icon": "neurology", "name": Translation.tr("Intelligence")}] : []),  
         ...(root.translatorEnabled ? [{"icon": "translate", "name": Translation.tr("Translator")}] : []), 
         ...((root.animeEnabled && !root.animeCloset) ? [{"icon": "bookmark_heart", "name": Translation.tr("Anime")}] : []),
-        ...root.extensionPages.map(p => ({icon: p.icon, name: p.title}))
+        ...root.enabledExtensionPages.map(p => ({icon: p.icon, name: p.title}))
     ]
     property int tabCount: swipeView.count
 
@@ -162,7 +167,7 @@ Item {
                     ...(root.translatorEnabled ? [translator.createObject()] : []),
                     ...((root.tabButtonList.length === 0 || (!root.aiChatEnabled && !root.translatorEnabled && root.animeCloset)) ? [placeholder.createObject()] : []),
                     ...(root.animeEnabled ? [anime.createObject()] : []),
-                    ...root.extensionPages.map(p => root.createExtensionPage(p)).filter(item => item)
+                    ...root.enabledExtensionPages.map(p => root.createExtensionPage(p)).filter(item => item)
                 ]
             }
         }

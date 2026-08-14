@@ -86,6 +86,7 @@ Singleton {
                 property int wallpapers: 1 // 0: No | 1: Yes
                 property int translator: 0 // 0: No | 1: Yes
                 property int weeb: 0 // 0: No | 1: Yes | 2: Closet
+                property list<string> disabledExtensionTabs: []
             }
 
             property JsonObject extensions: JsonObject {

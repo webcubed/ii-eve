@@ -257,6 +257,30 @@ ContentPage {
                     Config.options.policies.weeb = checked ? 1 : 0;
                 }
             }
+
+            Repeater {
+                model: ExtensionManager.ready ? ExtensionManager.getContributionPoint("sidebarLeftPages") : []
+                delegate: ConfigSwitch {
+                    required property var modelData
+                    buttonIcon: modelData.icon || "extension"
+                    text: modelData.title || modelData.identifier
+                    checked: {
+                        let key = modelData.extensionId + ":" + (modelData.identifier || modelData.title);
+                        return !Config.options.policies.disabledExtensionTabs.includes(key);
+                    }
+                    onCheckedChanged: {
+                        let key = modelData.extensionId + ":" + (modelData.identifier || modelData.title);
+                        let list = [...Config.options.policies.disabledExtensionTabs];
+                        let idx = list.indexOf(key);
+                        if (!checked && idx === -1) {
+                            list.push(key);
+                        } else if (checked && idx !== -1) {
+                            list.splice(idx, 1);
+                        }
+                        Config.options.policies.disabledExtensionTabs = list;
+                    }
+                }
+            }
         }
     }
 
