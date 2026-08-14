@@ -8,6 +8,7 @@ Singleton {
 
     readonly property var builtinComponents: [
         { id: "policies_panel_button", icon: "star", title: "Policies panel button" },
+        { id: "ai_panel_button", icon: "psychology", title: "AI panel button" },
         { id: "active_window", icon: "label", title: "Active window" },
         { id: "music_player", icon: "music_note", title: "Music player" },
         { id: "workspaces", icon: "workspaces", title: "Workspaces" },
@@ -23,6 +24,7 @@ Singleton {
         { id: "weather", icon: "weather_mix", title: "Weather" },
         { id: "utility_buttons", icon: "build", title: "Utility buttons" },
         { id: "network_speed", icon: "speed", title: "Network speed" },
+        { id: "aternos", icon: "dns", title: "Aternos server" },
     ]
 
     property var extensionComponents: []

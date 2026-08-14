@@ -98,6 +98,10 @@ Scope {
                 if (event.key === Qt.Key_Escape) {
                     panelWindow.hide();
                 }
+                if (event.modifiers === Qt.ControlModifier && event.key === Qt.Key_L) {
+                    Notifications.discardAllNotifications();
+                    event.accepted = true;
+                }
             }
         }
     }

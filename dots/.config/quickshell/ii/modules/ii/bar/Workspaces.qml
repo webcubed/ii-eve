@@ -153,7 +153,7 @@ Item {
         radius: {
             const shape = Config.options.bar.workspaces.activeIndicatorShape
             if (shape === "circle") return width / 2
-            if (shape === "roundedSquare") return Appearance.rounding.large
+            if (shape === "roundedSquare") return Appearance.rounding.verysmall
             if (shape === "rectangle") return 0
             return Appearance.rounding.full // pill
         }

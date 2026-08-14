@@ -63,11 +63,11 @@ Item {
 
     Keys.onPressed: (event) => {
         if (event.modifiers === Qt.ControlModifier) {
-            if (event.key === Qt.Key_PageDown) {
+            if (event.key === Qt.Key_PageDown || event.key === Qt.Key_Tab) {
                 swipeView.incrementCurrentIndex()
                 event.accepted = true;
             }
-            else if (event.key === Qt.Key_PageUp) {
+            else if (event.key === Qt.Key_PageUp || (event.key === Qt.Key_Tab && event.modifiers & Qt.ShiftModifier)) {
                 swipeView.decrementCurrentIndex()
                 event.accepted = true;
             }

@@ -935,7 +935,7 @@ Singleton {
 
             property JsonObject time: JsonObject {
                 // https://doc.qt.io/qt-6/qtime.html#toString
-                property string format: "hh:mm"
+                property string format: "hh:mm:ss"
                 property string shortDateFormat: "dd/MM"
                 property string longDateFormat: "dd/MM/yyyy"
                 property string dateWithYearFormat: "dd/MM/yyyy"
@@ -948,7 +948,8 @@ Singleton {
                     property int focus: 1500
                     property int longBreak: 900
                 }
-                property bool secondPrecision: false
+
+                property bool secondPrecision: true
             }
 
             property JsonObject updates: JsonObject {
