@@ -27,7 +27,13 @@ Item {
         function onExtensionToggled() { root.extensionPages = ExtensionManager.getContributionPoint("sidebarLeftPages") }
     }
 
+    // Built-in AI chat page
+    property var builtInPages: [
+        { icon: "psychology", title: "AI", component: "aiChat" }
+    ]
+
     property var tabButtonList: [
+        ...root.builtInPages.map(p => ({icon: p.icon, name: p.title})),
         ...root.extensionPages.map(p => ({icon: p.icon, name: p.title}))
     ]
     property int tabCount: swipeView.count
@@ -122,7 +128,7 @@ Item {
                 }
 
                 contentChildren: [
-                    ...((root.tabButtonList.length === 0) ? [placeholder.createObject()] : []),
+                    aiChatPage,
                     ...root.extensionPages.map(p => root.createExtensionPage(p)).filter(item => item)
                 ]
             }
@@ -137,6 +143,10 @@ Item {
                     color: Appearance.colors.colSubtext
                 }
             }
+        }
+
+        AiChat {
+            id: aiChatPage
         }
     }
 }

@@ -54,7 +54,9 @@ Item {
             "weather": [weatherComp, weatherComp, weatherCompExpressive, weatherCompExpressive],
             "policies_panel_button": [policiesPanelButton, policiesPanelButton, policiesPanelButtonExpressive, policiesPanelButtonExpressive],
             "dashboard_panel_button": [dashboardPanelButton, dashboardPanelButtonVert, dashboardPanelButtonExpressive, dashboardPanelButtonExpressiveVert],
-            "network_speed": [networkSpeedComp, networkSpeedComp]
+            "network_speed": [networkSpeedComp, networkSpeedComp],
+            "aternos": [aternosComp, aternosComp],
+            "ai_panel_button": [aiPanelButtonComp, aiPanelButtonComp]
         })
 
     readonly property bool isMinimal: {
@@ -389,5 +391,15 @@ Item {
         ExpressiveSystemTray {
             vertical: rootItem.vertical
         }
+    }
+
+    Component {
+        id: aternosComp
+        Aternos {}
+    }
+
+    Component {
+        id: aiPanelButtonComp
+        AiPanelButton {}
     }
 }
