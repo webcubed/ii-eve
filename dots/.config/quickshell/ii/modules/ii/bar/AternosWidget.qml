@@ -3,6 +3,8 @@ import qs.modules.common.widgets
 import qs.services
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
+import Quickshell.Wayland
 
 Item {
     id: root
@@ -64,53 +66,90 @@ Item {
     MouseArea {
         id: mouseArea
         anchors.fill: parent
-        hoverEnabled: !Config.options.bar.tooltips.clickToShow
-        acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+        hoverEnabled: true
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
         cursorShape: Qt.PointingHandCursor
 
         onClicked: (event) => {
             if (event.button === Qt.LeftButton) {
-                if (Aternos.servers.length > 0) {
-                    let s = Aternos.servers[0];
-                    let st = (s.status || "").toLowerCase();
-                    if (st === "offline" || st === "stopped") {
-                        Aternos.startServer(s.address);
-                    } else if (st === "online") {
-                        Aternos.stopServer(s.address);
-                    }
-                }
+                aternosPopup.visible = !aternosPopup.visible;
             } else if (event.button === Qt.RightButton) {
                 Aternos.listServers();
-            } else if (event.button === Qt.MiddleButton) {
-                if (Aternos.servers.length > 1) {
-                    let s = Aternos.servers[1];
-                    let st = (s.status || "").toLowerCase();
-                    if (st === "offline" || st === "stopped") {
-                        Aternos.startServer(s.address);
-                    } else if (st === "online") {
-                        Aternos.stopServer(s.address);
-                    }
-                }
             }
         }
     }
 
-    StyledToolTip {
-        extraVisibleCondition: false
-        alternativeVisibleCondition: mouseArea.containsMouse
-        text: {
-            if (Aternos.servers.length === 0) return "No servers found\nRight-click to refresh";
-            let lines = [];
-            for (let i = 0; i < Math.min(Aternos.servers.length, 3); i++) {
-                let s = Aternos.servers[i];
-                let addr = (s.address || "Unknown").split(":")[0];
-                lines.push(`${addr}: ${s.status || "?"} (${s.players ?? "?"}/${s.slots ?? "?"})`);
+    Loader {
+        id: aternosPopup
+        active: visible
+        visible: false
+
+        sourceComponent: PanelWindow {
+            id: popupWindow
+            visible: true
+            color: "transparent"
+
+            WlrLayershell.namespace: "quickshell:popup"
+            WlrLayershell.layer: WlrLayer.Overlay
+            exclusionMode: ExclusionMode.Ignore
+            exclusiveZone: 0
+
+            anchors.top: true
+            implicitWidth: 320
+            implicitHeight: popupContent.implicitHeight + 20
+
+            mask: Region {
+                item: popupBg
             }
-            lines.push("");
-            lines.push("Left-click: Start/Stop #1");
-            if (Aternos.servers.length > 1) lines.push("Middle-click: Start/Stop #2");
-            lines.push("Right-click: Refresh");
-            return lines.join("\n");
+
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.LeftButton | Qt.BackButton
+                hoverEnabled: true
+
+                onClicked: (event) => {
+                    if (event.button === Qt.LeftButton) {
+                        let localPos = mapToItem(popupBg, event.x, event.y);
+                        if (!popupBg.containsQtPoint(localPos)) {
+                            aternosPopup.visible = false;
+                        }
+                    }
+                }
+
+                Rectangle {
+                    id: popupBg
+                    anchors.fill: parent
+                    anchors.margins: 10
+                    color: Appearance.m3colors.m3surfaceContainer
+                    radius: Appearance.rounding.normal
+                    border.width: 1
+                    border.color: Appearance.colors.colLayer0Border
+
+                    function containsQtPoint(pos) {
+                        return pos.x >= 0 && pos.x <= width && pos.y >= 0 && pos.y <= height;
+                    }
+
+                    AternosPopup {
+                        id: popupContent
+                        anchors.fill: parent
+                        anchors.margins: 10
+                    }
+                }
+            }
+
+            Connections {
+                target: GlobalFocusGrab
+                function onDismissed() {
+                    aternosPopup.visible = false;
+                }
+            }
+
+            Component.onCompleted: {
+                GlobalFocusGrab.addDismissable(popupWindow);
+            }
+            Component.onDestruction: {
+                GlobalFocusGrab.removeDismissable(popupWindow);
+            }
         }
     }
 }

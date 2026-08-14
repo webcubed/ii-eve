@@ -10,8 +10,21 @@ Singleton {
     property var servers: []
     property bool loading: false
     property string lastError: ""
+    property real startTimer: 0
 
     property var aternosPath: "/home/webcubed/aternos-cli/aternos"
+
+    Timer {
+        id: restartTimer
+        interval: root.startTimer
+        running: root.startTimer > 0
+        repeat: false
+        onTriggered: {
+            root.startTimer = 0;
+            let s = root.servers[0];
+            if (s) root.startServer(s.address);
+        }
+    }
 
     function listServers() {
         root.loading = true;
@@ -38,6 +51,13 @@ Singleton {
         root.lastError = "";
         stopProc.serverArg = serverName || "";
         stopProc.running = true;
+    }
+
+    function sendCommand(serverAddress, command) {
+        root.lastError = "";
+        commandProc.serverArg = serverAddress || "";
+        commandProc.commandArg = command;
+        commandProc.running = true;
     }
 
     Process {
@@ -127,6 +147,27 @@ Singleton {
                 root.loading = false;
                 root.listServers();
             }
+        }
+    }
+
+    Process {
+        id: commandProc
+        property string serverArg: ""
+        property string commandArg: ""
+        command: [root.aternosPath, "cmd", serverArg, commandArg].filter(s => s !== "")
+        running: false
+        stdout: SplitParser {
+            onRead: data => {
+                console.log("[Aternos] Command output:", data);
+            }
+        }
+        stderr: SplitParser {
+            onRead: data => {
+                root.lastError = data;
+            }
+        }
+        onRunningChanged: {
+            if (!running) root.loading = false;
         }
     }
 
