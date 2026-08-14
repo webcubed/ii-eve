@@ -2,341 +2,425 @@ import qs.modules.common
 import qs.modules.common.widgets
 import qs.services
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 
 ColumnLayout {
     id: root
     spacing: 8
-    implicitWidth: 300
+    implicitWidth: 320
 
-    // Tab bar for servers
-    TabBar {
-        id: tabBar
+    // Server tabs
+    RowLayout {
         Layout.fillWidth: true
-        visible: Aternos.servers.length > 0
+        spacing: 4
+        visible: Aternos.servers.length > 1
 
         Repeater {
             model: Aternos.servers
 
-            TabButton {
-                text: (modelData.address || "Server").split(":")[0]
-                width: implicitWidth
-                contentItem: StyledText {
-                    text: parent.text
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    color: tabBar.currentIndex === index ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer1
-                }
-                background: Rectangle {
-                    color: tabBar.currentIndex === index ? Appearance.colors.colPrimary : Appearance.colors.colLayer2
-                    radius: Appearance.rounding.small
-
-                    Rectangle {
-                        visible: tabBar.currentIndex === index
-                        anchors.bottom: parent.bottom
-                        width: parent.width
-                        height: 2
-                        color: Appearance.colors.colOnPrimary
-                    }
-                }
-            }
-        }
-    }
-
-    // Server info
-    Rectangle {
-        Layout.fillWidth: true
-        Layout.preferredHeight: serverInfo.implicitHeight + 16
-        color: Appearance.colors.colLayer2
-        radius: Appearance.rounding.small
-        visible: Aternos.servers.length > 0
-
-        ColumnLayout {
-            id: serverInfo
-            anchors.fill: parent
-            anchors.margins: 8
-            spacing: 4
-
-            StyledText {
-                text: {
-                    let s = Aternos.servers[tabBar.currentIndex];
-                    if (!s) return "";
-                    return (s.address || "Unknown").split(":")[0];
-                }
-                font.pixelSize: Appearance.font.pixelSize.normal
-                font.weight: Font.Bold
-                color: Appearance.colors.colOnLayer1
+            Rectangle {
                 Layout.fillWidth: true
-            }
+                Layout.preferredHeight: 32
+                radius: Appearance.rounding.small
+                color: tabBar.currentIndex === index ? Appearance.colors.colPrimaryContainer : Appearance.colors.colLayer2
 
-            RowLayout {
-                spacing: 12
+                property bool isActive: tabBar.currentIndex === index
 
                 RowLayout {
-                    spacing: 4
+                    anchors.centerIn: parent
+                    spacing: 6
+
                     Rectangle {
-                        width: 8
-                        height: 8
-                        radius: 4
+                        width: 6
+                        height: 6
+                        radius: 3
                         color: {
-                            let s = Aternos.servers[tabBar.currentIndex];
-                            if (!s) return "#808080";
-                            let st = (s.status || "").toLowerCase();
+                            let st = (modelData.status || "").toLowerCase();
                             if (st === "online") return "#22c55e";
                             if (st === "starting" || st === "loading") return "#fde047";
                             return "#808080";
                         }
                     }
+
                     StyledText {
-                        text: {
-                            let s = Aternos.servers[tabBar.currentIndex];
-                            return s ? (s.status || "Unknown") : "";
-                        }
+                        text: (modelData.address || "Server").split(":")[0]
                         font.pixelSize: Appearance.font.pixelSize.small
-                        color: Appearance.colors.colSubtext
+                        font.weight: Font.DemiBold
+                        color: parent.parent.isActive ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colOnLayer1
+                        elide: Text.ElideRight
+                        Layout.maximumWidth: 100
                     }
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: tabBar.currentIndex = index
+                }
+
+                Rectangle {
+                    visible: parent.isActive
+                    anchors.bottom: parent.bottom
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: parent.width * 0.6
+                    height: 2
+                    radius: 1
+                    color: Appearance.colors.colPrimary
+                }
+            }
+        }
+    }
+
+    // Active server info
+    Rectangle {
+        Layout.fillWidth: true
+        Layout.preferredHeight: contentColumn.implicitHeight + 24
+        radius: Appearance.rounding.normal
+        color: Appearance.colors.colLayer2
+
+        ColumnLayout {
+            id: contentColumn
+            anchors.fill: parent
+            anchors.margins: 12
+            spacing: 8
+
+            // Server name & status
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                MaterialSymbol {
+                    text: "dns"
+                    iconSize: 20
+                    color: Appearance.colors.colPrimary
                 }
 
                 StyledText {
                     text: {
                         let s = Aternos.servers[tabBar.currentIndex];
-                        if (!s) return "";
-                        return `${s.players ?? "?"}/${s.slots ?? "?"} players`;
+                        return s ? (s.address || "Unknown").split(":")[0] : "No server";
                     }
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.normal
+                    font.weight: Font.Bold
+                    color: Appearance.colors.colOnLayer1
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
                 }
 
-                Item { Layout.fillWidth: true }
-
-                StyledText {
-                    text: {
+                Rectangle {
+                    implicitHeight: 22
+                    implicitWidth: statusRow.implicitWidth + 12
+                    radius: Appearance.rounding.full
+                    color: {
                         let s = Aternos.servers[tabBar.currentIndex];
-                        if (!s) return "";
-                        return s.software || "";
+                        if (!s) return Appearance.colors.colLayer3;
+                        let st = (s.status || "").toLowerCase();
+                        if (st === "online") return Qt.alpha("#22c55e", 0.15);
+                        if (st === "starting" || st === "loading") return Qt.alpha("#fde047", 0.15);
+                        return Appearance.colors.colLayer3;
                     }
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    color: Appearance.colors.colSubtext
+
+                    RowLayout {
+                        id: statusRow
+                        anchors.centerIn: parent
+                        spacing: 4
+
+                        Rectangle {
+                            width: 6
+                            height: 6
+                            radius: 3
+                            color: {
+                                let s = Aternos.servers[tabBar.currentIndex];
+                                if (!s) return "#808080";
+                                let st = (s.status || "").toLowerCase();
+                                if (st === "online") return "#22c55e";
+                                if (st === "starting" || st === "loading") return "#fde047";
+                                return "#808080";
+                            }
+                        }
+
+                        StyledText {
+                            text: {
+                                let s = Aternos.servers[tabBar.currentIndex];
+                                return s ? (s.status || "Unknown") : "Unknown";
+                            }
+                            font.pixelSize: Appearance.font.pixelSize.smallie
+                            font.weight: Font.Medium
+                            color: Appearance.colors.colOnLayer1
+                        }
+                    }
                 }
             }
 
-            StyledText {
-                text: {
-                    let s = Aternos.servers[tabBar.currentIndex];
-                    if (!s) return "";
-                    return s.version || "";
+            // Details row
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 12
+
+                Row {
+                    spacing: 4
+                    MaterialSymbol {
+                        text: "group"
+                        iconSize: 14
+                        color: Appearance.colors.colSubtext
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                    StyledText {
+                        text: {
+                            let s = Aternos.servers[tabBar.currentIndex];
+                            if (!s) return "?/?";
+                            return `${s.players ?? "?"}/${s.slots ?? "?"}`;
+                        }
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        color: Appearance.colors.colSubtext
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
                 }
+
+                Row {
+                    spacing: 4
+                    MaterialSymbol {
+                        text: "memory"
+                        iconSize: 14
+                        color: Appearance.colors.colSubtext
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                    StyledText {
+                        text: {
+                            let s = Aternos.servers[tabBar.currentIndex];
+                            return s ? `${s.software || "?"} ${s.version || ""}` : "";
+                        }
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        color: Appearance.colors.colSubtext
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                }
+
+                Item { Layout.fillWidth: true }
+            }
+
+            // Divider
+            Rectangle {
+                Layout.fillWidth: true
+                height: 1
+                color: Appearance.colors.colLayer3
+            }
+
+            // Control buttons
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                Button {
+                    Layout.fillWidth: true
+                    implicitHeight: 32
+                    enabled: {
+                        let s = Aternos.servers[tabBar.currentIndex];
+                        return s && (s.status || "").toLowerCase() === "offline";
+                    }
+
+                    background: Rectangle {
+                        radius: Appearance.rounding.small
+                        color: parent.enabled ? Appearance.colors.colPrimaryContainer : Appearance.colors.colLayer3
+                    }
+                    contentItem: RowLayout {
+                        spacing: 4
+                        MaterialSymbol {
+                            text: "play_arrow"
+                            iconSize: 16
+                            color: parent.parent.parent.enabled ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colSubtext
+                        }
+                        StyledText {
+                            text: "Start"
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            font.weight: Font.Medium
+                            color: parent.parent.parent.parent.enabled ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colSubtext
+                        }
+                    }
+                    onClicked: {
+                        let s = Aternos.servers[tabBar.currentIndex];
+                        if (s) Aternos.startServer(s.address);
+                    }
+                }
+
+                Button {
+                    Layout.fillWidth: true
+                    implicitHeight: 32
+                    enabled: {
+                        let s = Aternos.servers[tabBar.currentIndex];
+                        return s && (s.status || "").toLowerCase() === "online";
+                    }
+
+                    background: Rectangle {
+                        radius: Appearance.rounding.small
+                        color: parent.enabled ? Appearance.colors.colSecondaryContainer : Appearance.colors.colLayer3
+                    }
+                    contentItem: RowLayout {
+                        spacing: 4
+                        MaterialSymbol {
+                            text: "restart_alt"
+                            iconSize: 16
+                            color: parent.parent.parent.enabled ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colSubtext
+                        }
+                        StyledText {
+                            text: "Restart"
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            font.weight: Font.Medium
+                            color: parent.parent.parent.parent.enabled ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colSubtext
+                        }
+                    }
+                    onClicked: {
+                        let s = Aternos.servers[tabBar.currentIndex];
+                        if (s) {
+                            Aternos.stopServer(s.address);
+                            Aternos.startTimer = 2000;
+                        }
+                    }
+                }
+
+                Button {
+                    Layout.fillWidth: true
+                    implicitHeight: 32
+                    enabled: {
+                        let s = Aternos.servers[tabBar.currentIndex];
+                        return s && (s.status || "").toLowerCase() === "online";
+                    }
+
+                    background: Rectangle {
+                        radius: Appearance.rounding.small
+                        color: parent.enabled ? Appearance.colors.colErrorContainer : Appearance.colors.colLayer3
+                    }
+                    contentItem: RowLayout {
+                        spacing: 4
+                        MaterialSymbol {
+                            text: "stop"
+                            iconSize: 16
+                            color: parent.parent.parent.enabled ? Appearance.colors.colOnErrorContainer : Appearance.colors.colSubtext
+                        }
+                        StyledText {
+                            text: "Stop"
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            font.weight: Font.Medium
+                            color: parent.parent.parent.parent.enabled ? Appearance.colors.colOnErrorContainer : Appearance.colors.colSubtext
+                        }
+                    }
+                    onClicked: {
+                        let s = Aternos.servers[tabBar.currentIndex];
+                        if (s) Aternos.stopServer(s.address);
+                    }
+                }
+            }
+
+            // Console input
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                TextField {
+                    id: consoleInput
+                    Layout.fillWidth: true
+                    implicitHeight: 32
+                    placeholderText: "Console command..."
+                    color: Appearance.colors.colOnLayer1
+                    placeholderTextColor: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    background: Rectangle {
+                        color: Appearance.colors.colLayer1
+                        radius: Appearance.rounding.small
+                        border.color: consoleInput.activeFocus ? Appearance.colors.colPrimary : Appearance.colors.colLayer3
+                        border.width: 1
+                    }
+                    onAccepted: {
+                        if (text.trim().length > 0) {
+                            let s = Aternos.servers[tabBar.currentIndex];
+                            if (s) {
+                                Aternos.sendCommand(s.address, text.trim());
+                                text = "";
+                            }
+                        }
+                    }
+                }
+
+                Button {
+                    implicitWidth: 32
+                    implicitHeight: 32
+                    enabled: consoleInput.text.trim().length > 0
+
+                    background: Rectangle {
+                        radius: Appearance.rounding.small
+                        color: parent.enabled ? Appearance.colors.colPrimary : Appearance.colors.colLayer3
+                    }
+                    contentItem: MaterialSymbol {
+                        text: "send"
+                        iconSize: 16
+                        color: parent.parent.enabled ? Appearance.colors.colOnPrimary : Appearance.colors.colSubtext
+                    }
+                    onClicked: {
+                        if (consoleInput.text.trim().length > 0) {
+                            let s = Aternos.servers[tabBar.currentIndex];
+                            if (s) {
+                                Aternos.sendCommand(s.address, consoleInput.text.trim());
+                                consoleInput.text = "";
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Error display
+            StyledText {
+                visible: Aternos.lastError.length > 0
+                text: Aternos.lastError
                 font.pixelSize: Appearance.font.pixelSize.smallie
-                color: Appearance.colors.colSubtext
+                color: Appearance.colors.colError
+                wrapMode: Text.Wrap
                 Layout.fillWidth: true
             }
         }
     }
 
-    // Control buttons
-    RowLayout {
+    // Empty state
+    Rectangle {
         Layout.fillWidth: true
-        spacing: 6
-        visible: Aternos.servers.length > 0
-
-        Button {
-            Layout.fillWidth: true
-            text: "Start"
-            enabled: {
-                let s = Aternos.servers[tabBar.currentIndex];
-                return s && (s.status || "").toLowerCase() === "offline";
-            }
-
-            background: Rectangle {
-                color: parent.enabled ? Appearance.colors.colPrimaryContainer : Appearance.colors.colLayer2
-                radius: Appearance.rounding.small
-            }
-            contentItem: StyledText {
-                text: parent.text
-                font.pixelSize: Appearance.font.pixelSize.small
-                color: parent.enabled ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colSubtext
-                horizontalAlignment: Text.AlignHCenter
-            }
-            onClicked: {
-                let s = Aternos.servers[tabBar.currentIndex];
-                if (s) Aternos.startServer(s.address);
-            }
-        }
-
-        Button {
-            Layout.fillWidth: true
-            text: "Restart"
-            enabled: {
-                let s = Aternos.servers[tabBar.currentIndex];
-                return s && (s.status || "").toLowerCase() === "online";
-            }
-
-            background: Rectangle {
-                color: parent.enabled ? Appearance.colors.colSecondaryContainer : Appearance.colors.colLayer2
-                radius: Appearance.rounding.small
-            }
-            contentItem: StyledText {
-                text: parent.text
-                font.pixelSize: Appearance.font.pixelSize.small
-                color: parent.enabled ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colSubtext
-                horizontalAlignment: Text.AlignHCenter
-            }
-            onClicked: {
-                let s = Aternos.servers[tabBar.currentIndex];
-                if (s) {
-                    Aternos.stopServer(s.address);
-                    Aternos.startTimer = 1000;
-                }
-            }
-        }
-
-        Button {
-            Layout.fillWidth: true
-            text: "Stop"
-            enabled: {
-                let s = Aternos.servers[tabBar.currentIndex];
-                return s && (s.status || "").toLowerCase() === "online";
-            }
-
-            background: Rectangle {
-                color: parent.enabled ? Appearance.colors.colErrorContainer : Appearance.colors.colLayer2
-                radius: Appearance.rounding.small
-            }
-            contentItem: StyledText {
-                text: parent.text
-                font.pixelSize: Appearance.font.pixelSize.small
-                color: parent.enabled ? Appearance.colors.colOnErrorContainer : Appearance.colors.colSubtext
-                horizontalAlignment: Text.AlignHCenter
-            }
-            onClicked: {
-                let s = Aternos.servers[tabBar.currentIndex];
-                if (s) Aternos.stopServer(s.address);
-            }
-        }
-    }
-
-    // Console command
-    RowLayout {
-        Layout.fillWidth: true
-        spacing: 6
-        visible: Aternos.servers.length > 0
-
-        TextField {
-            id: consoleInput
-            Layout.fillWidth: true
-            placeholderText: "Console command..."
-            color: Appearance.colors.colOnLayer1
-            placeholderTextColor: Appearance.colors.colSubtext
-            background: Rectangle {
-                color: Appearance.colors.colLayer2
-                radius: Appearance.rounding.small
-                border.color: consoleInput.activeFocus ? Appearance.colors.colPrimary : Appearance.colors.colLayer3
-                border.width: 1
-            }
-            onAccepted: {
-                if (text.trim().length > 0) {
-                    let s = Aternos.servers[tabBar.currentIndex];
-                    if (s) {
-                        Aternos.sendCommand(s.address, text.trim());
-                        text = "";
-                    }
-                }
-            }
-        }
-
-        Button {
-            implicitWidth: 40
-            background: Rectangle {
-                color: Appearance.colors.colPrimary
-                radius: Appearance.rounding.small
-            }
-            contentItem: MaterialSymbol {
-                iconSize: 18
-                text: "terminal"
-                color: Appearance.colors.colOnPrimary
-            }
-            onClicked: {
-                if (consoleInput.text.trim().length > 0) {
-                    let s = Aternos.servers[tabBar.currentIndex];
-                    if (s) {
-                        Aternos.sendCommand(s.address, consoleInput.text.trim());
-                        consoleInput.text = "";
-                    }
-                }
-            }
-        }
-    }
-
-    // Loading / empty state
-    ColumnLayout {
-        Layout.fillWidth: true
-        spacing: 8
+        Layout.preferredHeight: 120
+        radius: Appearance.rounding.normal
+        color: Appearance.colors.colLayer2
         visible: Aternos.servers.length === 0
 
-        MaterialSymbol {
-            icon: "dns"
-            iconSize: 48
-            color: Appearance.colors.colSubtext
-            Layout.alignment: Qt.AlignHCenter
-        }
+        ColumnLayout {
+            anchors.centerIn: parent
+            spacing: 8
 
-        StyledText {
-            text: Aternos.loading ? "Loading servers..." : "No servers found"
-            font.pixelSize: Appearance.font.pixelSize.normal
-            color: Appearance.colors.colSubtext
-            Layout.alignment: Qt.AlignHCenter
-        }
-
-        Button {
-            Layout.alignment: Qt.AlignHCenter
-            text: "Refresh"
-            enabled: !Aternos.loading
-            background: Rectangle {
-                color: Appearance.colors.colPrimaryContainer
-                radius: Appearance.rounding.small
+            MaterialSymbol {
+                text: "dns"
+                iconSize: 32
+                color: Appearance.colors.colSubtext
+                Layout.alignment: Qt.AlignHCenter
             }
-            contentItem: StyledText {
-                text: parent.text
+
+            StyledText {
+                text: Aternos.loading ? "Loading servers..." : "No servers found"
                 font.pixelSize: Appearance.font.pixelSize.small
-                color: Appearance.colors.colOnPrimaryContainer
-                horizontalAlignment: Text.AlignHCenter
+                color: Appearance.colors.colSubtext
+                Layout.alignment: Qt.AlignHCenter
             }
-            onClicked: Aternos.listServers()
-        }
-    }
 
-    // Error display
-    StyledText {
-        visible: Aternos.lastError.length > 0
-        text: Aternos.lastError
-        font.pixelSize: Appearance.font.pixelSize.smallie
-        color: Appearance.colors.colError
-        wrapMode: Text.Wrap
-        Layout.fillWidth: true
-    }
-
-    // Refresh button row
-    RowLayout {
-        Layout.fillWidth: true
-        visible: Aternos.servers.length > 0
-
-        Item { Layout.fillWidth: true }
-
-        Button {
-            text: "Refresh"
-            enabled: !Aternos.loading
-            background: Rectangle {
-                color: Appearance.colors.colLayer3
-                radius: Appearance.rounding.small
+            Button {
+                Layout.alignment: Qt.AlignHCenter
+                implicitHeight: 28
+                text: "Refresh"
+                enabled: !Aternos.loading
+                background: Rectangle {
+                    radius: Appearance.rounding.small
+                    color: Appearance.colors.colPrimaryContainer
+                }
+                contentItem: StyledText {
+                    text: parent.text
+                    font.pixelSize: Appearance.font.pixelSize.smallie
+                    color: Appearance.colors.colOnPrimaryContainer
+                    horizontalAlignment: Text.AlignHCenter
+                }
+                onClicked: Aternos.listServers()
             }
-            contentItem: MaterialSymbol {
-                icon: "refresh"
-                iconSize: 18
-                color: Appearance.colors.colOnLayer1
-            }
-            onClicked: Aternos.listServers()
         }
     }
 }

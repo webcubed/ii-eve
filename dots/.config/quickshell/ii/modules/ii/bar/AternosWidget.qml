@@ -3,8 +3,6 @@ import qs.modules.common.widgets
 import qs.services
 import QtQuick
 import QtQuick.Layouts
-import Quickshell
-import Quickshell.Wayland
 
 Item {
     id: root
@@ -66,90 +64,11 @@ Item {
     MouseArea {
         id: mouseArea
         anchors.fill: parent
-        hoverEnabled: true
-        acceptedButtons: Qt.LeftButton | Qt.RightButton
-        cursorShape: Qt.PointingHandCursor
+        hoverEnabled: !Config.options.bar.tooltips.clickToShow
 
-        onClicked: (event) => {
-            if (event.button === Qt.LeftButton) {
-                aternosPopup.visible = !aternosPopup.visible;
-            } else if (event.button === Qt.RightButton) {
-                Aternos.listServers();
-            }
-        }
-    }
-
-    Loader {
-        id: aternosPopup
-        active: visible
-        visible: false
-
-        sourceComponent: PanelWindow {
-            id: popupWindow
-            visible: true
-            color: "transparent"
-
-            WlrLayershell.namespace: "quickshell:popup"
-            WlrLayershell.layer: WlrLayer.Overlay
-            exclusionMode: ExclusionMode.Ignore
-            exclusiveZone: 0
-
-            anchors.top: true
-            implicitWidth: 320
-            implicitHeight: popupContent.implicitHeight + 20
-
-            mask: Region {
-                item: popupBg
-            }
-
-            MouseArea {
-                anchors.fill: parent
-                acceptedButtons: Qt.LeftButton | Qt.BackButton
-                hoverEnabled: true
-
-                onClicked: (event) => {
-                    if (event.button === Qt.LeftButton) {
-                        let localPos = mapToItem(popupBg, event.x, event.y);
-                        if (!popupBg.containsQtPoint(localPos)) {
-                            aternosPopup.visible = false;
-                        }
-                    }
-                }
-
-                Rectangle {
-                    id: popupBg
-                    anchors.fill: parent
-                    anchors.margins: 10
-                    color: Appearance.m3colors.m3surfaceContainer
-                    radius: Appearance.rounding.normal
-                    border.width: 1
-                    border.color: Appearance.colors.colLayer0Border
-
-                    function containsQtPoint(pos) {
-                        return pos.x >= 0 && pos.x <= width && pos.y >= 0 && pos.y <= height;
-                    }
-
-                    AternosPopup {
-                        id: popupContent
-                        anchors.fill: parent
-                        anchors.margins: 10
-                    }
-                }
-            }
-
-            Connections {
-                target: GlobalFocusGrab
-                function onDismissed() {
-                    aternosPopup.visible = false;
-                }
-            }
-
-            Component.onCompleted: {
-                GlobalFocusGrab.addDismissable(popupWindow);
-            }
-            Component.onDestruction: {
-                GlobalFocusGrab.removeDismissable(popupWindow);
-            }
+        AternosPopup {
+            hoverTarget: mouseArea
+            stickyHover: true
         }
     }
 }
