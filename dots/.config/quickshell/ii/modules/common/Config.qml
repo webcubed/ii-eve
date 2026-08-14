@@ -392,6 +392,13 @@ Singleton {
                     property int swapWarningThreshold: 85
                     property int cpuWarningThreshold: 90
                     property bool expressivePopup: false
+                    // Eve custom: resource visibility
+                    property bool showCatGif: true // Show the animated cat GIF
+                    property bool showStatusDots: true // Show the pulsing status dots
+                    property bool showMemory: true // Show memory resource
+                    property bool showSwap: true // Show swap resource
+                    property bool showCpu: true // Show CPU resource
+                    property bool showGpu: true // Show GPU resource
                 }
                 property list<string> screenList: [] // List of names, like "eDP-1", find out with 'hyprctl monitors' command
 
@@ -421,6 +428,12 @@ Singleton {
                     property bool useNerdFont: false
                     property int activeIndicatorOpacity: 100 // 0-100
                     property bool dynamicWorkspaces: false
+                    // Eve custom: indicator appearance
+                    property string activeIndicatorShape: "pill" // "pill", "rectangle", "circle"
+                    property real activeIndicatorScale: 1.0 // Scale factor for active indicator (0.5 - 2.0)
+                    property bool activeIndicatorUseAccent: false // true = colPrimary (accent), false = m3secondaryContainer (ii-vynx default)
+                    property bool useMaterialShapeForActiveIndicator: false // Use MaterialShape component (minimal style)
+                    property string materialShapeIndicator: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" // MaterialShape SVG path
                 }
                 property JsonObject weather: JsonObject {
                     property bool enable: false

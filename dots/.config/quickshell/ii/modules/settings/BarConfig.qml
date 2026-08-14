@@ -777,6 +777,62 @@ ContentPage {
                 ]
             }
         }
+
+        ContentSubsection {
+            title: Translation.tr("Indicator appearance")
+
+            ConfigRow {
+                uniform: true
+
+                ConfigSwitch {
+                    buttonIcon: "palette"
+                    text: Translation.tr('Use accent color')
+                    checked: Config.options.bar.workspaces.activeIndicatorUseAccent
+                    onCheckedChanged: {
+                        Config.options.bar.workspaces.activeIndicatorUseAccent = checked;
+                    }
+                    StyledToolTip {
+                        text: Translation.tr("Use accent color (colPrimary) instead of the default ii-vynx secondary container color")
+                    }
+                }
+
+                ConfigSwitch {
+                    buttonIcon: "aspect_ratio"
+                    text: Translation.tr('Scale indicator')
+                    checked: Config.options.bar.workspaces.activeIndicatorScale !== 1.0
+                    onCheckedChanged: {
+                        Config.options.bar.workspaces.activeIndicatorScale = checked ? 1.2 : 1.0;
+                    }
+                    StyledToolTip {
+                        text: Translation.tr("Slightly scale up the active workspace indicator")
+                    }
+                }
+            }
+
+            ConfigSelectionArray {
+                currentValue: Config.options.bar.workspaces.activeIndicatorShape
+                onSelected: newValue => {
+                    Config.options.bar.workspaces.activeIndicatorShape = newValue;
+                }
+                options: [
+                    {
+                        displayName: Translation.tr("Pill"),
+                        icon: "roundabout_right",
+                        value: "pill"
+                    },
+                    {
+                        displayName: Translation.tr("Rectangle"),
+                        icon: "crop_square",
+                        value: "rectangle"
+                    },
+                    {
+                        displayName: Translation.tr("Circle"),
+                        icon: "circle",
+                        value: "circle"
+                    }
+                ]
+            }
+        }
     }
 
     ContentSection {
@@ -788,6 +844,76 @@ ContentPage {
             checked: Config.options.bar.resources.expressivePopup
             onCheckedChanged: {
                 Config.options.bar.resources.expressivePopup = checked;
+            }
+        }
+
+        ContentSubsection {
+            title: Translation.tr("Visible elements")
+
+            ConfigRow {
+                uniform: true
+
+                ConfigSwitch {
+                    buttonIcon: "pets"
+                    text: Translation.tr('Show cat GIF')
+                    checked: Config.options.bar.resources.showCatGif
+                    onCheckedChanged: {
+                        Config.options.bar.resources.showCatGif = checked;
+                    }
+                }
+
+                ConfigSwitch {
+                    buttonIcon: "radio_button_checked"
+                    text: Translation.tr('Show status dots')
+                    checked: Config.options.bar.resources.showStatusDots
+                    onCheckedChanged: {
+                        Config.options.bar.resources.showStatusDots = checked;
+                    }
+                }
+            }
+
+            ConfigRow {
+                uniform: true
+
+                ConfigSwitch {
+                    buttonIcon: "memory"
+                    text: Translation.tr('Show memory')
+                    checked: Config.options.bar.resources.showMemory
+                    onCheckedChanged: {
+                        Config.options.bar.resources.showMemory = checked;
+                    }
+                }
+
+                ConfigSwitch {
+                    buttonIcon: "swap_horiz"
+                    text: Translation.tr('Show swap')
+                    checked: Config.options.bar.resources.showSwap
+                    onCheckedChanged: {
+                        Config.options.bar.resources.showSwap = checked;
+                    }
+                }
+            }
+
+            ConfigRow {
+                uniform: true
+
+                ConfigSwitch {
+                    buttonIcon: "planner_review"
+                    text: Translation.tr('Show CPU')
+                    checked: Config.options.bar.resources.showCpu
+                    onCheckedChanged: {
+                        Config.options.bar.resources.showCpu = checked;
+                    }
+                }
+
+                ConfigSwitch {
+                    buttonIcon: "display_settings"
+                    text: Translation.tr('Show GPU')
+                    checked: Config.options.bar.resources.showGpu
+                    onCheckedChanged: {
+                        Config.options.bar.resources.showGpu = checked;
+                    }
+                }
             }
         }
     }

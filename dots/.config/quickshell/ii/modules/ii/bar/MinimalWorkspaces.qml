@@ -95,17 +95,23 @@ Item {
             id: rectangleComponent
             Rectangle {
                 radius: Appearance.rounding.full
-                color: Appearance.colors.colPrimary
+                color: Config.options.bar.workspaces.activeIndicatorUseAccent
+                    ? Appearance.colors.colPrimary
+                    : Qt.lighter(Appearance.m3colors.m3secondaryContainer, 1.2)
                 opacity: Config.options.bar.workspaces.activeIndicatorOpacity / 100
+                scale: Config.options.bar.workspaces.activeIndicatorScale
             }
         }
 
         Component {
             id: materialShapeComponent
             MaterialShape {
-                shapeString: Config.options.bar.workspaces.activeIndicatorShape
-                color: Appearance.colors.colPrimary
+                shapeString: Config.options.bar.workspaces.materialShapeIndicator
+                color: Config.options.bar.workspaces.activeIndicatorUseAccent
+                    ? Appearance.colors.colPrimary
+                    : Qt.lighter(Appearance.m3colors.m3secondaryContainer, 1.2)
                 opacity: Config.options.bar.workspaces.activeIndicatorOpacity / 100
+                scale: Config.options.bar.workspaces.activeIndicatorScale
             }
         }
     }

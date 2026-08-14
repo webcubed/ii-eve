@@ -146,9 +146,17 @@ Item {
         z: 2
         anchors.horizontalCenter: root.vertical ? parent.horizontalCenter : undefined
         anchors.verticalCenter: root.vertical ? undefined : parent.verticalCenter
-        color: Qt.lighter(Appearance.m3colors.m3secondaryContainer, 1.2)
+        color: Config.options.bar.workspaces.activeIndicatorUseAccent
+            ? Appearance.colors.colPrimary
+            : Qt.lighter(Appearance.m3colors.m3secondaryContainer, 1.2)
         opacity: Config.options.bar.workspaces.activeIndicatorOpacity / 100
-        radius: Appearance.rounding.full
+        radius: {
+            const shape = Config.options.bar.workspaces.activeIndicatorShape
+            if (shape === "circle") return width / 2
+            if (shape === "rectangle") return 0
+            return Appearance.rounding.full // pill
+        }
+        scale: Config.options.bar.workspaces.activeIndicatorScale
 
         AnimatedTabIndexPair {
             id: idxPair

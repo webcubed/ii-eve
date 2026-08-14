@@ -21,8 +21,8 @@ MouseArea {
         command: ["kitty", "-e", "btop"]
     }
 
-    property bool showCat: true
-    property bool enableCatGif: true
+    property bool showCat: Config.options.bar.resources.showCatGif
+    property bool enableCatGif: Config.options.bar.resources.showCatGif
     property int catHeight: 35
     readonly property int catWidth: Math.round(catHeight * 1.30)
 
@@ -115,6 +115,7 @@ MouseArea {
             Layout.alignment: Qt.AlignVCenter
             Layout.leftMargin: -2
             size: 6
+            visible: Config.options.bar.resources.showStatusDots
             color: root.alertColorByPercent(wrap.value01)
             intensity: wrap.value01 < root.t20 ? 0.10 :
             wrap.value01 < root.t50 ? 0.35 :
@@ -153,23 +154,27 @@ MouseArea {
             iconName: "memory"
             percentage: ResourceUsage.memoryUsedPercentage
             warningThreshold01: Config.options.bar.resources.memoryWarningThreshold / 100.0
+            shown: Config.options.bar.resources.showMemory
         }
         ResourceWithDot {
             iconName: "swap_horiz"
             percentage: ResourceUsage.swapUsedPercentage
             Layout.leftMargin: 6
             warningThreshold01: Config.options.bar.resources.swapWarningThreshold / 100.0
+            shown: Config.options.bar.resources.showSwap
         }
         ResourceWithDot {
             iconName: "planner_review"
             percentage: ResourceUsage.cpuUsage
             Layout.leftMargin: 6
             warningThreshold01: Config.options.bar.resources.cpuWarningThreshold / 100.0
+            shown: Config.options.bar.resources.showCpu
         }
         ResourceWithDot {
             iconName: "display_settings"
             percentage: ResourceUsage.gpuUsage
             Layout.leftMargin: 6
+            shown: Config.options.bar.resources.showGpu
         }
     }
 
