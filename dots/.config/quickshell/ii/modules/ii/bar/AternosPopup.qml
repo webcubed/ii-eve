@@ -2,12 +2,15 @@ import qs.modules.common
 import qs.modules.common.widgets
 import qs.services
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 
 ColumnLayout {
     id: root
     spacing: 8
     implicitWidth: 320
+
+    property int currentServerIndex: 0
 
     // Server tabs
     RowLayout {
@@ -22,9 +25,9 @@ ColumnLayout {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 32
                 radius: Appearance.rounding.small
-                color: tabBar.currentIndex === index ? Appearance.colors.colPrimaryContainer : Appearance.colors.colLayer2
+                color: root.currentServerIndex === index ? Appearance.colors.colPrimaryContainer : Appearance.colors.colLayer2
 
-                property bool isActive: tabBar.currentIndex === index
+                property bool isActive: root.currentServerIndex === index
 
                 RowLayout {
                     anchors.centerIn: parent
@@ -54,7 +57,7 @@ ColumnLayout {
 
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: tabBar.currentIndex = index
+                    onClicked: root.currentServerIndex = index
                 }
 
                 Rectangle {
@@ -83,7 +86,6 @@ ColumnLayout {
             anchors.margins: 12
             spacing: 8
 
-            // Server name & status
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
@@ -96,7 +98,7 @@ ColumnLayout {
 
                 StyledText {
                     text: {
-                        let s = Aternos.servers[tabBar.currentIndex];
+                        let s = Aternos.servers[root.currentServerIndex];
                         return s ? (s.address || "Unknown").split(":")[0] : "No server";
                     }
                     font.pixelSize: Appearance.font.pixelSize.normal
@@ -111,7 +113,7 @@ ColumnLayout {
                     implicitWidth: statusRow.implicitWidth + 12
                     radius: Appearance.rounding.full
                     color: {
-                        let s = Aternos.servers[tabBar.currentIndex];
+                        let s = Aternos.servers[root.currentServerIndex];
                         if (!s) return Appearance.colors.colLayer3;
                         let st = (s.status || "").toLowerCase();
                         if (st === "online") return Qt.alpha("#22c55e", 0.15);
@@ -129,7 +131,7 @@ ColumnLayout {
                             height: 6
                             radius: 3
                             color: {
-                                let s = Aternos.servers[tabBar.currentIndex];
+                                let s = Aternos.servers[root.currentServerIndex];
                                 if (!s) return "#808080";
                                 let st = (s.status || "").toLowerCase();
                                 if (st === "online") return "#22c55e";
@@ -140,7 +142,7 @@ ColumnLayout {
 
                         StyledText {
                             text: {
-                                let s = Aternos.servers[tabBar.currentIndex];
+                                let s = Aternos.servers[root.currentServerIndex];
                                 return s ? (s.status || "Unknown") : "Unknown";
                             }
                             font.pixelSize: Appearance.font.pixelSize.smallie
@@ -151,7 +153,6 @@ ColumnLayout {
                 }
             }
 
-            // Details row
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 12
@@ -166,7 +167,7 @@ ColumnLayout {
                     }
                     StyledText {
                         text: {
-                            let s = Aternos.servers[tabBar.currentIndex];
+                            let s = Aternos.servers[root.currentServerIndex];
                             if (!s) return "?/?";
                             return `${s.players ?? "?"}/${s.slots ?? "?"}`;
                         }
@@ -186,7 +187,7 @@ ColumnLayout {
                     }
                     StyledText {
                         text: {
-                            let s = Aternos.servers[tabBar.currentIndex];
+                            let s = Aternos.servers[root.currentServerIndex];
                             return s ? `${s.software || "?"} ${s.version || ""}` : "";
                         }
                         font.pixelSize: Appearance.font.pixelSize.small
@@ -198,14 +199,12 @@ ColumnLayout {
                 Item { Layout.fillWidth: true }
             }
 
-            // Divider
             Rectangle {
                 Layout.fillWidth: true
                 height: 1
                 color: Appearance.colors.colLayer3
             }
 
-            // Control buttons
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 6
@@ -214,7 +213,7 @@ ColumnLayout {
                     Layout.fillWidth: true
                     implicitHeight: 32
                     enabled: {
-                        let s = Aternos.servers[tabBar.currentIndex];
+                        let s = Aternos.servers[root.currentServerIndex];
                         return s && (s.status || "").toLowerCase() === "offline";
                     }
 
@@ -237,7 +236,7 @@ ColumnLayout {
                         }
                     }
                     onClicked: {
-                        let s = Aternos.servers[tabBar.currentIndex];
+                        let s = Aternos.servers[root.currentServerIndex];
                         if (s) Aternos.startServer(s.address);
                     }
                 }
@@ -246,7 +245,7 @@ ColumnLayout {
                     Layout.fillWidth: true
                     implicitHeight: 32
                     enabled: {
-                        let s = Aternos.servers[tabBar.currentIndex];
+                        let s = Aternos.servers[root.currentServerIndex];
                         return s && (s.status || "").toLowerCase() === "online";
                     }
 
@@ -269,7 +268,7 @@ ColumnLayout {
                         }
                     }
                     onClicked: {
-                        let s = Aternos.servers[tabBar.currentIndex];
+                        let s = Aternos.servers[root.currentServerIndex];
                         if (s) {
                             Aternos.stopServer(s.address);
                             Aternos.startTimer = 2000;
@@ -281,7 +280,7 @@ ColumnLayout {
                     Layout.fillWidth: true
                     implicitHeight: 32
                     enabled: {
-                        let s = Aternos.servers[tabBar.currentIndex];
+                        let s = Aternos.servers[root.currentServerIndex];
                         return s && (s.status || "").toLowerCase() === "online";
                     }
 
@@ -304,13 +303,12 @@ ColumnLayout {
                         }
                     }
                     onClicked: {
-                        let s = Aternos.servers[tabBar.currentIndex];
+                        let s = Aternos.servers[root.currentServerIndex];
                         if (s) Aternos.stopServer(s.address);
                     }
                 }
             }
 
-            // Console input
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 6
@@ -331,7 +329,7 @@ ColumnLayout {
                     }
                     onAccepted: {
                         if (text.trim().length > 0) {
-                            let s = Aternos.servers[tabBar.currentIndex];
+                            let s = Aternos.servers[root.currentServerIndex];
                             if (s) {
                                 Aternos.sendCommand(s.address, text.trim());
                                 text = "";
@@ -356,7 +354,7 @@ ColumnLayout {
                     }
                     onClicked: {
                         if (consoleInput.text.trim().length > 0) {
-                            let s = Aternos.servers[tabBar.currentIndex];
+                            let s = Aternos.servers[root.currentServerIndex];
                             if (s) {
                                 Aternos.sendCommand(s.address, consoleInput.text.trim());
                                 consoleInput.text = "";
@@ -366,7 +364,6 @@ ColumnLayout {
                 }
             }
 
-            // Error display
             StyledText {
                 visible: Aternos.lastError.length > 0
                 text: Aternos.lastError
