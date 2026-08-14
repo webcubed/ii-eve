@@ -12,6 +12,10 @@ Item {
     required property var scopeRoot
     property int sidebarPadding: 10
     anchors.fill: parent
+    property bool aiChatEnabled: Config.options.policies.ai !== 0  
+    property bool translatorEnabled: Config.options.policies.translator !== 0
+    property bool animeEnabled: Config.options.policies.weeb !== 0  
+    property bool animeCloset: Config.options.policies.weeb === 2  
 
     property bool _sidebarExtended: scopeRoot.extend
     property int _maxTextTabs: _sidebarExtended ? 4 : 3
@@ -27,13 +31,10 @@ Item {
         function onExtensionToggled() { root.extensionPages = ExtensionManager.getContributionPoint("sidebarLeftPages") }
     }
 
-    // Built-in AI chat page
-    property var builtInPages: [
-        { icon: "psychology", title: "AI", component: "aiChat" }
-    ]
-
-    property var tabButtonList: [
-        ...root.builtInPages.map(p => ({icon: p.icon, name: p.title})),
+    property var tabButtonList: [  
+        ...(root.aiChatEnabled ? [{"icon": "neurology", "name": Translation.tr("Intelligence")}] : []),  
+        ...(root.translatorEnabled ? [{"icon": "translate", "name": Translation.tr("Translator")}] : []), 
+        ...((root.animeEnabled && !root.animeCloset) ? [{"icon": "bookmark_heart", "name": Translation.tr("Anime")}] : []),
         ...root.extensionPages.map(p => ({icon: p.icon, name: p.title}))
     ]
     property int tabCount: swipeView.count
@@ -69,11 +70,11 @@ Item {
 
     Keys.onPressed: (event) => {
         if (event.modifiers === Qt.ControlModifier) {
-            if (event.key === Qt.Key_PageDown || event.key === Qt.Key_Tab) {
+            if (event.key === Qt.Key_PageDown) {
                 swipeView.incrementCurrentIndex()
                 event.accepted = true;
             }
-            else if (event.key === Qt.Key_PageUp || (event.key === Qt.Key_Tab && event.modifiers & Qt.ShiftModifier)) {
+            else if (event.key === Qt.Key_PageUp) {
                 swipeView.decrementCurrentIndex()
                 event.accepted = true;
             }
@@ -127,41 +128,34 @@ Item {
                     }
                 }
 
-                // Built-in AI chat page
-                AiChat {}
-
-                // Extension pages
-                Repeater {
-                    model: root.extensionPages
-
-                    Loader {
-                        active: true
-                        property var pageData: modelData
-                        source: "file://" + pageData.fullPath + "?_t=" + Date.now()
-
-                        onLoaded: {
-                            if (item && "extensionId" in item) {
-                                item.extensionId = pageData.extensionId
-                            } else if (item) {
-                                Object.defineProperty(item, "extensionId", {
-                                    value: pageData.extensionId,
-                                    writable: true,
-                                    configurable: true,
-                                    enumerable: true
-                                })
-                            }
-                        }
-                    }
-                }
+                contentChildren: [
+                    ...(root.aiChatEnabled ? [aiChat.createObject()] : []),
+                    ...(root.translatorEnabled ? [translator.createObject()] : []),
+                    ...((root.tabButtonList.length === 0 || (!root.aiChatEnabled && !root.translatorEnabled && root.animeCloset)) ? [placeholder.createObject()] : []),
+                    ...(root.animeEnabled ? [anime.createObject()] : []),
+                    ...root.extensionPages.map(p => root.createExtensionPage(p)).filter(item => item)
+                ]
             }
         }
 
+        Component {
+            id: aiChat
+            AiChat {}
+        }
+        Component {
+            id: translator
+            Translator {}
+        }
+        Component {
+            id: anime
+            Anime {}
+        }
         Component {
             id: placeholder
             Item {
                 StyledText {
                     anchors.centerIn: parent
-                    text: Translation.tr("Enjoy your empty sidebar...")
+                    text: root.animeCloset ? Translation.tr("Nothing") : Translation.tr("Enjoy your empty sidebar...")
                     color: Appearance.colors.colSubtext
                 }
             }
