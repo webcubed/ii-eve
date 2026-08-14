@@ -67,6 +67,7 @@ Item {
     Item {
         anchors.fill: parent
         clip: true
+        z: -1
 
         WaveVisualizer {
             anchors.fill: parent
