@@ -333,6 +333,7 @@ LazyLoader {
                                 placeholderText: "Console command..."
                                 color: Appearance.colors.colOnLayer1; placeholderTextColor: Appearance.colors.colSubtext
                                 font.pixelSize: Appearance.font.pixelSize.small
+                                activeFocusOnPress: true
                                 background: Rectangle {
                                     color: Appearance.colors.colLayer1; radius: Appearance.rounding.small
                                     border.color: consoleInput.activeFocus ? Appearance.colors.colPrimary : Appearance.colors.colLayer3; border.width: 1
