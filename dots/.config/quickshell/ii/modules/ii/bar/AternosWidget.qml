@@ -66,7 +66,7 @@ Item {
         anchors.fill: parent
         hoverEnabled: !Config.options.bar.tooltips.clickToShow
 
-        AternosPopupWrapper {
+        AternosPopup {
             hoverTarget: mouseArea
         }
     }
