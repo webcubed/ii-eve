@@ -45,7 +45,7 @@ Item {
                     StyledText {
                         font.pixelSize: Appearance.font.pixelSize.smallie
                         color: Appearance.colors.colOnLayer1
-                        text: modelData.name || modelData.address || "Server"
+                        text: (modelData.address || "Server").split(":")[0]
                         elide: Text.ElideRight
                         Layout.maximumWidth: 120
                     }
@@ -69,27 +69,25 @@ Item {
 
         onClicked: (event) => {
             if (event.button === Qt.LeftButton) {
-                // Cycle through servers on left click
                 if (Aternos.servers.length > 0) {
                     let s = Aternos.servers[0];
                     let st = (s.status || "").toLowerCase();
                     if (st === "offline" || st === "stopped") {
-                        Aternos.startServer(s.name || s.id);
+                        Aternos.startServer(s.address);
                     } else if (st === "online") {
-                        Aternos.stopServer(s.name || s.id);
+                        Aternos.stopServer(s.address);
                     }
                 }
             } else if (event.button === Qt.RightButton) {
                 Aternos.listServers();
             } else if (event.button === Qt.MiddleButton) {
-                // Start/stop second server if available
                 if (Aternos.servers.length > 1) {
                     let s = Aternos.servers[1];
                     let st = (s.status || "").toLowerCase();
                     if (st === "offline" || st === "stopped") {
-                        Aternos.startServer(s.name || s.id);
+                        Aternos.startServer(s.address);
                     } else if (st === "online") {
-                        Aternos.stopServer(s.name || s.id);
+                        Aternos.stopServer(s.address);
                     }
                 }
             }
@@ -98,12 +96,12 @@ Item {
 
     StyledToolTip {
         text: {
-            if (Aternos.servers.length === 0) return "No servers found";
+            if (Aternos.servers.length === 0) return "No servers found\nRight-click to refresh";
             let lines = [];
             for (let i = 0; i < Math.min(Aternos.servers.length, 3); i++) {
                 let s = Aternos.servers[i];
-                lines.push(`${s.name || "Server"}: ${s.status || "Unknown"}`);
-                if (s.address) lines.push(`  ${s.address}`);
+                let addr = (s.address || "Unknown").split(":")[0];
+                lines.push(`${addr}: ${s.status || "?"} (${s.players ?? "?"}/${s.slots ?? "?"})`);
             }
             lines.push("");
             lines.push("Left-click: Start/Stop #1");

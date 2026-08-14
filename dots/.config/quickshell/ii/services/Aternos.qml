@@ -44,12 +44,10 @@ Singleton {
         id: listServersProc
         command: [root.aternosPath, "list", "--json"]
         running: false
+        property string buffer: ""
         stdout: SplitParser {
             onRead: data => {
-                try {
-                    let parsed = JSON.parse(data);
-                    root.servers = parsed;
-                } catch (e) {}
+                listServersProc.buffer += data + "\n";
             }
         }
         stderr: SplitParser {
@@ -58,7 +56,17 @@ Singleton {
             }
         }
         onRunningChanged: {
-            if (!running) root.loading = false;
+            if (!running) {
+                try {
+                    let parsed = JSON.parse(buffer);
+                    root.servers = parsed;
+                } catch (e) {
+                    console.log("[Aternos] Failed to parse list output:", e, "\nBuffer:", buffer);
+                    root.lastError = e.toString();
+                }
+                buffer = "";
+                root.loading = false;
+            }
         }
     }
 
@@ -68,9 +76,7 @@ Singleton {
         command: [root.aternosPath, "info", serverArg].filter(s => s !== "")
         running: false
         stdout: SplitParser {
-            onRead: data => {
-                // Emit as a signal or store
-            }
+            onRead: data => {}
         }
         stderr: SplitParser {
             onRead: data => {
