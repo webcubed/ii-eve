@@ -68,6 +68,7 @@ Item {
 
         AternosPopup {
             hoverTarget: mouseArea
+            stickyHover: true
         }
     }
 }
