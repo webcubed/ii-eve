@@ -160,7 +160,7 @@ Singleton {
         property string serverArg: ""
         property string commandArg: ""
         property string buffer: ""
-        command: [root.aternosPath, "command", serverArg, commandArg].filter(s => s !== "")
+        command: [root.aternosPath, "command", commandArg, serverArg].filter(s => s !== "")
         running: false
         stdout: SplitParser {
             onRead: data => {
