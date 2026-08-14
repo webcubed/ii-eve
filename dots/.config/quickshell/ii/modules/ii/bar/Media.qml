@@ -73,7 +73,10 @@ Item {
     readonly property string artSource: activePlayer?.trackArtUrl && activePlayer.trackArtUrl !== "" ? activePlayer.trackArtUrl : ""
 
     Item {
-        anchors.fill: parent
+        anchors.left: parent.left
+        anchors.right: parent.right
+        y: 0
+        height: Appearance.sizes.barHeight
         clip: true
         z: -1
 
