@@ -90,6 +90,7 @@ LazyLoader {
 
         WlrLayershell.namespace: "quickshell:popup"
         WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
 
         StyledRectangularShadow { target: popupBg }
 
