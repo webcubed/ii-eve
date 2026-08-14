@@ -14,6 +14,14 @@ import Quickshell.Io
 Item {
     id: root
     Layout.fillHeight: true
+    layer.enabled: true
+    layer.effect: OpacityMask {
+        maskSource: Rectangle {
+            width: root.width
+            height: root.height
+            radius: Appearance.rounding.small
+        }
+    }
 
     readonly property MprisPlayer activePlayer: MprisController.activePlayer
     readonly property string cleanedTitle: StringUtils.cleanMusicTitle(activePlayer?.trackTitle) || Translation.tr("No media")
@@ -68,14 +76,6 @@ Item {
         anchors.fill: parent
         clip: true
         z: -1
-        layer.enabled: true
-        layer.effect: OpacityMask {
-            maskSource: Rectangle {
-                width: root.width
-                height: root.height
-                radius: Appearance.rounding.small
-            }
-        }
 
         WaveVisualizer {
             anchors.fill: parent
