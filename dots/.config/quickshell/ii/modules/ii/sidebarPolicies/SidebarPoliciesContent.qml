@@ -127,10 +127,32 @@ Item {
                     }
                 }
 
-                contentChildren: [
-                    aiChatPage,
-                    ...root.extensionPages.map(p => root.createExtensionPage(p)).filter(item => item)
-                ]
+                // Built-in AI chat page
+                AiChat {}
+
+                // Extension pages
+                Repeater {
+                    model: root.extensionPages
+
+                    Loader {
+                        active: true
+                        property var pageData: modelData
+                        source: "file://" + pageData.fullPath + "?_t=" + Date.now()
+
+                        onLoaded: {
+                            if (item && "extensionId" in item) {
+                                item.extensionId = pageData.extensionId
+                            } else if (item) {
+                                Object.defineProperty(item, "extensionId", {
+                                    value: pageData.extensionId,
+                                    writable: true,
+                                    configurable: true,
+                                    enumerable: true
+                                })
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -143,10 +165,6 @@ Item {
                     color: Appearance.colors.colSubtext
                 }
             }
-        }
-
-        AiChat {
-            id: aiChatPage
         }
     }
 }
