@@ -228,13 +228,15 @@ Scope { // Scope
                     if (event.key === Qt.Key_Escape) {
                         panelWindow.hide();
                     }
-                    if (event.modifiers === Qt.ControlModifier) {
+                    if ((event.modifiers & Qt.ControlModifier) && !(event.modifiers & Qt.ShiftModifier)) {
                         if (event.key === Qt.Key_O) {
                             root.extend = !root.extend;
                         } else if (event.key === Qt.Key_D) {
                             root.toggleDetach();
                         } else if (event.key === Qt.Key_P) {
                             root.togglePin();
+                        } else {
+                            return; // Don't accept other Ctrl+key combos
                         }
                         event.accepted = true;
                     }

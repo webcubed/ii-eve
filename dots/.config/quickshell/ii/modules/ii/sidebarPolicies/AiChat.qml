@@ -24,6 +24,11 @@ Item {
     property bool containsDrag: false
     property string previewPath: ""
 
+    signal navigateLeft()
+    signal navigateRight()
+    signal navigateNext()
+    signal navigatePrev()
+
     onFocusChanged: focus => {
         if (focus) {
             root.inputField.forceActiveFocus();
@@ -32,7 +37,21 @@ Item {
 
     Keys.onPressed: event => {
         if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_Tab) {
-            event.accepted = false; // Let parent handle Ctrl+Tab
+            if (event.modifiers & Qt.ShiftModifier)
+                root.navigatePrev();
+            else
+                root.navigateNext();
+            event.accepted = true;
+            return;
+        }
+        if (event.key === Qt.Key_Left && messageInputField.text.length === 0) {
+            root.navigateLeft();
+            event.accepted = true;
+            return;
+        }
+        if (event.key === Qt.Key_Right && messageInputField.text.length === 0) {
+            root.navigateRight();
+            event.accepted = true;
             return;
         }
         messageInputField.forceActiveFocus();
@@ -849,7 +868,19 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                         }
 
                         Keys.onPressed: event => {
-                            if (event.key === Qt.Key_Tab && !(event.modifiers & Qt.ControlModifier)) {
+                            if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_Tab) {
+                                if (event.modifiers & Qt.ShiftModifier)
+                                    root.navigatePrev();
+                                else
+                                    root.navigateNext();
+                                event.accepted = true;
+                            } else if (event.key === Qt.Key_Left && messageInputField.text.length === 0 && messageInputField.cursorPosition === 0) {
+                                root.navigateLeft();
+                                event.accepted = true;
+                            } else if (event.key === Qt.Key_Right && messageInputField.text.length === 0) {
+                                root.navigateRight();
+                                event.accepted = true;
+                            } else if (event.key === Qt.Key_Tab) {
                                 suggestions.acceptSelectedWord();
                                 event.accepted = true;
                             } else if (event.key === Qt.Key_Up && suggestions.visible) {
@@ -907,7 +938,19 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                     }
                 }
                         Keys.onPressed: event => {
-                            if (event.key === Qt.Key_Tab && !(event.modifiers & Qt.ControlModifier)) {
+                            if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_Tab) {
+                                if (event.modifiers & Qt.ShiftModifier)
+                                    root.navigatePrev();
+                                else
+                                    root.navigateNext();
+                                event.accepted = true;
+                            } else if (event.key === Qt.Key_Left && messageInputField.text.length === 0 && messageInputField.cursorPosition === 0) {
+                                root.navigateLeft();
+                                event.accepted = true;
+                            } else if (event.key === Qt.Key_Right && messageInputField.text.length === 0) {
+                                root.navigateRight();
+                                event.accepted = true;
+                            } else if (event.key === Qt.Key_Tab) {
                                 suggestions.acceptSelectedWord();
                                 event.accepted = true;
                             } else if (event.key === Qt.Key_Up && suggestions.visible) {

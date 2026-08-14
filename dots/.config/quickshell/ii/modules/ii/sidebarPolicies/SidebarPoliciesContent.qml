@@ -79,22 +79,27 @@ Item {
                 event.accepted = true;
             }
         }
-        if (event.key === Qt.Key_Left) {
-            let item = swipeView.currentItem;
-            let inputField = item?.inputField;
-            if (!inputField || inputField.text.length === 0) {
-                swipeView.decrementCurrentIndex()
-                event.accepted = true;
+    }
+
+    function connectNavigationSignals() {
+        for (let i = 0; i < swipeView.count; i++) {
+            let item = swipeView.itemAt(i);
+            if (item && item.navigateLeft) {
+                item.navigateLeft.connect(() => swipeView.decrementCurrentIndex());
+                item.navigateRight.connect(() => swipeView.incrementCurrentIndex());
+                item.navigateNext.connect(() => swipeView.incrementCurrentIndex());
+                item.navigatePrev.connect(() => swipeView.decrementCurrentIndex());
             }
         }
-        if (event.key === Qt.Key_Right) {
-            let item = swipeView.currentItem;
-            let inputField = item?.inputField;
-            if (!inputField || inputField.text.length === 0) {
-                swipeView.incrementCurrentIndex()
-                event.accepted = true;
-            }
-        }
+    }
+
+    Component.onCompleted: Qt.callLater(connectNavigationSignals)
+
+    Timer {
+        interval: 500
+        running: true
+        repeat: true
+        onTriggered: root.connectNavigationSignals()
     }
 
     ColumnLayout {

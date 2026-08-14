@@ -228,6 +228,18 @@ LazyLoader {
                             Row { spacing: 4
                                 MaterialSymbol { text: "group"; iconSize: 14; color: Appearance.colors.colSubtext; anchors.verticalCenter: parent.verticalCenter }
                                 StyledText { text: { let s = Aternos.servers[root.currentServerIndex]; if (!s) return "?/?"; return (s.players ?? "?") + "/" + (s.slots ?? "?"); } font.pixelSize: Appearance.font.pixelSize.small; color: Appearance.colors.colSubtext; anchors.verticalCenter: parent.verticalCenter }
+                                StyledToolTip {
+                                    text: {
+                                        let s = Aternos.servers[root.currentServerIndex];
+                                        if (!s || (s.status || "").toLowerCase() !== "online") return "";
+                                        let p = s.playerNames;
+                                        if (p && p.length > 0) return Translation.tr("Online players:\n") + p.join("\n");
+                                        return Translation.tr("No players online");
+                                    }
+                                    extraVisibleCondition: false
+                                    alternativeVisibleCondition: playersRow.containsMouse
+                                }
+                                HoverHandler { id: playersRow }
                             }
                             Row { spacing: 4
                                 MaterialSymbol { text: "memory"; iconSize: 14; color: Appearance.colors.colSubtext; anchors.verticalCenter: parent.verticalCenter }
@@ -258,6 +270,7 @@ LazyLoader {
                                     background: Rectangle {
                                         radius: Appearance.rounding.small
                                         color: parent.enabled ? Appearance.colors["col" + modelData.color + "Container"] : Appearance.colors.colLayer3
+                                        HoverHandler { cursorShape: parent.parent.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor }
                                     }
                                     contentItem: RowLayout {
                                         spacing: 4
@@ -296,14 +309,16 @@ LazyLoader {
                                 }
                             }
                             Button {
+                                id: sendBtn
                                 implicitWidth: 32; implicitHeight: 32; enabled: consoleInput.text.trim().length > 0
-                                background: Rectangle { radius: Appearance.rounding.small; color: parent.enabled ? Appearance.colors.colPrimary : Appearance.colors.colLayer3 }
-                                contentItem: MaterialSymbol { text: "send"; iconSize: 16; color: parent.parent.enabled ? Appearance.colors.colOnPrimary : Appearance.colors.colSubtext }
+                                background: Rectangle { radius: Appearance.rounding.small; color: sendBtn.enabled ? Appearance.colors.colPrimary : Appearance.colors.colLayer3; HoverHandler { cursorShape: sendBtn.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor } }
+                                contentItem: MaterialSymbol { text: "send"; iconSize: 16; color: sendBtn.enabled ? Appearance.colors.colOnPrimary : Appearance.colors.colSubtext }
                                 onClicked: { if (consoleInput.text.trim().length > 0) { let s = Aternos.servers[root.currentServerIndex]; if (s) { Aternos.sendCommand(s.address, consoleInput.text.trim()); consoleInput.text = ""; } } }
                             }
                         }
 
                         StyledText { visible: Aternos.lastError.length > 0; text: Aternos.lastError; font.pixelSize: Appearance.font.pixelSize.smallie; color: Appearance.colors.colError; wrapMode: Text.Wrap; Layout.fillWidth: true }
+                        StyledText { visible: Aternos.lastOutput.length > 0; text: Aternos.lastOutput; font.pixelSize: Appearance.font.pixelSize.smallie; color: Appearance.colors.colSubtext; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     }
                 }
 

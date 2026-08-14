@@ -10,6 +10,7 @@ Singleton {
     property var servers: []
     property bool loading: false
     property string lastError: ""
+    property string lastOutput: ""
     property real startTimer: 0
 
     property var aternosPath: "/home/webcubed/aternos-cli/aternos"
@@ -154,11 +155,12 @@ Singleton {
         id: commandProc
         property string serverArg: ""
         property string commandArg: ""
+        property string buffer: ""
         command: [root.aternosPath, "cmd", serverArg, commandArg].filter(s => s !== "")
         running: false
         stdout: SplitParser {
             onRead: data => {
-                console.log("[Aternos] Command output:", data);
+                commandProc.buffer += data + "\n";
             }
         }
         stderr: SplitParser {
@@ -167,7 +169,11 @@ Singleton {
             }
         }
         onRunningChanged: {
-            if (!running) root.loading = false;
+            if (!running) {
+                root.lastOutput = buffer.trim();
+                buffer = "";
+                root.loading = false;
+            }
         }
     }
 

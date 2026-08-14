@@ -9,6 +9,7 @@ import Quickshell.Services.Mpris
 import Quickshell.Hyprland
 import Qt5Compat.GraphicalEffects
 import qs.modules.common.utils
+import Quickshell.Io
 
 Item {
     id: root
@@ -31,13 +32,30 @@ Item {
     readonly property int artworkBoxSize: artworkEnabled ? Math.min(25, Appearance.sizes.barHeight - 8) : 0
     readonly property int artworkContentPadding: artworkEnabled ? 6 : 0
 
-    property int textMetricsSpacing: artworkEnabled ? 70 : 50 // text metrics returns width without spacing
+    property int textMetricsSpacing: artworkEnabled ? 70 : 50
     property int textMetricsAdvance: Math.min(textMetrics.advanceWidth + textMetricsSpacing, Config.options.bar.mediaPlayer.maxSize)
     implicitWidth: LyricsService.hasSyncedLines && root.lyricsEnabled ? lyricsCustomSize : useFixedSize ? customSize : textMetricsAdvance
     implicitHeight: Appearance.sizes.barHeight
 
+    property list<real> visualizerPoints: []
+
     Behavior on implicitWidth {
         animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(root)
+    }
+
+    Process {
+        id: cavaProc
+        running: activePlayer?.isPlaying ?? false
+        command: ["cava", "-p", `${FileUtils.trimFileProtocol(Directories.scriptPath)}/cava/raw_output_config.txt`]
+        stdout: SplitParser {
+            onRead: data => {
+                let points = data.split(";").map(p => parseFloat(p.trim())).filter(p => !isNaN(p));
+                root.visualizerPoints = points;
+            }
+        }
+        onRunningChanged: {
+            if (!running) root.visualizerPoints = [];
+        }
     }
 
     Component.onCompleted: {
@@ -45,6 +63,14 @@ Item {
     }
 
     readonly property string artSource: activePlayer?.trackArtUrl && activePlayer.trackArtUrl !== "" ? activePlayer.trackArtUrl : ""
+
+    WaveVisualizer {
+        anchors.fill: parent
+        points: root.visualizerPoints
+        live: activePlayer?.isPlaying ?? false
+        color: Appearance.colors.colPrimary
+        visible: root.visualizerPoints.length > 0
+    }
 
     Item {
         id: artworkItem
