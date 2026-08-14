@@ -11,6 +11,7 @@ Item {
     id: root
     implicitWidth: gridLayout.implicitWidth
     implicitHeight: gridLayout.implicitHeight
+    visible: hasAnyItems
     property bool vertical: false
     property bool invertSide: false
     property bool trayOverflowOpen: false

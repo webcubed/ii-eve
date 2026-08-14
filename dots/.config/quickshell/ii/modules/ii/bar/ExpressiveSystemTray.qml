@@ -11,6 +11,7 @@ Item {
     id: root
     property bool vertical: false
     property bool isMaterial: true // Forced expressive
+    visible: tray.hasAnyItems
 
     implicitWidth: vertical ? 40 : pill.implicitWidth
     implicitHeight: vertical ? pill.implicitHeight : Appearance.sizes.barHeight
