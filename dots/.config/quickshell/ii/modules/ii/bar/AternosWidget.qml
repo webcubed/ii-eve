@@ -96,6 +96,7 @@ Item {
     }
 
     StyledToolTip {
+        extraVisibleCondition: false
         alternativeVisibleCondition: mouseArea.containsMouse
         text: {
             if (Aternos.servers.length === 0) return "No servers found\nRight-click to refresh";
