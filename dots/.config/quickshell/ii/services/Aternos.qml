@@ -73,6 +73,7 @@ Singleton {
         }
         stderr: SplitParser {
             onRead: data => {
+                if (data.toLowerCase().includes("browser") || data.toLowerCase().includes("trying")) return;
                 root.lastError = data;
             }
         }
@@ -101,6 +102,7 @@ Singleton {
         }
         stderr: SplitParser {
             onRead: data => {
+                if (data.toLowerCase().includes("browser") || data.toLowerCase().includes("trying")) return;
                 root.lastError = data;
             }
         }
@@ -119,6 +121,7 @@ Singleton {
         }
         stderr: SplitParser {
             onRead: data => {
+                if (data.toLowerCase().includes("browser") || data.toLowerCase().includes("trying")) return;
                 root.lastError = data;
             }
         }
@@ -140,6 +143,7 @@ Singleton {
         }
         stderr: SplitParser {
             onRead: data => {
+                if (data.toLowerCase().includes("browser") || data.toLowerCase().includes("trying")) return;
                 root.lastError = data;
             }
         }

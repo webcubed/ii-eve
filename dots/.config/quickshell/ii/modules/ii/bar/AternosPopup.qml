@@ -208,12 +208,19 @@ LazyLoader {
                                     if (!s) return Appearance.colors.colLayer3;
                                     let st = (s.status || "").toLowerCase();
                                     if (st === "online") return Qt.alpha("#22c55e", 0.15);
-                                    if (st === "starting" || st === "loading") return Qt.alpha("#fde047", 0.15);
+                                    if (st === "starting" || st === "loading" || st === "prepping") return Qt.alpha("#fde047", 0.15);
                                     return Appearance.colors.colLayer3;
                                 }
                                 RowLayout { id: sr; anchors.centerIn: parent; spacing: 4
-                                    Rectangle { width: 6; height: 6; radius: 3
-                                        color: { let s = Aternos.servers[root.currentServerIndex]; if (!s) return "#808080"; let st = (s.status||"").toLowerCase(); if (st==="online") return "#22c55e"; if (st==="starting"||st==="loading") return "#fde047"; return "#808080"; }
+                                    Rectangle {
+                                        width: 6; height: 6; radius: 3
+                                        color: { let s = Aternos.servers[root.currentServerIndex]; if (!s) return "#808080"; let st = (s.status||"").toLowerCase(); if (st==="online") return "#22c55e"; if (st==="starting"||st==="loading"||st==="prepping") return "#fde047"; return "#808080"; }
+                                        SequentialAnimation on opacity {
+                                            loops: Animation.Infinite
+                                            running: { let s = Aternos.servers[root.currentServerIndex]; if (!s) return false; let st = (s.status||"").toLowerCase(); return st === "starting" || st === "loading" || st === "prepping"; }
+                                            NumberAnimation { to: 0.3; duration: 800 }
+                                            NumberAnimation { to: 1; duration: 800 }
+                                        }
                                     }
                                     StyledText {
                                         text: { let s = Aternos.servers[root.currentServerIndex]; return s ? (s.status||"Unknown") : "?"; }
@@ -255,40 +262,66 @@ LazyLoader {
 
                             Repeater {
                                 model: [
-                                    { label: "Start", icon: "play_arrow", status: "offline", color: "Primary" },
-                                    { label: "Restart", icon: "restart_alt", status: "online", color: "Secondary" },
-                                    { label: "Stop", icon: "stop", status: "online", color: "Error" }
+                                    { label: "Start", icon: "play_arrow", status: "offline", color: "#22c55e", feedbackIcon: "check_circle" },
+                                    { label: "Restart", icon: "restart_alt", status: "online", color: "#60a5fa", feedbackIcon: "check_circle" },
+                                    { label: "Stop", icon: "stop", status: "online", color: "#f87171", feedbackIcon: "check_circle" }
                                 ]
 
                                 Button {
+                                    id: actionBtn
                                     Layout.fillWidth: true
                                     implicitHeight: 32
-                                    enabled: {
+                                    property bool isActive: {
                                         let s = Aternos.servers[root.currentServerIndex];
                                         return s && (s.status || "").toLowerCase() === modelData.status;
                                     }
+                                    enabled: isActive
+                                    property bool showFeedback: false
+
                                     background: Rectangle {
                                         radius: Appearance.rounding.small
-                                        color: parent.enabled ? Appearance.colors["col" + modelData.color + "Container"] : Appearance.colors.colLayer3
-                                        HoverHandler { cursorShape: parent.parent.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor }
+                                        color: {
+                                            if (actionBtn.showFeedback) return Qt.alpha(modelData.color, 0.3);
+                                            if (actionBtn.enabled) return Qt.alpha(modelData.color, 0.15);
+                                            return Qt.alpha(modelData.color, 0.05);
+                                        }
+                                        border.width: actionBtn.enabled ? 1 : 0
+                                        border.color: Qt.alpha(modelData.color, 0.3)
+
+                                        Behavior on color {
+                                            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                                        }
+
+                                        HoverHandler { cursorShape: actionBtn.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor }
                                     }
                                     contentItem: RowLayout {
                                         spacing: 4
                                         MaterialSymbol {
-                                            text: modelData.icon; iconSize: 16
-                                            color: parent.parent.parent.enabled ? Appearance.colors["colOn" + modelData.color + "Container"] : Appearance.colors.colSubtext
+                                            text: actionBtn.showFeedback ? modelData.feedbackIcon : modelData.icon
+                                            iconSize: 16
+                                            color: actionBtn.enabled || actionBtn.showFeedback ? modelData.color : Qt.alpha(modelData.color, 0.3)
                                         }
                                         StyledText {
-                                            text: modelData.label; font.pixelSize: Appearance.font.pixelSize.small; font.weight: Font.Medium
-                                            color: parent.parent.parent.parent.enabled ? Appearance.colors["colOn" + modelData.color + "Container"] : Appearance.colors.colSubtext
+                                            text: modelData.label
+                                            font.pixelSize: Appearance.font.pixelSize.small
+                                            font.weight: Font.Medium
+                                            color: actionBtn.enabled || actionBtn.showFeedback ? modelData.color : Qt.alpha(modelData.color, 0.3)
                                         }
                                     }
                                     onClicked: {
                                         let s = Aternos.servers[root.currentServerIndex];
                                         if (!s) return;
+                                        actionBtn.showFeedback = true;
+                                        feedbackTimer.restart();
                                         if (modelData.status === "offline") Aternos.startServer(s.address);
                                         else if (modelData.label === "Restart") { Aternos.stopServer(s.address); Aternos.startTimer = 2000; }
                                         else Aternos.stopServer(s.address);
+                                    }
+
+                                    Timer {
+                                        id: feedbackTimer
+                                        interval: 2000
+                                        onTriggered: actionBtn.showFeedback = false
                                     }
                                 }
                             }
