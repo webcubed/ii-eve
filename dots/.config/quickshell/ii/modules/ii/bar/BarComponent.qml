@@ -395,7 +395,7 @@ Item {
 
     Component {
         id: aternosComp
-        Aternos {}
+        AternosWidget {}
     }
 
     Component {
