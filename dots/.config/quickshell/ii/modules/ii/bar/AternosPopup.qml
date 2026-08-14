@@ -148,7 +148,7 @@ LazyLoader {
                                 }
                             }
 
-                            MouseArea { anchors.fill: parent; onClicked: root.currentServerIndex = index }
+                            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.currentServerIndex = index }
 
                             Rectangle {
                                 visible: root.currentServerIndex === index
@@ -186,6 +186,19 @@ LazyLoader {
                                 color: Appearance.colors.colOnLayer1
                                 Layout.fillWidth: true
                                 elide: Text.ElideRight
+                            }
+
+                            MaterialSymbol {
+                                iconSize: 18
+                                color: Appearance.colors.colSubtext
+                                text: "refresh"
+                                opacity: mouseRefresh.containsMouse ? 1 : 0.6
+                                MouseArea {
+                                    id: mouseRefresh
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: Aternos.listServers()
+                                }
                             }
 
                             Rectangle {

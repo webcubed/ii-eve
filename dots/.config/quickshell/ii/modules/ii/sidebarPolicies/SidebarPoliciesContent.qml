@@ -69,13 +69,29 @@ Item {
     }
 
     Keys.onPressed: (event) => {
-        if (event.modifiers === Qt.ControlModifier) {
-            if (event.key === Qt.Key_PageDown) {
+        if (event.modifiers & Qt.ControlModifier) {
+            if (event.key === Qt.Key_PageDown || (event.key === Qt.Key_Tab && !(event.modifiers & Qt.ShiftModifier))) {
                 swipeView.incrementCurrentIndex()
                 event.accepted = true;
             }
-            else if (event.key === Qt.Key_PageUp) {
+            else if (event.key === Qt.Key_PageUp || (event.key === Qt.Key_Tab && (event.modifiers & Qt.ShiftModifier))) {
                 swipeView.decrementCurrentIndex()
+                event.accepted = true;
+            }
+        }
+        if (event.key === Qt.Key_Left) {
+            let item = swipeView.currentItem;
+            let inputField = item?.inputField;
+            if (!inputField || inputField.text.length === 0) {
+                swipeView.decrementCurrentIndex()
+                event.accepted = true;
+            }
+        }
+        if (event.key === Qt.Key_Right) {
+            let item = swipeView.currentItem;
+            let inputField = item?.inputField;
+            if (!inputField || inputField.text.length === 0) {
+                swipeView.incrementCurrentIndex()
                 event.accepted = true;
             }
         }

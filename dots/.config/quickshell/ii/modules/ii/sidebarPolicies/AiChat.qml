@@ -31,6 +31,10 @@ Item {
     }
 
     Keys.onPressed: event => {
+        if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_Tab) {
+            event.accepted = false; // Let parent handle Ctrl+Tab
+            return;
+        }
         messageInputField.forceActiveFocus();
         if (event.modifiers === Qt.NoModifier) {
             if (event.key === Qt.Key_PageUp) {
@@ -845,7 +849,7 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                         }
 
                         Keys.onPressed: event => {
-                            if (event.key === Qt.Key_Tab) {
+                            if (event.key === Qt.Key_Tab && !(event.modifiers & Qt.ControlModifier)) {
                                 suggestions.acceptSelectedWord();
                                 event.accepted = true;
                             } else if (event.key === Qt.Key_Up && suggestions.visible) {
@@ -903,7 +907,7 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                     }
                 }
                         Keys.onPressed: event => {
-                            if (event.key === Qt.Key_Tab) {
+                            if (event.key === Qt.Key_Tab && !(event.modifiers & Qt.ControlModifier)) {
                                 suggestions.acceptSelectedWord();
                                 event.accepted = true;
                             } else if (event.key === Qt.Key_Up && suggestions.visible) {

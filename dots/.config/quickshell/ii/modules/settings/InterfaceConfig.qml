@@ -227,7 +227,37 @@ ContentPage {
             onCheckedChanged: {
                 Config.options.sidebar.ai.showProviderAndModelButtons = checked;
             }
-        }    
+        }
+
+        ContentSubsection {
+            title: Translation.tr("Left panel tabs")
+            tooltip: Translation.tr("Toggle which tabs appear in the left sidebar")
+
+            ConfigSwitch {
+                buttonIcon: "neurology"
+                text: Translation.tr("AI Chat")
+                checked: Config.options.policies.ai !== 0
+                onCheckedChanged: {
+                    Config.options.policies.ai = checked ? 1 : 0;
+                }
+            }
+            ConfigSwitch {
+                buttonIcon: "translate"
+                text: Translation.tr("Translator")
+                checked: Config.options.policies.translator !== 0
+                onCheckedChanged: {
+                    Config.options.policies.translator = checked ? 1 : 0;
+                }
+            }
+            ConfigSwitch {
+                buttonIcon: "bookmark_heart"
+                text: Translation.tr("Anime")
+                checked: Config.options.policies.weeb !== 0
+                onCheckedChanged: {
+                    Config.options.policies.weeb = checked ? 1 : 0;
+                }
+            }
+        }
     }
 
     ContentSection {
