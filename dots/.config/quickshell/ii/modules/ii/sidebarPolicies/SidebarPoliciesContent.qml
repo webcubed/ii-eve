@@ -36,11 +36,11 @@ Item {
         return !Config.options.policies.disabledExtensionTabs.includes(key);
     })
 
-    property var tabButtonList: [  
-        ...(root.aiChatEnabled ? [{"icon": "neurology", "name": Translation.tr("Intelligence")}] : []),  
-        ...(root.translatorEnabled ? [{"icon": "translate", "name": Translation.tr("Translator")}] : []), 
-        ...((root.animeEnabled && !root.animeCloset) ? [{"icon": "bookmark_heart", "name": Translation.tr("Anime")}] : []),
-        ...root.enabledExtensionPages.map(p => ({icon: p.icon, name: p.title}))
+    property var tabButtonList: [
+        ...(root.aiChatEnabled ? [{"key": "ai", "icon": "neurology", "name": Translation.tr("Intelligence")}] : []),
+        ...(root.translatorEnabled ? [{"key": "translator", "icon": "translate", "name": Translation.tr("Translator")}] : []),
+        ...((root.animeEnabled && !root.animeCloset) ? [{"key": "anime", "icon": "bookmark_heart", "name": Translation.tr("Anime")}] : []),
+        ...root.enabledExtensionPages.map(p => ({"key": p.extensionId + ":" + (p.identifier || p.title), "icon": p.icon, "name": p.title}))
     ]
     property int tabCount: swipeView.count
 
@@ -96,12 +96,16 @@ Item {
     function connectNavigationSignals() {
         for (let i = 0; i < swipeView.count; i++) {
             let item = swipeView.itemAt(i);
-            if (item && item.navigateLeft && !_connectedItems.includes(item)) {
-                _connectedItems.push(item);
-                item.navigateLeft.connect(() => swipeView.decrementCurrentIndex());
-                item.navigateRight.connect(() => swipeView.incrementCurrentIndex());
-                item.navigateNext.connect(() => swipeView.incrementCurrentIndex());
-                item.navigatePrev.connect(() => swipeView.decrementCurrentIndex());
+            // Direct items (AiChat, Anime) have signals on item itself;
+            // extension pages are wrapped in Loaders, signals on item.item
+            let target = item && item.navigateLeft ? item :
+                         (item && item.item && item.item.navigateLeft ? item.item : null);
+            if (target && !_connectedItems.includes(target)) {
+                _connectedItems.push(target);
+                target.navigateLeft.connect(() => swipeView.decrementCurrentIndex());
+                target.navigateRight.connect(() => swipeView.incrementCurrentIndex());
+                target.navigateNext.connect(() => swipeView.incrementCurrentIndex());
+                target.navigatePrev.connect(() => swipeView.decrementCurrentIndex());
             }
         }
     }

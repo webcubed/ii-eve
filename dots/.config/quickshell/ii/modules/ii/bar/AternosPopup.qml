@@ -240,9 +240,7 @@ LazyLoader {
                                     text: {
                                         let s = Aternos.servers[root.currentServerIndex];
                                         if (!s || (s.status || "").toLowerCase() !== "online") return "";
-                                        let p = s.playerNames;
-                                        if (p && p.length > 0) return Translation.tr("Online players:\n") + p.join("\n");
-                                        return Translation.tr("No players online");
+                                        return Translation.tr("Players: %1/%2").arg(s.players ?? "?").arg(s.slots ?? "?");
                                     }
                                     extraVisibleCondition: false
                                     alternativeVisibleCondition: playersRow.containsMouse

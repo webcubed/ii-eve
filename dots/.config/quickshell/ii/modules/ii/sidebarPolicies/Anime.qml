@@ -25,6 +25,11 @@ Item {
     property var suggestionQuery: ""
     property var suggestionList: []
 
+    signal navigateLeft()
+    signal navigateRight()
+    signal navigateNext()
+    signal navigatePrev()
+
     property bool pullLoading: false
     property int pullLoadingGap: 80
     property real normalizedPullDistance: Math.max(0, (1 - Math.exp(-booruResponseListView.verticalOvershoot / 50)) * booruResponseListView.dragging)
@@ -124,6 +129,24 @@ Item {
     property real pageKeyScrollAmount: booruResponseListView.height / 2
     Keys.onPressed: (event) => {
         tagInputField.forceActiveFocus()
+        if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_Tab) {
+            if (event.modifiers & Qt.ShiftModifier)
+                root.navigatePrev();
+            else
+                root.navigateNext();
+            event.accepted = true;
+            return;
+        }
+        if (event.key === Qt.Key_Left && tagInputField.text.length === 0) {
+            root.navigateLeft();
+            event.accepted = true;
+            return;
+        }
+        if (event.key === Qt.Key_Right && tagInputField.text.length === 0) {
+            root.navigateRight();
+            event.accepted = true;
+            return;
+        }
         if (event.modifiers === Qt.NoModifier) {
             if (event.key === Qt.Key_PageUp) {
                 if (booruResponseListView.atYBeginning) return;

@@ -231,7 +231,7 @@ ContentPage {
 
         ContentSubsection {
             title: Translation.tr("Left panel tabs")
-            tooltip: Translation.tr("Toggle which tabs appear in the left sidebar")
+            tooltip: Translation.tr("Toggle which tabs appear in the left sidebar. Drag to reorder.")
 
             ConfigSwitch {
                 buttonIcon: "neurology"
@@ -254,7 +254,16 @@ ContentPage {
                 text: Translation.tr("Anime")
                 checked: Config.options.policies.weeb !== 0
                 onCheckedChanged: {
-                    Config.options.policies.weeb = checked ? 1 : 0;
+                    Config.options.policies.weeb = checked ? (Config.options.policies.weeb === 2 ? 2 : 1) : 0;
+                }
+            }
+            ConfigSwitch {
+                buttonIcon: "visibility_off"
+                text: Translation.tr("Anime hidden (accessible via arrows)")
+                checked: Config.options.policies.weeb === 2
+                enabled: Config.options.policies.weeb !== 0
+                onCheckedChanged: {
+                    Config.options.policies.weeb = checked ? 2 : 1;
                 }
             }
 
