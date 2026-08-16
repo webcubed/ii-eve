@@ -36,6 +36,16 @@ Item {
         return !Config.options.policies.disabledExtensionTabs.includes(key);
     })
 
+    // Rebuild the SwipeView children ONLY when the page set actually changes.
+    // Creating pages inside a reactive `contentChildren` binding causes a binding
+    // loop: every re-evaluation destroys + recreates ALL pages (see AGENTS.md).
+    property bool _rebuildQueued: false
+    onAiChatEnabledChanged: root.queueContentChildrenRebuild()
+    onTranslatorEnabledChanged: root.queueContentChildrenRebuild()
+    onAnimeEnabledChanged: root.queueContentChildrenRebuild()
+    onAnimeClosetChanged: root.queueContentChildrenRebuild()
+    onEnabledExtensionPagesChanged: root.queueContentChildrenRebuild()
+
     property var tabButtonList: [
         ...(root.aiChatEnabled ? [{"key": "ai", "icon": "neurology", "name": Translation.tr("Intelligence")}] : []),
         ...(root.translatorEnabled ? [{"key": "translator", "icon": "translate", "name": Translation.tr("Translator")}] : []),
@@ -71,6 +81,32 @@ Item {
             loader.loaded.connect(setExtId)
         }
         return loader
+    }
+
+    // Imperatively set contentChildren. Coalesces rapid changes into one rebuild.
+    function queueContentChildrenRebuild() {
+        if (root._rebuildQueued) return;
+        root._rebuildQueued = true;
+        Qt.callLater(() => {
+            root._rebuildQueued = false;
+            swipeView.contentChildren = root._buildContentChildren();
+            root.connectNavigationSignals();
+        });
+    }
+
+    function _buildContentChildren() {
+        const result = [];
+        if (root.aiChatEnabled) result.push(aiChat.createObject());
+        if (root.translatorEnabled) result.push(translator.createObject());
+        if (root.tabButtonList.length === 0 || (!root.aiChatEnabled && !root.translatorEnabled && root.animeCloset)) {
+            result.push(placeholder.createObject());
+        }
+        if (root.animeEnabled) result.push(anime.createObject());
+        for (const p of root.enabledExtensionPages) {
+            const item = root.createExtensionPage(p);
+            if (item) result.push(item);
+        }
+        return result;
     }
 
     Keys.onPressed: (event) => {
@@ -110,7 +146,10 @@ Item {
         }
     }
 
-    Component.onCompleted: Qt.callLater(connectNavigationSignals)
+    Component.onCompleted: {
+        Qt.callLater(root.queueContentChildrenRebuild);
+        Qt.callLater(root.connectNavigationSignals);
+    }
 
     Timer {
         interval: 500
@@ -166,13 +205,9 @@ Item {
                     }
                 }
 
-                contentChildren: [
-                    ...(root.aiChatEnabled ? [aiChat.createObject()] : []),
-                    ...(root.translatorEnabled ? [translator.createObject()] : []),
-                    ...((root.tabButtonList.length === 0 || (!root.aiChatEnabled && !root.translatorEnabled && root.animeCloset)) ? [placeholder.createObject()] : []),
-                    ...(root.animeEnabled ? [anime.createObject()] : []),
-                    ...root.enabledExtensionPages.map(p => root.createExtensionPage(p)).filter(item => item)
-                ]
+                // contentChildren is set imperatively via queueContentChildrenRebuild()
+                // (see above) to avoid the binding loop caused by creating pages in
+                // a reactive binding.
             }
         }
 
