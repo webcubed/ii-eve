@@ -19,6 +19,14 @@ import qs.modules.ii.background.widgets
 import qs.modules.ii.background.widgets.clock
 import qs.modules.ii.background.widgets.weather
 import qs.modules.ii.background.widgets.media
+import qs.modules.ii.background.widgets.calendar
+import qs.modules.ii.background.widgets.images
+import qs.modules.ii.background.widgets.notes
+import qs.modules.ii.background.widgets.resources
+import qs.modules.ii.background.widgets.usercard
+import qs.modules.ii.background.widgets.visualizer
+import qs.modules.ii.background.widgets.worldclock
+import qs.modules.ii.background.widgets.timer
 
 Variants {
     id: root
@@ -155,6 +163,9 @@ Variants {
         }
 
         property bool mediaModeOpen: mediaModeLoader.active && MprisController.activePlayer
+        readonly property bool widgetsOccluded: GlobalStates.widgetsOccluded && Config.options.background.widgets.cullWhenOccluded
+        property bool draggingWidget: false
+        property var draggingWidgetCell: Qt.point(-1, -1) // {x: col, y: row} or invalid
         onMediaModeOpenChanged: {
             if (!mediaModeOpen && Config.options.appearance.palette.type.startsWith("scheme")) {
                 Wallpapers.apply(Config.options.background.wallpaperPath)
@@ -222,6 +233,7 @@ Variants {
 
                     let widget = comp.createObject(widgetCanvas, {
                         configEntry: cfg,
+                        bgRoot: bgRoot,
                         screenWidth: bgRoot.screen.width,
                         screenHeight: bgRoot.screen.height,
                         scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale,
@@ -450,9 +462,90 @@ Variants {
                     }
                 }
 
+                // Grid overlay for visual alignment — only shows while dragging a widget
+                Canvas {
+                    id: gridOverlay
+                    width: parent.width
+                    height: parent.height
+                    z: 100
+                    visible: Config.options.background.widgets.grid.enabled && !Config.options.background.widgetsLocked && bgRoot.draggingWidget
+
+                    onWidthChanged: if (visible) requestPaint()
+                    onHeightChanged: if (visible) requestPaint()
+                    onVisibleChanged: {
+                        if (visible) {
+                            Qt.callLater(() => requestPaint());
+                        }
+                    }
+                    
+                    // Trigger repaint when grid config changes (poll since JsonObject may not emit signals)
+                    Timer {
+                        id: gridUpdateTimer
+                        interval: 200
+                        repeat: true
+                        running: gridOverlay.visible
+                        onTriggered: { if (gridOverlay.visible) gridOverlay.requestPaint(); }
+                    }
+
+                    // Repaint when draggingWidget changes (for immediate grid appearance)
+                    Connections {
+                        target: bgRoot
+                        function onDraggingWidgetChanged() {
+                            console.log("[grid-dbg] draggingWidget:", bgRoot.draggingWidget, "canvas size:", gridOverlay.width, "x", gridOverlay.height);
+                            if (gridOverlay.visible) {
+                                gridOverlay.requestPaint();
+                                Qt.callLater(() => gridOverlay.requestPaint());
+                            }
+                        }
+                    }
+                    
+                    onPaint: {
+                        var ctx = getContext('2d');
+                        ctx.clearRect(0, 0, width, height);
+                        if (!Config.options.background.widgets.grid.enabled || Config.options.background.widgetsLocked) return;
+                        var cols = Config.options.background.widgets.grid.columns;
+                        var rows = Config.options.background.widgets.grid.rows;
+                        var cellW = width / cols;
+                        var cellH = height / rows;
+                        ctx.strokeStyle = Qt.rgba(1, 1, 1, 0.7);
+                        ctx.lineWidth = 2;
+                        ctx.setLineDash([4, 3]);
+                        ctx.beginPath();
+                        for (var i = 0; i <= cols; i++) {
+                            var x = i * cellW;
+                            ctx.moveTo(x, 0);
+                            ctx.lineTo(x, height);
+                        }
+                        for (var j = 0; j <= rows; j++) {
+                            var y = j * cellH;
+                            ctx.moveTo(0, y);
+                            ctx.lineTo(width, y);
+                        }
+                        ctx.stroke();
+                    }
+                }
+
+                // Widget hitbox indicator — highlights the current grid cell while dragging
+                Rectangle {
+                    id: widgetHitbox
+                    z: 99
+                    visible: bgRoot.draggingWidget && bgRoot.draggingWidgetCell.x >= 0 && Config.options.background.widgets.grid.enabled
+                    color: Qt.rgba(1, 1, 1, 0.1)
+                    border.color: Qt.rgba(1, 1, 1, 0.5)
+                    border.width: 2
+                    readonly property real cellW: parent.width / Config.options.background.widgets.grid.columns
+                    readonly property real cellH: parent.height / Config.options.background.widgets.grid.rows
+                    x: bgRoot.draggingWidgetCell.x * cellW
+                    y: bgRoot.draggingWidgetCell.y * cellH
+                    width: cellW
+                    height: cellH
+                    radius: 4
+                }
+
                 FadeLoader {
-                    shown: Config.options.background.widgets.weather.enable
+                    shown: Config.options.background.widgets.weather.enable && !bgRoot.widgetsOccluded
                     sourceComponent: WeatherWidget {
+                        bgRoot: bgRoot
                         screenWidth: bgRoot.screen.width
                         screenHeight: bgRoot.screen.height
                         scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
@@ -462,8 +555,9 @@ Variants {
                 }
 
                 FadeLoader {
-                    shown: Config.options.background.widgets.clock.enable
+                    shown: Config.options.background.widgets.clock.enable && !bgRoot.widgetsOccluded
                     sourceComponent: ClockWidget {
+                        bgRoot: bgRoot
                         screenWidth: bgRoot.screen.width
                         screenHeight: bgRoot.screen.height
                         scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
@@ -483,8 +577,9 @@ Variants {
                 FadeLoader {
                     id: mediaLoader
                     property bool enableLoading: true
-                    shown: Config.options.background.widgets.media.enable && enableLoading
+                    shown: Config.options.background.widgets.media.enable && enableLoading && !bgRoot.widgetsOccluded
                     sourceComponent: MediaWidget {
+                        bgRoot: bgRoot
                         screenWidth: bgRoot.screen.width
                         screenHeight: bgRoot.screen.height
                         scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
@@ -501,6 +596,115 @@ Variants {
                     }
                 }
             }
+
+            FadeLoader {
+                shown: Config.options.background.widgets.calendar.enable && !bgRoot.widgetsOccluded
+                sourceComponent: CalendarWidget {
+                    bgRoot: bgRoot
+                    screenWidth: bgRoot.screen.width
+                    screenHeight: bgRoot.screen.height
+                    scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
+                    scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                    wallpaperScale: bgRoot.effectiveWallpaperScale
+                }
+            }
+
+            FadeLoader {
+                shown: Config.options.background.widgets.customImage.enable && !bgRoot.widgetsOccluded
+                sourceComponent: CustomImage {
+                    bgRoot: bgRoot
+                    screenWidth: bgRoot.screen.width
+                    screenHeight: bgRoot.screen.height
+                    scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
+                    scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                    wallpaperScale: bgRoot.effectiveWallpaperScale
+                }
+            }
+
+            FadeLoader {
+                shown: Config.options.background.widgets.imageConverter.enable && !bgRoot.widgetsOccluded
+                sourceComponent: ImageConverterWidget {
+                    bgRoot: bgRoot
+                    screenWidth: bgRoot.screen.width
+                    screenHeight: bgRoot.screen.height
+                    scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
+                    scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                    wallpaperScale: bgRoot.effectiveWallpaperScale
+                }
+            }
+
+            FadeLoader {
+                shown: Config.options.background.widgets.notes.enable && !bgRoot.widgetsOccluded
+                sourceComponent: NotesWidget {
+                    bgRoot: bgRoot
+                    screenWidth: bgRoot.screen.width
+                    screenHeight: bgRoot.screen.height
+                    scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
+                    scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                    wallpaperScale: bgRoot.effectiveWallpaperScale
+                }
+            }
+
+            FadeLoader {
+                shown: Config.options.background.widgets.resources.enable && !bgRoot.widgetsOccluded
+                sourceComponent: ResourcesWidget {
+                    bgRoot: bgRoot
+                    screenWidth: bgRoot.screen.width
+                    screenHeight: bgRoot.screen.height
+                    scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
+                    scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                    wallpaperScale: bgRoot.effectiveWallpaperScale
+                }
+            }
+
+            FadeLoader {
+                shown: Config.options.background.widgets.usercard.enable && !bgRoot.widgetsOccluded
+                sourceComponent: UserCardWidget {
+                    bgRoot: bgRoot
+                    screenWidth: bgRoot.screen.width
+                    screenHeight: bgRoot.screen.height
+                    scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
+                    scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                    wallpaperScale: bgRoot.effectiveWallpaperScale
+                }
+            }
+
+            FadeLoader {
+                shown: Config.options.background.widgets.visualizer.enable && !bgRoot.widgetsOccluded
+                sourceComponent: VisualizerWidget {
+                    bgRoot: bgRoot
+                    screenWidth: bgRoot.screen.width
+                    screenHeight: bgRoot.screen.height
+                    scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
+                    scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                    wallpaperScale: bgRoot.effectiveWallpaperScale
+                }
+            }
+
+            FadeLoader {
+                shown: Config.options.background.widgets.worldclock.enable && !bgRoot.widgetsOccluded
+                sourceComponent: WorldClockWidget {
+                    bgRoot: bgRoot
+                    screenWidth: bgRoot.screen.width
+                    screenHeight: bgRoot.screen.height
+                    scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
+                    scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                    wallpaperScale: bgRoot.effectiveWallpaperScale
+                }
+            }
+
+            FadeLoader {
+                shown: Config.options.background.widgets.timer.enable && !bgRoot.widgetsOccluded
+                sourceComponent: TimerWidget {
+                    bgRoot: bgRoot
+                    screenWidth: bgRoot.screen.width
+                    screenHeight: bgRoot.screen.height
+                    scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
+                    scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                    wallpaperScale: bgRoot.effectiveWallpaperScale
+                }
+            }
+
         }
 
         GlobalShortcut {

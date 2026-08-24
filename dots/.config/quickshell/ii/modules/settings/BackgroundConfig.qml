@@ -308,7 +308,92 @@ ContentPage {
                 ]
             }
         }
-        
+    }
+
+    ContentSection {
+        icon: "grid_view"
+        title: Translation.tr("Widget Grid")
+
+        ConfigSwitch {
+            buttonIcon: "grid_view"
+            text: Translation.tr("Enable grid layout")
+            checked: Config.options.background.widgets.grid.enabled
+            onCheckedChanged: {
+                Config.options.background.widgets.grid.enabled = checked;
+            }
+        }
+
+        ConfigSpinBox {
+            icon: "view_column"
+            text: Translation.tr("Grid columns")
+            value: Config.options.background.widgets.grid.columns
+            from: 1
+            to: 32
+            stepSize: 1
+            onValueChanged: {
+                Config.options.background.widgets.grid.columns = value;
+            }
+        }
+
+        ConfigSpinBox {
+            icon: "view_stream"
+            text: Translation.tr("Grid rows")
+            value: Config.options.background.widgets.grid.rows
+            from: 1
+            to: 16
+            stepSize: 1
+            onValueChanged: {
+                Config.options.background.widgets.grid.rows = value;
+            }
+        }
+    }
+
+    ContentSection {
+        icon: "visibility_off"
+        title: Translation.tr("Widget Culling")
+
+        ConfigSwitch {
+            buttonIcon: "visibility_off"
+            text: Translation.tr("Cull widgets when occluded")
+            checked: Config.options.background.widgets.cullWhenOccluded
+            onCheckedChanged: {
+                Config.options.background.widgets.cullWhenOccluded = checked;
+            }
+        }
+        StyledText {
+            color: Appearance.colors.colSubtext
+            font.pixelSize: Appearance.font.pixelSize.small
+            text: Translation.tr("Hides background widgets when fullscreen panels (overview, launcher, etc.) are open, saving GPU/CPU resources.")
+        }
+    }
+
+    ContentSection {
+        icon: "timer"
+        title: Translation.tr("Timer / Stopwatch Widget")
+
+        ConfigSwitch {
+            buttonIcon: "timer"
+            text: Translation.tr("Enable Timer / Stopwatch")
+            checked: Config.options.background.widgets.timer.enable
+            onCheckedChanged: {
+                Config.options.background.widgets.timer.enable = checked;
+            }
+        }
+        ConfigRow {
+            uniform: true
+            StyledComboBox {
+                Layout.fillWidth: true
+                buttonIcon: "grid_on"
+                textRole: "displayName"
+                model: [
+                    { displayName: "Free", value: "free" },
+                    { displayName: "Least Busy", value: "leastBusy" },
+                    { displayName: "Most Busy", value: "mostBusy" }
+                ]
+                currentValue: Config.options.background.widgets.timer.placementStrategy
+                onCurrentValueChanged: (newValue) => Config.options.background.widgets.timer.placementStrategy = newValue
+            }
+        }
     }
 
     ContentSection {
@@ -495,10 +580,9 @@ ContentPage {
                     checked: Config.options.background.widgets.clock.digital.showColon
                     onCheckedChanged: {
                         Config.options.background.widgets.clock.digital.showColon = checked;
-                    }
-                }
-            }
-            
+        }
+    }
+}
 
             MaterialTextArea {
                 Layout.fillWidth: true
@@ -1179,6 +1263,267 @@ ContentPage {
                         Config.options.background.widgets.media.glow.brightness = value;
                     }
                 }
+            }
+        }
+    }
+
+    ContentSection {
+        icon: "calendar_month"
+        title: Translation.tr("Calendar Widget")
+
+        ConfigSwitch {
+            buttonIcon: "calendar_month"
+            text: Translation.tr("Enable Calendar Widget")
+            checked: Config.options.background.widgets.calendar.enable
+            onCheckedChanged: {
+                Config.options.background.widgets.calendar.enable = checked;
+            }
+        }
+        ConfigRow {
+            uniform: true
+            StyledComboBox {
+                Layout.fillWidth: true
+                buttonIcon: "grid_on"
+                textRole: "displayName"
+                model: [
+                    { displayName: "Free", value: "free" },
+                    { displayName: "Least Busy", value: "leastBusy" },
+                    { displayName: "Most Busy", value: "mostBusy" }
+                ]
+                currentValue: Config.options.background.widgets.calendar.placementStrategy
+                onCurrentValueChanged: (newValue) => Config.options.background.widgets.calendar.placementStrategy = newValue
+            }
+        }
+    }
+
+    ContentSection {
+        icon: "image"
+        title: Translation.tr("Custom Image Widget")
+
+        ConfigSwitch {
+            buttonIcon: "image"
+            text: Translation.tr("Enable Custom Image")
+            checked: Config.options.background.widgets.customImage.enable
+            onCheckedChanged: {
+                Config.options.background.widgets.customImage.enable = checked;
+            }
+        }
+        ConfigRow {
+            uniform: true
+            StyledComboBox {
+                Layout.fillWidth: true
+                buttonIcon: "grid_on"
+                textRole: "displayName"
+                model: [
+                    { displayName: "Free", value: "free" },
+                    { displayName: "Least Busy", value: "leastBusy" },
+                    { displayName: "Most Busy", value: "mostBusy" }
+                ]
+                currentValue: Config.options.background.widgets.customImage.placementStrategy
+                onCurrentValueChanged: (newValue) => Config.options.background.widgets.customImage.placementStrategy = newValue
+            }
+        }
+    }
+
+    ContentSection {
+        icon: "photo_filter"
+        title: Translation.tr("Image Converter Widget")
+
+        ConfigSwitch {
+            buttonIcon: "photo_filter"
+            text: Translation.tr("Enable Image Converter")
+            checked: Config.options.background.widgets.imageConverter.enable
+            onCheckedChanged: {
+                Config.options.background.widgets.imageConverter.enable = checked;
+            }
+        }
+        ConfigRow {
+            uniform: true
+            StyledComboBox {
+                Layout.fillWidth: true
+                buttonIcon: "grid_on"
+                textRole: "displayName"
+                model: [
+                    { displayName: "Free", value: "free" },
+                    { displayName: "Least Busy", value: "leastBusy" },
+                    { displayName: "Most Busy", value: "mostBusy" }
+                ]
+                currentValue: Config.options.background.widgets.imageConverter.placementStrategy
+                onCurrentValueChanged: (newValue) => Config.options.background.widgets.imageConverter.placementStrategy = newValue
+            }
+        }
+    }
+
+    ContentSection {
+        icon: "sticky_note_2"
+        title: Translation.tr("Notes Widget")
+
+        ConfigSwitch {
+            buttonIcon: "sticky_note_2"
+            text: Translation.tr("Enable Notes Widget")
+            checked: Config.options.background.widgets.notes.enable
+            onCheckedChanged: {
+                Config.options.background.widgets.notes.enable = checked;
+            }
+        }
+        ConfigRow {
+            uniform: true
+            StyledComboBox {
+                Layout.fillWidth: true
+                buttonIcon: "grid_on"
+                textRole: "displayName"
+                model: [
+                    { displayName: "Free", value: "free" },
+                    { displayName: "Least Busy", value: "leastBusy" },
+                    { displayName: "Most Busy", value: "mostBusy" }
+                ]
+                currentValue: Config.options.background.widgets.notes.placementStrategy
+                onCurrentValueChanged: (newValue) => Config.options.background.widgets.notes.placementStrategy = newValue
+            }
+        }
+    }
+
+    ContentSection {
+        icon: "monitor_heart"
+        title: Translation.tr("Resources Widget")
+
+        ConfigSwitch {
+            buttonIcon: "monitor_heart"
+            text: Translation.tr("Enable Resources")
+            checked: Config.options.background.widgets.resources.enable
+            onCheckedChanged: {
+                Config.options.background.widgets.resources.enable = checked;
+            }
+        }
+        ConfigRow {
+            uniform: true
+            StyledComboBox {
+                Layout.fillWidth: true
+                buttonIcon: "grid_on"
+                textRole: "displayName"
+                model: [
+                    { displayName: "Free", value: "free" },
+                    { displayName: "Least Busy", value: "leastBusy" },
+                    { displayName: "Most Busy", value: "mostBusy" }
+                ]
+                currentValue: Config.options.background.widgets.resources.placementStrategy
+                onCurrentValueChanged: (newValue) => Config.options.background.widgets.resources.placementStrategy = newValue
+            }
+        }
+    }
+
+    ContentSection {
+        icon: "person"
+        title: Translation.tr("User Card Widget")
+
+        ConfigSwitch {
+            buttonIcon: "person"
+            text: Translation.tr("Enable User Card")
+            checked: Config.options.background.widgets.usercard.enable
+            onCheckedChanged: {
+                Config.options.background.widgets.usercard.enable = checked;
+            }
+        }
+        ConfigRow {
+            uniform: true
+            StyledComboBox {
+                Layout.fillWidth: true
+                buttonIcon: "grid_on"
+                textRole: "displayName"
+                model: [
+                    { displayName: "Free", value: "free" },
+                    { displayName: "Least Busy", value: "leastBusy" },
+                    { displayName: "Most Busy", value: "mostBusy" }
+                ]
+                currentValue: Config.options.background.widgets.usercard.placementStrategy
+                onCurrentValueChanged: (newValue) => Config.options.background.widgets.usercard.placementStrategy = newValue
+            }
+        }
+    }
+
+    ContentSection {
+        icon: "equalizer"
+        title: Translation.tr("Visualizer Widget")
+
+        ConfigSwitch {
+            buttonIcon: "equalizer"
+            text: Translation.tr("Enable Visualizer")
+            checked: Config.options.background.widgets.visualizer.enable
+            onCheckedChanged: {
+                Config.options.background.widgets.visualizer.enable = checked;
+            }
+        }
+        ConfigRow {
+            uniform: true
+            StyledComboBox {
+                Layout.fillWidth: true
+                buttonIcon: "grid_on"
+                textRole: "displayName"
+                model: [
+                    { displayName: "Free", value: "free" },
+                    { displayName: "Least Busy", value: "leastBusy" },
+                    { displayName: "Most Busy", value: "mostBusy" }
+                ]
+                currentValue: Config.options.background.widgets.visualizer.placementStrategy
+                onCurrentValueChanged: (newValue) => Config.options.background.widgets.visualizer.placementStrategy = newValue
+            }
+        }
+    }
+
+    ContentSection {
+        icon: "world_clock"
+        title: Translation.tr("World Clock Widget")
+
+        ConfigSwitch {
+            buttonIcon: "world_clock"
+            text: Translation.tr("Enable World Clock")
+            checked: Config.options.background.widgets.worldclock.enable
+            onCheckedChanged: {
+                Config.options.background.widgets.worldclock.enable = checked;
+            }
+        }
+        ConfigRow {
+            uniform: true
+            StyledComboBox {
+                Layout.fillWidth: true
+                buttonIcon: "grid_on"
+                textRole: "displayName"
+                model: [
+                    { displayName: "Free", value: "free" },
+                    { displayName: "Least Busy", value: "leastBusy" },
+                    { displayName: "Most Busy", value: "mostBusy" }
+                ]
+                currentValue: Config.options.background.widgets.worldclock.placementStrategy
+                onCurrentValueChanged: (newValue) => Config.options.background.widgets.worldclock.placementStrategy = newValue
+            }
+        }
+    }
+
+    ContentSection {
+        icon: "timer"
+        title: Translation.tr("Timer / Stopwatch Widget")
+
+        ConfigSwitch {
+            buttonIcon: "timer"
+            text: Translation.tr("Enable Timer")
+            checked: Config.options.background.widgets.timer.enable
+            onCheckedChanged: {
+                Config.options.background.widgets.timer.enable = checked;
+            }
+        }
+        ConfigRow {
+            uniform: true
+            StyledComboBox {
+                Layout.fillWidth: true
+                buttonIcon: "grid_on"
+                textRole: "displayName"
+                model: [
+                    { displayName: "Free", value: "free" },
+                    { displayName: "Least Busy", value: "leastBusy" },
+                    { displayName: "Most Busy", value: "mostBusy" }
+                ]
+                currentValue: Config.options.background.widgets.timer.placementStrategy
+                onCurrentValueChanged: (newValue) => Config.options.background.widgets.timer.placementStrategy = newValue
             }
         }
     }

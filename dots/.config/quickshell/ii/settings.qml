@@ -77,6 +77,11 @@ ApplicationWindow {
             component: "modules/settings/ExtensionsConfig.qml"
         },
         {
+            name: Translation.tr("Find My"),
+            icon: "location_on",
+            component: "modules/settings/FindMyConfig.qml"
+        },
+        {
             name: Translation.tr("Advanced"),
             icon: "construction",
             component: "modules/settings/AdvancedConfig.qml"

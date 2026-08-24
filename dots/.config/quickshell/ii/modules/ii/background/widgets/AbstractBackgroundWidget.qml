@@ -9,21 +9,44 @@ import qs.modules.common.widgets.widgetCanvas
 AbstractWidget {
     id: root
 
+    required property string configEntryName
     required property int screenWidth
     required property int screenHeight
     required property int scaledScreenWidth
     required property int scaledScreenHeight
     required property real wallpaperScale
-    property string configEntryName: ""
-    property bool visibleWhenLocked: false
-    property var configEntry: configEntryName ? Config.options.background.widgets[configEntryName] : null
-    property string placementStrategy: configEntry?.placementStrategy || "free"
-    property real targetX: Math.max(0, Math.min(configEntry.x, scaledScreenWidth - width))
-    property real targetY : Math.max(0, Math.min(configEntry.y, scaledScreenHeight - height))
+    property var bgRoot
+    property bool visibleWhenLocked: Config.options.lock.showWidgets
+    property var configEntry: Config.options.background.widgets[configEntryName] ?? ({})
+    property string placementStrategy: configEntry.placementStrategy ?? "free"
+    readonly property bool gridEnabled: Config.options.background.widgets.grid.enabled
+    readonly property int gridColumns: Config.options.background.widgets.grid.columns
+    readonly property int gridRows: Config.options.background.widgets.grid.rows
+    readonly property real gridCellWidth: scaledScreenWidth / gridColumns
+    readonly property real gridCellHeight: scaledScreenHeight / gridRows
+    property int gridColumn: {
+        if (!Config.ready) return 0;
+        const col = configEntry.gridColumn ?? 0;
+        return Math.max(0, Math.min(col, gridColumns - 1));
+    }
+    property int gridRow: {
+        if (!Config.ready) return 0;
+        const row = configEntry.gridRow ?? 0;
+        return Math.max(0, Math.min(row, gridRows - 1));
+    }
+    property real targetX: gridEnabled
+        ? Math.max(0, Math.min(gridColumn * gridCellWidth, scaledScreenWidth - width))
+        : Math.max(0, Math.min(configEntry.x ?? 0, scaledScreenWidth - width))
+    property real targetY: gridEnabled
+        ? Math.max(0, Math.min(gridRow * gridCellHeight, scaledScreenHeight - height))
+        : Math.max(0, Math.min(configEntry.y ?? 0, scaledScreenHeight - height))
     x: targetX
     y: targetY
-    visible: opacity > 0
-    opacity: (GlobalStates.screenLocked && !visibleWhenLocked) ? 0 : 1
+    opacity: {
+        if (GlobalStates.screenLocked && !visibleWhenLocked) return 0;
+        if (Config.options.background.widgets.cullWhenOccluded && GlobalStates.widgetsOccluded) return 0;
+        return 1;
+    }
     Behavior on opacity {
         animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
     }
@@ -32,13 +55,73 @@ AbstractWidget {
         animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
     }
 
-    draggable: placementStrategy === "free"
+    // Show grid hitbox while dragging when grid is enabled
+    property bool showGridHitbox: draggable && containsPress && gridEnabled
+
+    function resolveBgRoot() {
+        if (bgRoot) return bgRoot;
+        var item = root.parent;
+        while (item) {
+            if ("draggingWidget" in item) return item;
+            item = item.parent;
+        }
+        return null;
+    }
+
+    draggable: placementStrategy === "free" && !Config.options.background.widgetsLocked
+    function restoreXYBinding() {
+        root.x = Qt.binding(() => root.targetX);
+        root.y = Qt.binding(() => root.targetY);
+    }
+    onPressed: {
+        if (draggable) {
+            var bg = resolveBgRoot();
+            if (bg) bg.draggingWidget = true;
+        }
+    }
+    
+    // Update the highlighted grid cell during drag
+    Timer {
+        id: dragCellUpdateTimer
+        interval: 20
+        repeat: true
+        running: root.draggable && root.containsPress && gridEnabled
+        onTriggered: {
+            var bg = resolveBgRoot();
+            if (!bg) return;
+            const col = Math.floor(root.x / gridCellWidth);
+            const row = Math.floor(root.y / gridCellHeight);
+            bg.draggingWidgetCell = Qt.point(Math.max(0, Math.min(col, gridColumns - 1)), Math.max(0, Math.min(row, gridRows - 1)));
+        }
+    }
     onReleased: {
-        root.targetX = root.x;
-        root.targetY = root.y;
-        if (configEntry) {
-            configEntry.x = root.targetX;
-            configEntry.y = root.targetY;
+        var bg = resolveBgRoot();
+        if (bg) bg.draggingWidget = false;
+        if (gridEnabled) {
+            const col = Math.round(root.x / gridCellWidth);
+            const row = Math.round(root.y / gridCellHeight);
+            const snappedCol = Math.max(0, Math.min(col, gridColumns - 1));
+            const snappedRow = Math.max(0, Math.min(row, gridRows - 1));
+            configEntry.gridColumn = snappedCol;
+            configEntry.gridRow = snappedRow;
+            root.gridColumn = Qt.binding(() => {
+                if (!Config.ready) return 0;
+                const col = configEntry.gridColumn ?? 0;
+                return Math.max(0, Math.min(col, gridColumns - 1));
+            });
+            root.gridRow = Qt.binding(() => {
+                if (!Config.ready) return 0;
+                const row = configEntry.gridRow ?? 0;
+                return Math.max(0, Math.min(row, gridRows - 1));
+            });
+            root.x = Qt.binding(() => root.targetX);
+            root.y = Qt.binding(() => root.targetY);
+        } else {
+            configEntry.x = root.x;
+            configEntry.y = root.y;
+            root.targetX = Qt.binding(() => Math.max(0, Math.min(configEntry.x, scaledScreenWidth - width)));
+            root.targetY = Qt.binding(() => Math.max(0, Math.min(configEntry.y, scaledScreenHeight - height)));
+            root.restoreXYBinding();
         }
     }
 
@@ -48,16 +131,6 @@ AbstractWidget {
     property color colText: {
         const onNormalBackground = (GlobalStates.screenLocked && Config.options.lock.blur.enable)
         const adaptiveColor = ColorUtils.colorWithLightness(Appearance.colors.colPrimary, (dominantColorIsDark ? 0.8 : 0.12))
-        return onNormalBackground ? Appearance.colors.colOnLayer0 : adaptiveColor;
-    }
-    property color colTextSecondary: {
-        const onNormalBackground = (GlobalStates.screenLocked && Config.options.lock.blur.enable)
-        const adaptiveColor = ColorUtils.colorWithLightness(Appearance.colors.colSecondary, (dominantColorIsDark ? 0.8 : 0.12))
-        return onNormalBackground ? Appearance.colors.colOnLayer0 : adaptiveColor;
-    }
-    property color colTextTertiary: {
-        const onNormalBackground = (GlobalStates.screenLocked && Config.options.lock.blur.enable)
-        const adaptiveColor = ColorUtils.colorWithLightness(Appearance.colors.colTertiary, (dominantColorIsDark ? 0.8 : 0.12))
         return onNormalBackground ? Appearance.colors.colOnLayer0 : adaptiveColor;
     }
 
@@ -111,4 +184,3 @@ AbstractWidget {
         }
     }
 }
-

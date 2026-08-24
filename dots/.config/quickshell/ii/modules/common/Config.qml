@@ -83,9 +83,16 @@ Singleton {
 
             property JsonObject policies: JsonObject {
                 property int ai: 1 // 0: No | 1: Yes | 2: Local
+                property int phone: 0 // 0: No | 1: Yes
                 property int wallpapers: 1 // 0: No | 1: Yes
                 property int translator: 0 // 0: No | 1: Yes
                 property int weeb: 0 // 0: No | 1: Yes | 2: Closet (hidden but accessible)
+                property int player: 1 // 0: No | 1: Yes
+                property int tailscale: 1 // 0: No | 1: Yes
+                property int docker: 1 // 0: No | 1: Yes
+                property int vpn: 1 // 0: No | 1: Yes
+                property int email: 1 // 0: No | 1: Yes
+                property int notes: 1 // 0: No | 1: Yes
                 property list<string> disabledExtensionTabs: []
             }
 
@@ -121,7 +128,7 @@ Singleton {
                         "google": []
                     }
                 ]
-                property list<var> otherModels: [
+                 property list<var> otherModels: [
                     // Available api_format(s): openai, gemini, mistral
                     {
                         "name": "Mistral Medium",
@@ -133,6 +140,70 @@ Singleton {
                         "api_format": "mistral"
                     }
                 ]
+                property bool indexAtStartup: false
+                property list<var> personas: []
+                property list<var> customModels: []
+                property JsonObject rag: JsonObject {
+                    property list<var> collections: []
+                    property string embeddingModel: ""
+                }
+                property JsonObject sessions: JsonObject {
+                    property int retentionDays: 30
+                }
+                property JsonObject tools: JsonObject {
+                    property bool reviewConfigChanges: false
+                    property string mode: "auto"
+                }
+                property JsonObject files: JsonObject {
+                    property list<string> roots: []
+                }
+                property JsonObject voice: JsonObject {
+                    property bool enabled: false
+                }
+                property JsonObject vision: JsonObject {
+                    property bool ocrEnabled: true
+                }
+            }
+
+            property JsonObject phone: JsonObject {
+                property bool showPeripheralCards: false
+                property JsonObject scrappy: JsonObject {
+                    property bool alwaysOnTop: false
+                    property bool autoWirelessIp: true
+                    property string bitRate: "8M"
+                    property bool fullscreen: false
+                    property int maxFps: 60
+                    property int maxSize: 1280
+                    property bool noAudio: false
+                    property bool noPowerOn: false
+                    property bool showTerminal: false
+                    property bool showTouches: false
+                    property bool stayAwake: false
+                    property bool turnScreenOff: false
+                    property bool useWireless: false
+                    property int videoBuffer: 200
+                    property string wirelessIp: ""
+                    property int wirelessPort: 27183
+                }
+                property JsonObject webcam: JsonObject {
+                    property string cameraFacing: "back"
+                    property string connection: "local"
+                    property int fps: 30
+                    property bool mirrorHorizontally: true
+                    property string port: "8080"
+                    property string resolution: "1280x720"
+                    property int rotateDegrees: 0
+                    property string wifiIp: ""
+                }
+                property JsonObject microphone: JsonObject {
+                    property bool autoGainControl: true
+                    property string connection: "local"
+                    property bool echoCancellation: true
+                    property int micGain: 100
+                    property bool noiseSuppression: true
+                    property string port: "8081"
+                    property string wifiIp: ""
+                }
             }
 
             property JsonObject profile: JsonObject {
@@ -223,12 +294,22 @@ Singleton {
             property JsonObject background: JsonObject {
                 property bool enable: true // if someone wants to use an external wallpaper manager, note that its not fully tested but it should just disable background.qml from being loaded
                 property JsonObject widgets: JsonObject {
+                    property bool cullWhenOccluded: false
+                    property JsonObject grid: JsonObject {
+                        property bool enabled: false
+                        property int columns: 16
+                        property int rows: 10
+                        property real cellSize: 4
+                    }
+                    property bool widgetsLocked: false
                     property JsonObject clock: JsonObject {
                         property bool enable: true
                         property bool showOnlyWhenLocked: false
                         property string placementStrategy: "leastBusy" // "free", "leastBusy", "mostBusy"
                         property real x: 100
                         property real y: 100
+                        property int gridColumn: 0
+                        property int gridRow: 0
                         property string style: "cookie"        // Options: "cookie", "digital"
                         property string styleLocked: "cookie"  // Options: "cookie", "digital"
                         property JsonObject cookie: JsonObject {
@@ -273,6 +354,8 @@ Singleton {
                         property string placementStrategy: "free" // "free", "leastBusy", "mostBusy"
                         property real x: 800
                         property real y: 100
+                        property int gridColumn: 8
+                        property int gridRow: 1
                         property bool useAlbumColors: true
                         property bool hideAllButtons: false
                         property bool showPreviousToggle: true
@@ -294,6 +377,82 @@ Singleton {
                         property string placementStrategy: "free" // "free", "leastBusy", "mostBusy"
                         property real x: 400
                         property real y: 100
+                        property int gridColumn: 0
+                        property int gridRow: 0
+                    }
+                    property JsonObject calendar: JsonObject {
+                        property bool enable: false
+                        property string placementStrategy: "free"
+                        property real x: 600
+                        property real y: 100
+                        property int gridColumn: 6
+                        property int gridRow: 0
+                    }
+                    property JsonObject customImage: JsonObject {
+                        property bool enable: false
+                        property string placementStrategy: "free"
+                        property real x: 200
+                        property real y: 300
+                        property int gridColumn: 0
+                        property int gridRow: 4
+                    }
+                    property JsonObject imageConverter: JsonObject {
+                        property bool enable: false
+                        property string placementStrategy: "free"
+                        property real x: 200
+                        property real y: 500
+                        property int gridColumn: 3
+                        property int gridRow: 4
+                    }
+                    property JsonObject notes: JsonObject {
+                        property bool enable: false
+                        property string placementStrategy: "free"
+                        property real x: 200
+                        property real y: 700
+                        property int gridColumn: 0
+                        property int gridRow: 6
+                    }
+                    property JsonObject resources: JsonObject {
+                        property bool enable: false
+                        property string placementStrategy: "free"
+                        property real x: 1000
+                        property real y: 100
+                        property int gridColumn: 10
+                        property int gridRow: 0
+                        property bool vertical: false
+                    }
+                    property JsonObject usercard: JsonObject {
+                        property bool enable: false
+                        property string placementStrategy: "free"
+                        property real x: 100
+                        property real y: 100
+                        property int gridColumn: 0
+                        property int gridRow: 0
+                    }
+                    property JsonObject visualizer: JsonObject {
+                        property bool enable: false
+                        property string placementStrategy: "free"
+                        property real x: 200
+                        property real y: 900
+                        property int gridColumn: 1
+                        property int gridRow: 6
+                    }
+                    property JsonObject worldclock: JsonObject {
+                        property bool enable: false
+                        property string placementStrategy: "free"
+                        property real x: 800
+                        property real y: 500
+                        property int gridColumn: 8
+                        property int gridRow: 6
+                        property string sizeMode: "2x2"
+                    }
+                    property JsonObject timer: JsonObject {
+                        property bool enable: false
+                        property string placementStrategy: "free"
+                        property real x: 200
+                        property real y: 1100
+                        property int gridColumn: 2
+                        property int gridRow: 8
                     }
                 }
                 property bool animateWallpaperChanges: true
@@ -402,6 +561,12 @@ Singleton {
                     property bool showCpu: true // Show CPU resource
                     property bool showGpu: true // Show GPU resource
                 }
+
+                property JsonObject dynamicIsland: JsonObject {
+                    property bool enabled: false
+                    property bool animate: true
+                }
+
                 property list<string> screenList: [] // List of names, like "eDP-1", find out with 'hyprctl monitors' command
 
                 property JsonObject timers: JsonObject {
@@ -668,6 +833,7 @@ Singleton {
             property JsonObject lock: JsonObject {
                 property bool useHyprlock: false
                 property bool launchOnStartup: false
+                property bool showWidgets: false
                 property JsonObject blur: JsonObject {
                     property bool enable: true
                     property real radius: 100
@@ -787,6 +953,37 @@ Singleton {
                 property bool enableLrclib: true
             }
 
+            property JsonObject tailscale: JsonObject {
+                property bool enabled: false
+                property bool autoConnect: false
+                property bool stopDaemonWhenDisabled: true
+                property string exitNode: ""
+                property bool acceptDns: true
+                property bool shieldsUp: false
+                property bool ssh: false
+                property list<string> advertiseRoutes: []
+                property bool advertiseExitNode: false
+            }
+
+            property JsonObject vpn: JsonObject {
+                property bool enabled: false
+                property bool autoConnect: false
+                property string defaultProvider: "networkmanager"
+                property string defaultProfile: ""
+                property string defaultLocation: ""
+                property string recentProvider: "networkmanager"
+            }
+
+            property JsonObject email: JsonObject {
+                property bool enabled: false
+                property int refreshIntervalMinutes: 5
+                property bool enableUnreadBadges: false
+            }
+
+            property JsonObject notes: JsonObject {
+                property bool enabled: false
+            }
+
             property JsonObject tray: JsonObject {
                 property bool monochromeIcons: true
                 property bool showItemId: false
@@ -807,6 +1004,7 @@ Singleton {
             }
 
             property JsonObject search: JsonObject {
+                property list<var> aliases: []
                 property int nonAppResultDelay: 30 // This prevents lagging when typing
                 property string engineBaseUrl: "https://www.google.com/search?q="
                 property list<string> excludedSites: ["quora.com", "facebook.com"]
@@ -831,6 +1029,7 @@ Singleton {
             }
 
             property JsonObject sidebar: JsonObject {
+                property list<string> tabOrder: []
                 property string position: "default"
                 property bool keepRightSidebarLoaded: true
                 property JsonObject translator: JsonObject {
@@ -838,8 +1037,25 @@ Singleton {
                     property int delay: 300 // Delay before sending request. Reduces (potential) rate limits and lag.
                 }
                 property JsonObject ai: JsonObject {
+                    property bool autoScroll: true
+                    property bool reducedMotion: false
+                    property string greeting: ""
+                    property list<string> pinnedModels: []
+                    property bool emptyStateKeys: false
+                    property string sendKey: "enter"
+                    property list<var> barKeys: []
                     property bool textFadeIn: false
                     property bool showProviderAndModelButtons: true
+                    property string density: "comfortable" // Options: comfortable, compact
+                    property bool showTimestamps: false
+                    property bool showResponseTime: false
+                    property bool showAnswerModel: true
+                    property bool collapseLongAnswers: false
+                    property string activityDefault: "auto" // Options: auto, expanded, collapsed
+                    property bool codeWrap: false
+                    property bool codeLineNumbers: false
+                    property bool renderMarkdown: true
+                    property bool renderLatex: true
                 }
                 property JsonObject booru: JsonObject {
                     property bool allowNsfw: false
@@ -932,6 +1148,7 @@ Singleton {
             property JsonObject sounds: JsonObject {
                 property bool battery: false
                 property bool pomodoro: false
+                property bool timer: false
                 property string theme: "freedesktop"
             }
 
@@ -951,7 +1168,7 @@ Singleton {
                     property int longBreak: 900
                 }
 
-                property bool secondPrecision: true
+                property bool secondPrecision: false
             }
 
             property JsonObject updates: JsonObject {
