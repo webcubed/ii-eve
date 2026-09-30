@@ -139,4 +139,77 @@ Singleton {
     function stopwatchRecordLap() {
         Persistent.states.timer.stopwatch.laps.push(stopwatchTime);
     }
+
+    // Countdown timer
+    property bool countdownRunning: Persistent.states.timer.countdown.running
+    property int countdownDuration: Persistent.states.timer.countdown.duration
+    property int countdownLeft: Persistent.states.timer.countdown.left
+
+    function refreshCountdown() {
+        if (!countdownRunning) return;
+        let elapsed = getCurrentTimeInSeconds() - Persistent.states.timer.countdown.start;
+        let remaining = countdownDuration - elapsed;
+        if (remaining <= 0) {
+            Persistent.states.timer.countdown.running = false;
+            root.countdownRunning = false;
+            Persistent.states.timer.countdown.left = 0;
+            root.countdownLeft = 0;
+            Quickshell.execDetached(["notify-send", "Timer", "Countdown finished!", "-a", "Shell"]);
+            if (Config.options.sounds.timer) {
+                Audio.playSystemSound("alarm-clock-elapsed");
+            }
+        } else {
+            Persistent.states.timer.countdown.left = remaining;
+            root.countdownLeft = remaining;
+        }
+    }
+
+    Timer {
+        id: countdownTimer
+        interval: 200
+        running: root.countdownRunning
+        repeat: true
+        onTriggered: refreshCountdown()
+    }
+
+    function countdownSet(minutes) {
+        countdownStop();
+        Persistent.states.timer.countdown.duration = minutes * 60;
+        Persistent.states.timer.countdown.left = minutes * 60;
+        Persistent.states.timer.countdown.start = 0;
+        root.countdownDuration = minutes * 60;
+        root.countdownLeft = minutes * 60;
+    }
+
+    function countdownToggle() {
+        if (root.countdownRunning) {
+            // Pause: save how much is left
+            refreshCountdown();
+            Persistent.states.timer.countdown.running = false;
+        } else {
+            if (Persistent.states.timer.countdown.left <= 0) {
+                let dur = Persistent.states.timer.countdown.duration > 0 ? Persistent.states.timer.countdown.duration : 1500;
+                Persistent.states.timer.countdown.left = dur;
+                root.countdownLeft = dur;
+                root.countdownDuration = dur;
+            }
+            // Resume: record start time accounting for time already elapsed
+            Persistent.states.timer.countdown.start = getCurrentTimeInSeconds() + Persistent.states.timer.countdown.left - Persistent.states.timer.countdown.duration;
+            Persistent.states.timer.countdown.running = true;
+        }
+        root.countdownRunning = Persistent.states.timer.countdown.running;
+    }
+
+    function countdownStop() {
+        Persistent.states.timer.countdown.running = false;
+        root.countdownRunning = false;
+    }
+
+    function countdownReset() {
+        countdownStop();
+        let dur = Persistent.states.timer.countdown.duration > 0 ? Persistent.states.timer.countdown.duration : 1500;
+        Persistent.states.timer.countdown.left = dur;
+        Persistent.states.timer.countdown.start = 0;
+        root.countdownLeft = dur;
+    }
 }
