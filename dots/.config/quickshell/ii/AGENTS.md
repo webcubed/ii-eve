@@ -346,22 +346,33 @@ booleans — cross-component requests go through it.
 Snip → annotate chain (built-in editor): entry via `SnipAction.Edit` (toolbar
 `draw` toggle in `OptionsToolbar`, RMB during a Copy snip, ipc `region annotate`,
 or GlobalShortcut `regionAnnotate`) → `RegionSelection.cropForAnnotation()`
-magick-crops to `screenshotTemp/annotate-<ts>.png`, then emits
-`annotationReady(path, screen)` → `RegionSelector` sets path/screen, dismisses
+**copies the FULL screen capture** (`cp` — not a crop) to
+`screenshotTemp/annotate-<ts>.png` and emits
+`annotationReady(path, screen, region)` with the selected rect in image
+(physical) px → `RegionSelector` sets path/screen/`annotateRegion`, dismisses
 the selector first, and opens `AnnotationEditor` on the next tick
 (`Qt.callLater`) — layer-shell surfaces must never coexist (same reason as
-Translate). The editor draws pen/highlight/arrow/shapes/text on a `Canvas` over
-the crop, composites via `view.grabToImage()`, then `wl-copy -t image/png` /
-save-to-`screenSnip.savePath` / handoff to external editor
-(`useSatty ? satty : swappy` — currently satty). RMB→Edit no longer remaps
-Edit→Copy on LMB: only `Copy + RMB` flips to Edit.
-Shapes: the toolbar shape button opens a drop-up (`shapeMenuOpen`, anchored
-above the toolbar, backdrop MouseArea z:9 closes it) offering rect/ellipse/
-triangle (`shapeList`); `drawShape` renders ellipse as 4 beziers (Qt Canvas has
-no `ctx.ellipse`). Per-session reset: `resetState()` runs on `visible` AND
-`imagePath` change and MUST call `canvas.requestPaint()` — the Canvas bitmap
-survives hide/show, so without the repaint the previous snip's drawings stay on
-screen over the new crop.
+Translate). The editor seeds a draggable `crop` (image px, `initCrop()` on
+image Ready + region change + visible) shown as a `cropOverlay` **sibling of
+`view`** (never a child — `grabToImage` must not bake the chrome in): dim
+rects outside the crop, border, 8 handles (4 corners + 4 sides, min 80 image
+px). Tools: pen/highlight/arrow/line/dash/dot/rect/ellipse/triangle/text on a
+`Canvas`; export (`withExported`) grabs the whole view, then a reused Process
+magick-crops it to `crop` (skipped when crop ≈ full) — `doCopy`/`doSave`/
+`doExternal` all go through it, so the external editor (satty via
+`useSatty ? satty : swappy`) receives the cropped, annotated result. RMB→Edit
+no longer remaps Edit→Copy on LMB: only `Copy + RMB` flips to Edit.
+Drop-ups: `property string openMenu` (`"" | "shape" | "arrow"`) drives ONE
+full-screen `menuHost` (z:11) that owns both menus + its close-backdrop —
+menus overflow the toolbar Row, and QML hit-testing only descends into items
+whose ANCESTORS contain the point, so a menu parented under the toolbar is
+unclickable (learned the hard way). `shapeList` = rect/ellipse/triangle
+(ellipse drawn as 4 beziers — Qt Canvas has no `ctx.ellipse`); `lineList` =
+arrow/line/dashed/dotted (dashes via `ctx.setLineDash`, reset after).
+Per-session reset: `resetState()` runs on `visible` AND `imagePath` change,
+clears shapes/draft/openMenu/crop, and MUST call `canvas.requestPaint()` —
+the Canvas bitmap survives hide/show, so without the repaint the previous
+snip's drawings stay on screen over the new capture.
 
 ### 14. ToolbarTabBar Sizes Unstretched Toolbars via `implicitWidth`
 

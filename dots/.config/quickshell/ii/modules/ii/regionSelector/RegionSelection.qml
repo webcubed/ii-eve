@@ -40,7 +40,9 @@ PanelWindow {
     property var phase: RegionSelection.Phase.Select
     signal dismiss()
     // Built-in annotation editor handoff (Edit action): crop file + the screen it came from.
-    signal annotationReady(string path, var targetScreen)
+    // region = selected rect in image (physical) px, so the editor can seed a
+    // draggable crop over the full capture.
+    signal annotationReady(string path, var targetScreen, var region)
 
     // Styles
     property string screenshotDir: Directories.screenshotTemp
@@ -359,18 +361,17 @@ PanelWindow {
         id: snipProc
     }
 
-    // Crop the selection into a standalone file, then open the built-in
-    // annotation editor on it. The screenshot file is deleted after crop.
+    // Copy the FULL screenshot into a standalone file and hand it to the
+    // annotation editor together with the selected region; the editor seeds a
+    // draggable crop from it (and re-crops on export). Screenshot deleted after copy.
     property string pendingAnnotatePath: ""
     function cropForAnnotation() {
         if (root.pendingAnnotatePath !== "") return; // already running
         const outPath = `${root.screenshotDir}/annotate-${Date.now()}.png`;
         root.pendingAnnotatePath = outPath;
         annotateCropProc.command = ["bash", "-c",
-            `magick '${StringUtils.shellSingleQuoteEscape(root.screenshotPath)}' `
-            + `-crop ${Math.round(root.regionWidth * root.monitorScale)}x${Math.round(root.regionHeight * root.monitorScale)}`
-            + `+${Math.round(root.regionX * root.monitorScale)}+${Math.round(root.regionY * root.monitorScale)} `
-            + `+repage '${StringUtils.shellSingleQuoteEscape(outPath)}' `
+            `cp '${StringUtils.shellSingleQuoteEscape(root.screenshotPath)}' `
+            + `'${StringUtils.shellSingleQuoteEscape(outPath)}' `
             + `&& rm -f '${StringUtils.shellSingleQuoteEscape(root.screenshotPath)}'`];
         annotateCropProc.running = true;
     }
@@ -380,11 +381,17 @@ PanelWindow {
             const path = root.pendingAnnotatePath;
             root.pendingAnnotatePath = "";
             if (exitCode !== 0 || path === "") {
-                console.warn("[Region Selector] Annotation crop failed, code", exitCode);
+                console.warn("[Region Selector] Annotation copy failed, code", exitCode);
                 root.dismiss();
                 return;
             }
-            root.annotationReady(path, root.screen);
+            const s = root.monitorScale;
+            root.annotationReady(path, root.screen, {
+                x: Math.round(root.regionX * s),
+                y: Math.round(root.regionY * s),
+                w: Math.round(root.regionWidth * s),
+                h: Math.round(root.regionHeight * s)
+            });
             root.dismiss();
         }
     }

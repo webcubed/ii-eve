@@ -20,11 +20,13 @@ Scope {
     property bool annotateOpen: false
     property string annotatePath: ""
     property var annotateScreen: null
+    property var annotateRegion: null // selected rect, image px
 
     AnnotationEditor {
         visible: root.annotateOpen
         imagePath: root.annotatePath
         targetScreen: root.annotateScreen
+        region: root.annotateRegion
         onDismiss: root.annotateOpen = false
     }
 
@@ -45,9 +47,10 @@ Scope {
                 onDismiss: root.dismiss()
                 // Close the selector first, open the editor on the next tick so
                 // the two layer-shell surfaces never coexist (same reason as Translate).
-                onAnnotationReady: (path, targetScreen) => {
+                onAnnotationReady: (path, targetScreen, region) => {
                     root.annotatePath = path;
                     root.annotateScreen = targetScreen;
+                    root.annotateRegion = region;
                     Qt.callLater(() => root.annotateOpen = true);
                 }
                 action: root.action
