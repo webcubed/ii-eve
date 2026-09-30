@@ -89,69 +89,140 @@ Item {
             }
         }
 
-        // Minutes stepper: [−] current value [+] — same pattern as the modal
-        Rectangle {
+        // Time control: coarse jumps flanking the ±1m stepper — one row.
+        // With ±15m/±1h available, only a few direct presets are needed.
+        RowLayout {
             Layout.alignment: Qt.AlignHCenter
-            implicitWidth: stepperRow.implicitWidth + 8
-            implicitHeight: 38
-            radius: Appearance.rounding.small
-            color: Appearance.colors.colLayer2
+            spacing: 6
 
-            RowLayout {
-                id: stepperRow
-                anchors.centerIn: parent
-                spacing: 2
-
-                RippleButton {
-                    implicitWidth: 36
-                    implicitHeight: 36
-                    buttonRadius: Appearance.rounding.small
-                    enabled: !TimerService.countdownRunning
-                    onClicked: adjustMinutes(-1)
-                    colBackground: Appearance.colors.colLayer3
-                    colBackgroundHover: Appearance.colors.colLayer3Hover
-
-                    contentItem: MaterialSymbol {
-                        anchors.centerIn: parent
-                        text: "remove"
-                        iconSize: 20
-                        color: Appearance.colors.colOnLayer2
-                    }
-                }
-
-                StyledText {
-                    Layout.leftMargin: 4
-                    Layout.rightMargin: 4
-                    text: {
-                        const mins = TimerService.countdownDuration > 0
-                            ? Math.round(TimerService.countdownDuration / 60) : 1;
-                        return `${mins}m`;
-                    }
+            RippleButton {
+                implicitWidth: 46
+                implicitHeight: 38
+                buttonRadius: Appearance.rounding.small
+                enabled: !TimerService.countdownRunning
+                onClicked: adjustMinutes(-60)
+                colBackground: Appearance.colors.colLayer2
+                colBackgroundHover: Appearance.colors.colLayer2Hover
+                contentItem: StyledText {
+                    anchors.centerIn: parent
+                    text: "-1h"
                     font.pixelSize: Appearance.font.pixelSize.small
                     font.weight: Font.DemiBold
                     color: Appearance.colors.colOnLayer2
                 }
+            }
+            RippleButton {
+                implicitWidth: 46
+                implicitHeight: 38
+                buttonRadius: Appearance.rounding.small
+                enabled: !TimerService.countdownRunning
+                onClicked: adjustMinutes(-15)
+                colBackground: Appearance.colors.colLayer2
+                colBackgroundHover: Appearance.colors.colLayer2Hover
+                contentItem: StyledText {
+                    anchors.centerIn: parent
+                    text: "-15m"
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    font.weight: Font.DemiBold
+                    color: Appearance.colors.colOnLayer2
+                }
+            }
 
-                RippleButton {
-                    implicitWidth: 36
-                    implicitHeight: 36
-                    buttonRadius: Appearance.rounding.small
-                    enabled: !TimerService.countdownRunning
-                    onClicked: adjustMinutes(1)
-                    colBackground: Appearance.colors.colLayer3
-                    colBackgroundHover: Appearance.colors.colLayer3Hover
+            Rectangle {
+                implicitWidth: stepperRow.implicitWidth + 8
+                implicitHeight: 38
+                radius: Appearance.rounding.small
+                color: Appearance.colors.colLayer2
 
-                    contentItem: MaterialSymbol {
-                        anchors.centerIn: parent
-                        text: "add"
-                        iconSize: 20
+                RowLayout {
+                    id: stepperRow
+                    anchors.centerIn: parent
+                    spacing: 2
+
+                    RippleButton {
+                        implicitWidth: 36
+                        implicitHeight: 36
+                        buttonRadius: Appearance.rounding.small
+                        enabled: !TimerService.countdownRunning
+                        onClicked: adjustMinutes(-1)
+                        colBackground: Appearance.colors.colLayer3
+                        colBackgroundHover: Appearance.colors.colLayer3Hover
+
+                        contentItem: MaterialSymbol {
+                            anchors.centerIn: parent
+                            text: "remove"
+                            iconSize: 20
+                            color: Appearance.colors.colOnLayer2
+                        }
+                    }
+
+                    StyledText {
+                        Layout.leftMargin: 4
+                        Layout.rightMargin: 4
+                        text: {
+                            const mins = TimerService.countdownDuration > 0
+                                ? Math.round(TimerService.countdownDuration / 60) : 1;
+                            return `${mins}m`;
+                        }
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        font.weight: Font.DemiBold
                         color: Appearance.colors.colOnLayer2
                     }
+
+                    RippleButton {
+                        implicitWidth: 36
+                        implicitHeight: 36
+                        buttonRadius: Appearance.rounding.small
+                        enabled: !TimerService.countdownRunning
+                        onClicked: adjustMinutes(1)
+                        colBackground: Appearance.colors.colLayer3
+                        colBackgroundHover: Appearance.colors.colLayer3Hover
+
+                        contentItem: MaterialSymbol {
+                            anchors.centerIn: parent
+                            text: "add"
+                            iconSize: 20
+                            color: Appearance.colors.colOnLayer2
+                        }
+                    }
+                }
+            }
+
+            RippleButton {
+                implicitWidth: 46
+                implicitHeight: 38
+                buttonRadius: Appearance.rounding.small
+                enabled: !TimerService.countdownRunning
+                onClicked: adjustMinutes(15)
+                colBackground: Appearance.colors.colLayer2
+                colBackgroundHover: Appearance.colors.colLayer2Hover
+                contentItem: StyledText {
+                    anchors.centerIn: parent
+                    text: "+15m"
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    font.weight: Font.DemiBold
+                    color: Appearance.colors.colOnLayer2
+                }
+            }
+            RippleButton {
+                implicitWidth: 46
+                implicitHeight: 38
+                buttonRadius: Appearance.rounding.small
+                enabled: !TimerService.countdownRunning
+                onClicked: adjustMinutes(60)
+                colBackground: Appearance.colors.colLayer2
+                colBackgroundHover: Appearance.colors.colLayer2Hover
+                contentItem: StyledText {
+                    anchors.centerIn: parent
+                    text: "+1h"
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    font.weight: Font.DemiBold
+                    color: Appearance.colors.colOnLayer2
                 }
             }
         }
 
-        // Presets: uniform 4-column grid so rows never wrap unevenly
+        // A few direct presets (the coarse jumps cover everything else)
         GridLayout {
             columns: 4
             columnSpacing: 6
@@ -160,7 +231,7 @@ Item {
             Layout.fillWidth: true
 
             Repeater {
-                model: [1, 5, 10, 15, 25, 45, 60, 90]
+                model: [10, 25, 60, 90]
                 delegate: RippleButton {
                     required property int modelData
                     property bool isSelected: TimerService.countdownDuration === modelData * 60
