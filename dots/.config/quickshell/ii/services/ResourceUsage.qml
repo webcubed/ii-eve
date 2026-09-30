@@ -1,6 +1,7 @@
 pragma Singleton
 pragma ComponentBehavior: Bound
 
+import qs
 import qs.modules.common
 import QtQuick
 import Quickshell
@@ -86,9 +87,20 @@ Singleton {
         updateCpuUsageHistory()
     }
 
+    // Poll only while a consumer can actually be seen: the bar (unloaded when
+    // hidden/locked, live widgets culled in fullscreen), the background
+    // resources widget (occluded → unload, fullscreen → hidden), or the
+    // dashboard resources section.
+    readonly property bool pollingVisible: {
+        const bar = GlobalStates.barOpen && !GlobalStates.screenLocked && !GlobalStates.fullscreenActive;
+        const bg = Config.ready && (Config.options.background.widgets.resources?.enable ?? false)
+            && GlobalStates.widgetsVisible && !GlobalStates.fullscreenActive;
+        return bar || bg || GlobalStates.dashboardPanelOpen;
+    }
+
 	Timer {
 		interval: Config.options?.resources?.updateInterval ?? 3000
-        running: true 
+        running: root.pollingVisible
         repeat: true
 		onTriggered: {
             // Reload files
@@ -203,18 +215,36 @@ Singleton {
 
     Timer {
         interval: 60000
-        running: true
+        running: root.pollingVisible
         repeat: true
         onTriggered: diskProc.running = true
     }
 
+    // CPU temp + GPU probe merged into ONE fork (was two Processes on two timers).
     Process {
-        id: tempProc
-        command: ["bash", "-c", "sensors | awk '/Tctl:/ {print $2}; /Package id 0:/ {print $4}' | head -1 | tr -d '+' | cut -d'.' -f1"]
+        id: hwProbeProc
+        environment: ({ LANG: "C", LC_ALL: "C" })
+        command: ["bash", "-c",
+            "echo cpu:$(sensors | awk '/Tctl:/ {print $2}; /Package id 0:/ {print $4}' | head -1 | tr -d '+' | cut -d'.' -f1); "
+            + "if command -v nvidia-smi &>/dev/null; then nvidia-smi --query-gpu=utilization.gpu,temperature.gpu,name --format=csv,noheader,nounits 2>/dev/null | head -1; "
+            + "elif [ -f /sys/class/drm/card0/device/gpu_busy_percent ]; then u=$(cat /sys/class/drm/card0/device/gpu_busy_percent); "
+            + "t=$(sensors 2>/dev/null | awk '/junction:/{print $2}' | tr -d '+' | cut -d. -f1 | head -1); [ -z \"$t\" ] && t=\"--\"; "
+            + "n=$(cat /sys/class/drm/card0/device/product_name 2>/dev/null || echo 'AMD GPU'); echo \"$u, $t, $n\"; fi"]
         stdout: StdioCollector {
             onStreamFinished: {
-                if (text.length > 0) {
-                    root.cpuTemp = text.trim() + "°C";
+                for (const line of text.split("\n")) {
+                    const l = line.trim();
+                    if (l.startsWith("cpu:")) {
+                        const v = l.slice(4).trim();
+                        if (v.length > 0) root.cpuTemp = v + "°C";
+                    } else if (l.includes(",")) {
+                        const parts = l.split(/,\s*/);
+                        if (parts.length >= 3) {
+                            root.gpuUsage = parseFloat(parts[0]) / 100;
+                            root.gpuTemp = parts[1].trim() + "°C";
+                            root.gpuModel = parts.slice(2).join(", ").trim();
+                        }
+                    }
                 }
             }
         }
@@ -222,36 +252,13 @@ Singleton {
 
     Timer {
         interval: 3000
-        running: true
+        running: root.pollingVisible
         repeat: true
-        onTriggered: tempProc.running = true
-    }
-
-    Process {
-        id: gpuProc
-        command: ["bash", "-c", "if command -v nvidia-smi &>/dev/null; then nvidia-smi --query-gpu=utilization.gpu,temperature.gpu,name --format=csv,noheader,nounits 2>/dev/null | head -1; elif [ -f /sys/class/drm/card0/device/gpu_busy_percent ]; then u=$(cat /sys/class/drm/card0/device/gpu_busy_percent); t=$(sensors 2>/dev/null | awk '/junction:/{print $2}' | tr -d '+' | cut -d. -f1 | head -1); [ -z \"$t\" ] && t=\"--\"; n=$(cat /sys/class/drm/card0/device/product_name 2>/dev/null || echo 'AMD GPU'); echo \"$u, $t, $n\"; fi"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const parts = text.trim().split(/,\s*/)
-                if (parts.length >= 3) {
-                    root.gpuUsage = parseFloat(parts[0]) / 100
-                    root.gpuTemp = parts[1].trim() + "°C"
-                    root.gpuModel = parts.slice(2).join(", ").trim()
-                }
-            }
-        }
-    }
-
-    Timer {
-        interval: 3000
-        running: true
-        repeat: true
-        onTriggered: gpuProc.running = true
+        onTriggered: hwProbeProc.running = false, hwProbeProc.running = true
     }
 
     Component.onCompleted: {
         diskProc.running = true
-        tempProc.running = true
-        gpuProc.running = true
+        hwProbeProc.running = true
     }
 }

@@ -1,3 +1,4 @@
+import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -18,6 +19,11 @@ Item {
     property var originalIndex: index
     property bool vertical: false
     property bool highlighted: false
+
+    // Widgets that tick every second — culled while fullscreen (the bar is
+    // covered then), reloaded on exit. `date` rides along (same update path).
+    readonly property var liveUpdateIds: ["clock", "date", "system_monitor", "network_speed", "music_player", "timer"]
+    readonly property bool cullLiveUpdates: GlobalStates.fullscreenActive
 
     implicitWidth: wrapper.implicitWidth
     implicitHeight: wrapper.implicitHeight
@@ -171,7 +177,7 @@ Item {
 
         Loader {
             id: itemLoader
-            active: true
+            active: !(rootItem.cullLiveUpdates && rootItem.liveUpdateIds.includes(modelData.id))
             sourceComponent: {
                 BarComponentRegistry._extensionCompVersion; // re-evaluate when extensions change
                 let comps = compMap[modelData.id];

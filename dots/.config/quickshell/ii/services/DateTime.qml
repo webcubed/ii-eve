@@ -26,9 +26,10 @@ Singleton {
     property string uptime: "0h, 0m"
 
     Timer {
-        interval: 10
+        interval: 60000 // uptime is minute-resolution; was a 10ms→1s poll for nothing
         running: true
         repeat: true
+        triggeredOnStart: true
         onTriggered: {
             fileUptime.reload();
             const textUptime = fileUptime.text();
@@ -48,7 +49,6 @@ Singleton {
             if (minutes > 0 || !formatted)
                 formatted += `${formatted ? ", " : ""}${minutes}m`;
             uptime = formatted;
-            interval = Config.options?.resources?.updateInterval ?? 3000;
         }
     }
 

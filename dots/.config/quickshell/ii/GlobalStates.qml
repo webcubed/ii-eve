@@ -38,9 +38,48 @@ Singleton {
     property bool superReleaseMightTrigger: true
     property bool wallpaperSelectorOpen: false
     property bool workspaceShowNumbers: false
+    readonly property bool widgetsOccluded: screenLocked || overviewOpen || appLauncherOpen || searchOpen || crosshairOpen || oskOpen || regionSelectorOpen || sessionOpen
+    readonly property bool widgetsVisible: !widgetsOccluded
+
+    // Focused window is fullscreen → the bar is covered, so its per-second
+    // widgets get culled (BarComponent) and pollers pause (ResourceUsage).
+    // Fed by the Hyprland socket2 `fullscreen` event (data 0/1) via onRawEvent.
+    property bool fullscreenActive: false
+    Connections {
+        target: Hyprland
+        function onRawEvent(event) {
+            if (event.name === "fullscreen")
+                root.fullscreenActive = event.data === "1";
+        }
+    }
+    // Initial sync — the event only fires on change, not at startup.
+    Process {
+        command: ["hyprctl", "activewindow", "-j"]
+        running: true
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    root.fullscreenActive = Number(JSON.parse(text).fullscreen ?? 0) > 0;
+                } catch (e) {} // no focused window / non-JSON error output
+            }
+        }
+    }
+    property bool settingsOpen: false
+    property list<real> visualizerPoints: []
+    property bool phoneMicRunning: false
+    property bool phoneCameraRunning: false
 
     property bool dashboardPanelOpen: false // formerly sidebarRightOpen
     property bool policiesPanelOpen: false  // formerly sidebarLeftOpen
+
+    /** AiChat asks for a screen snip to attach; RegionSelector answers. */
+    signal snipForAiRequested()
+
+    // P3DROVFX fork additions: detached/pinned sidebar
+    property bool policiesDetached: false
+    property bool policiesPinned: false
+    property bool policiesExtended: false
+    readonly property real policiesWidth: Config.options.sidebar.policiesWidth ?? 400
 
     readonly property bool effectiveLeftOpen: {
         switch (Config.options.sidebar.position) {

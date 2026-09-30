@@ -322,6 +322,10 @@ Widgets can be snapped to a grid instead of free-positioned:
 - A `Connections` handler on `bgRoot.draggingWidget` triggers immediate repaint when dragging starts/ends
 - A polling `Timer` (200ms) keeps the overlay repainted while visible
 - Widget hitbox (cell highlight) appears at the current drag position
+- **Now enabled**: config has `cullWhenOccluded: true`. Additionally, bar
+  widgets that tick every second (`BarComponent.liveUpdateIds`: clock, date,
+  system_monitor, network_speed, music_player, timer) unload entirely while
+  `GlobalStates.fullscreenActive` (the bar is covered in fullscreen).
 - When grid is enabled, widgets snap to grid cells on release
 - `AbstractBackgroundWidget.qml` computes `gridCellWidth`/`gridCellHeight` from `scaledScreenWidth`/`scaledScreenHeight`
 - Grid position is saved back to config (`configEntry.gridColumn`/`gridRow`) on drag release
@@ -385,6 +389,19 @@ neighboring buttons (e.g. the selector's close Fab). Stretched contexts (sidebar
 `Layout.fillWidth`) are driven by the parent layout and unaffected by this
 value. If tabs look clipped or a phantom pill appears behind a neighbor, check
 this first.
+
+### 15. Hyprland Events Are Native — No socat Needed
+
+`Connections { target: Hyprland; function onRawEvent(event) {...} }` streams
+socket2 events as `event.name`/`event.data` (precedent: `Brightness.qml`).
+The `fullscreen` event (data `0/1`) drives `GlobalStates.fullscreenActive`,
+startup-synced via `hyprctl activewindow -j`. Per-second work is gated on it:
+`ResourceUsage.pollingVisible` (bar open + not locked + not fullscreen, or the
+background resources widget visible, or dashboard open),
+`WorldClock.widgetVisible` (enable flag + `widgetsVisible` + not fullscreen),
+and `BarComponent.cullLiveUpdates`. `DateTime`'s uptime timer runs at 60 s
+with `triggeredOnStart` — never tie it to `resources.updateInterval`.
+ResourceUsage merges its temp+GPU probes into one `hwProbeProc` fork.
 
 ## Module Import Reference
 
