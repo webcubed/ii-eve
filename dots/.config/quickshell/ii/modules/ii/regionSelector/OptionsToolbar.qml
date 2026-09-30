@@ -34,4 +34,14 @@ Toolbar {
             root.selectionMode = currentIndex === 0 ? RegionSelection.SelectionMode.RectCorners : RegionSelection.SelectionMode.Circle;
         }
     }
+
+    // Toggle annotate mode: the next snip opens the built-in editor
+    IconToolbarButton {
+        text: "draw"
+        toggled: root.action === RegionSelection.SnipAction.Edit
+        onClicked: root.action = toggled ? RegionSelection.SnipAction.Copy : RegionSelection.SnipAction.Edit
+        StyledToolTip {
+            text: Translation.tr("Annotate")
+        }
+    }
 }

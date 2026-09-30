@@ -11,6 +11,8 @@ Item {
     property alias currentIndex: tabBar.currentIndex
     required property var tabButtonList
     property int maxTextTabs: 99
+    property bool editMode: false
+    signal tabReordered(int fromIndex, int toIndex)
 
     function incrementCurrentIndex() {
         tabBar.incrementCurrentIndex();
@@ -22,9 +24,15 @@ Item {
         tabBar.setCurrentIndex(index);
     }
 
-    Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
+    Layout.fillWidth: true
+    // Natural width, not 0: toolbars sized from implicitWidth (region selector,
+    // cheatsheet) need the tab width in the sum, else the pill collapses and
+    // the unclipped activeIndicator spills over neighbors (the close Fab).
+    // fillWidth still stretches the bar when the toolbar has extra room.
     implicitWidth: contentItem.implicitWidth
     implicitHeight: 40
+
+    property int _dragFromIndex: -1
 
     property Component delegate: ToolbarTabButton {
         required property int index
@@ -33,20 +41,80 @@ Item {
         showLabel: root.tabButtonList.length <= root.maxTextTabs || current
         text: modelData.name
         materialSymbol: modelData.icon
-        onClicked: {
-            root.setCurrentIndex(index);
+
+        MouseArea {
+            anchors.fill: parent
+            z: 10
+            acceptedButtons: Qt.LeftButton
+            cursorShape: root.editMode ? Qt.OpenHandCursor : Qt.PointingHandCursor
+
+            property bool didDrag: false
+            property real pressX: 0
+
+            onPressed: (mouse) => {
+                didDrag = false;
+                pressX = mouse.x;
+                if (root.editMode) {
+                    root._dragFromIndex = parent.index;
+                    parent.opacity = 0.7;
+                }
+            }
+            onPositionChanged: (mouse) => {
+                if (root.editMode && pressed && !didDrag && Math.abs(mouse.x - pressX) > 10) {
+                    didDrag = true;
+                }
+            }
+            onReleased: (mouse) => {
+                parent.opacity = 1;
+                const fromIdx = root._dragFromIndex;
+                root._dragFromIndex = -1;
+                if (!root.editMode || !didDrag || fromIdx < 0) return;
+                const myX = mapToItem(contentItem, mouse.x, 0).x;
+                let targetIdx = fromIdx;
+                const count = repeater.count;
+                for (let i = 0; i < count; i++) {
+                    if (i === fromIdx) continue;
+                    const child = repeater.itemAt(i);
+                    if (!child) continue;
+                    const center = child.x + child.width / 2;
+                    if (myX < center && i < fromIdx) {
+                        targetIdx = i;
+                        break;
+                    } else if (myX > center && i > fromIdx) {
+                        targetIdx = i;
+                    }
+                }
+                if (targetIdx !== fromIdx) {
+                    root.tabReordered(fromIdx, targetIdx);
+                }
+            }
+            onClicked: (mouse) => {
+                if (root.editMode && didDrag) return;
+                root.setCurrentIndex(parent.index);
+            }
         }
     }
 
-    Row {
-        id: contentItem
+    Flickable {
+        id: flickable
         z: 1
-        anchors.centerIn: parent
-        spacing: 4
+        width: root.width
+        height: root.implicitHeight
+        contentWidth: contentItem.implicitWidth
+        contentHeight: height
+        clip: true
+        flickableDirection: Flickable.HorizontalFlick
+        boundsBehavior: Flickable.StopAtBounds
 
-        Repeater {
-            model: root.tabButtonList
-            delegate: root.delegate
+        Row {
+            id: contentItem
+            spacing: 4
+
+            Repeater {
+                id: repeater
+                model: root.tabButtonList
+                delegate: root.delegate
+            }
         }
     }
 
@@ -72,8 +140,8 @@ Item {
             idx2Duration: 200
             index: activeIndicator.targetItem?.x + activeIndicator.targetItem?.width ?? 0
         }
-        x: Math.min(leftBound.idx1, leftBound.idx2)
-        width: Math.max(rightBound.idx1, rightBound.idx2) - x
+        x: Math.min(leftBound.idx1, leftBound.idx2) - flickable.contentX
+        width: Math.max(rightBound.idx1, rightBound.idx2) - Math.min(leftBound.idx1, leftBound.idx2)
     }
 
     MouseArea {

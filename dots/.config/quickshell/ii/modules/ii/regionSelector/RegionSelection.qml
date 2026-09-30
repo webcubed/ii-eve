@@ -39,6 +39,8 @@ PanelWindow {
     property var selectionMode: RegionSelection.SelectionMode.RectCorners
     property var phase: RegionSelection.Phase.Select
     signal dismiss()
+    // Built-in annotation editor handoff (Edit action): crop file + the screen it came from.
+    signal annotationReady(string path, var targetScreen)
 
     // Styles
     property string screenshotDir: Directories.screenshotTemp
@@ -278,6 +280,7 @@ PanelWindow {
         if (root.regionWidth <= 0 || root.regionHeight <= 0) {
             console.warn("[Region Selector] Invalid region size, skipping snip.");
             root.dismiss();
+            return;
         }
 
         // Clamp region to screen bounds
@@ -308,12 +311,22 @@ PanelWindow {
             return;
         }
 
-        // Adjust action
-        if (root.action === RegionSelection.SnipAction.Copy || root.action === RegionSelection.SnipAction.Edit) { 
-            root.action = root.mouseButton === Qt.RightButton ? RegionSelection.SnipAction.Edit : RegionSelection.SnipAction.Copy;
+        // Adjust action: RMB during a Copy snip annotates. An Edit snip entered
+        // explicitly (RegionSelector.annotate) stays Edit on either button.
+        if (root.action === RegionSelection.SnipAction.Copy && root.mouseButton === Qt.RightButton) {
+            root.action = RegionSelection.SnipAction.Edit;
         }
-        if (root.action === RegionSelection.SnipAction.Search || root.action === RegionSelection.SnipAction.AskAI) {
-            root.action = root.mouseButton === Qt.RightButton ? RegionSelection.SnipAction.AskAI : RegionSelection.SnipAction.Search;
+        if (root.action === RegionSelection.SnipAction.Search && root.mouseButton === Qt.RightButton) {
+            // The Search hotkey's right-click variant asks AI; entering with
+            // AskAI (from the chat) keeps it on either button.
+            root.action = RegionSelection.SnipAction.AskAI;
+        }
+
+        // Annotate: crop to a file while still on screen (the crop needs the
+        // screenshot file alive), then hand the result to AnnotationEditor.
+        if (root.action === RegionSelection.SnipAction.Edit) {
+            root.cropForAnnotation();
+            return;
         }
         
         const screenshotDir = Config.options.screenSnip.savePath !== "" ? //
@@ -344,6 +357,36 @@ PanelWindow {
     // Dont use anything like stdout here, this is being called detached
     Process {
         id: snipProc
+    }
+
+    // Crop the selection into a standalone file, then open the built-in
+    // annotation editor on it. The screenshot file is deleted after crop.
+    property string pendingAnnotatePath: ""
+    function cropForAnnotation() {
+        if (root.pendingAnnotatePath !== "") return; // already running
+        const outPath = `${root.screenshotDir}/annotate-${Date.now()}.png`;
+        root.pendingAnnotatePath = outPath;
+        annotateCropProc.command = ["bash", "-c",
+            `magick '${StringUtils.shellSingleQuoteEscape(root.screenshotPath)}' `
+            + `-crop ${Math.round(root.regionWidth * root.monitorScale)}x${Math.round(root.regionHeight * root.monitorScale)}`
+            + `+${Math.round(root.regionX * root.monitorScale)}+${Math.round(root.regionY * root.monitorScale)} `
+            + `+repage '${StringUtils.shellSingleQuoteEscape(outPath)}' `
+            + `&& rm -f '${StringUtils.shellSingleQuoteEscape(root.screenshotPath)}'`];
+        annotateCropProc.running = true;
+    }
+    Process {
+        id: annotateCropProc
+        onExited: (exitCode, exitStatus) => {
+            const path = root.pendingAnnotatePath;
+            root.pendingAnnotatePath = "";
+            if (exitCode !== 0 || path === "") {
+                console.warn("[Region Selector] Annotation crop failed, code", exitCode);
+                root.dismiss();
+                return;
+            }
+            root.annotationReady(path, root.screen);
+            root.dismiss();
+        }
     }
 
     ScreencopyView { // For freezing

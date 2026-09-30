@@ -12,8 +12,9 @@ Item {
 
     property string description: switch (root.action) {
     case RegionSelection.SnipAction.Copy:
-    case RegionSelection.SnipAction.Edit:
         return Translation.tr("Copy region (LMB) or annotate (RMB)");
+    case RegionSelection.SnipAction.Edit:
+        return Translation.tr("Annotate region");
     case RegionSelection.SnipAction.Search:
         root.duration = 1500;
         return Translation.tr("Use Google Lens (LMB) or ask AI (RMB)");
@@ -25,8 +26,9 @@ Item {
     }
     property string materialSymbol: switch (root.action) {
     case RegionSelection.SnipAction.Copy:
-    case RegionSelection.SnipAction.Edit:
         return "content_cut";
+    case RegionSelection.SnipAction.Edit:
+        return "draw";
     case RegionSelection.SnipAction.Search:
         return "image_search";
     case RegionSelection.SnipAction.CharRecognition:

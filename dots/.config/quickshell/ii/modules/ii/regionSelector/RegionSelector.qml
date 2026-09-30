@@ -16,6 +16,18 @@ Scope {
     property var action: RegionSelection.SnipAction.Copy
     property var selectionMode: RegionSelection.SelectionMode.RectCorners
 
+    // Built-in annotation editor state (opened after a snip with the Edit action)
+    property bool annotateOpen: false
+    property string annotatePath: ""
+    property var annotateScreen: null
+
+    AnnotationEditor {
+        visible: root.annotateOpen
+        imagePath: root.annotatePath
+        targetScreen: root.annotateScreen
+        onDismiss: root.annotateOpen = false
+    }
+
     Variants {
         model: Quickshell.screens
         
@@ -31,6 +43,13 @@ Scope {
             sourceComponent: RegionSelection {
                 screen: regionSelectorLoader.modelData
                 onDismiss: root.dismiss()
+                // Close the selector first, open the editor on the next tick so
+                // the two layer-shell surfaces never coexist (same reason as Translate).
+                onAnnotationReady: (path, targetScreen) => {
+                    root.annotatePath = path;
+                    root.annotateScreen = targetScreen;
+                    Qt.callLater(() => root.annotateOpen = true);
+                }
                 action: root.action
                 selectionMode: root.selectionMode
             }
@@ -39,6 +58,12 @@ Scope {
 
     function screenshot() {
         root.action = RegionSelection.SnipAction.Copy
+        root.selectionMode = RegionSelection.SelectionMode.RectCorners
+        GlobalStates.regionSelectorOpen = true
+    }
+
+    function annotate() {
+        root.action = RegionSelection.SnipAction.Edit
         root.selectionMode = RegionSelection.SelectionMode.RectCorners
         GlobalStates.regionSelectorOpen = true
     }
@@ -65,6 +90,21 @@ Scope {
         GlobalStates.regionSelectorOpen = true
     }
 
+    // "Send part of the screen" in the AI chat: snip goes to the clipboard,
+    // RegionSelection calls Ai.handleClipboardAndAttach() when it's done.
+    function askAI() {
+        root.action = RegionSelection.SnipAction.AskAI
+        root.selectionMode = RegionSelection.SelectionMode.RectCorners
+        GlobalStates.regionSelectorOpen = true
+    }
+
+    Connections {
+        target: GlobalStates
+        function onSnipForAiRequested() {
+            root.askAI()
+        }
+    }
+
     function record() {
         root.action = RegionSelection.SnipAction.Record
         root.selectionMode = RegionSelection.SelectionMode.RectCorners
@@ -87,6 +127,9 @@ Scope {
         function screenshot() {
             root.screenshot()
         }
+        function annotate() {
+            root.annotate()
+        }
         function search() {
             root.search()
         }
@@ -108,6 +151,11 @@ Scope {
         name: "regionScreenshot"
         description: "Takes a screenshot of the selected region"
         onPressed: root.screenshot()
+    }
+    GlobalShortcut {
+        name: "regionAnnotate"
+        description: "Snips the selected region and opens the annotation editor"
+        onPressed: root.annotate()
     }
     GlobalShortcut {
         name: "regionSearch"

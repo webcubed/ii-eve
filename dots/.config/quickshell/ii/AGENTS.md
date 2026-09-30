@@ -326,6 +326,55 @@ Widgets can be snapped to a grid instead of free-positioned:
 - `AbstractBackgroundWidget.qml` computes `gridCellWidth`/`gridCellHeight` from `scaledScreenWidth`/`scaledScreenHeight`
 - Grid position is saved back to config (`configEntry.gridColumn`/`gridRow`) on drag release
 
+### 13. AI Attachments Go Through `scripts/ai/attach.py`
+
+Every file the AI panel touches runs `python3 scripts/ai/attach.py <cmd>`:
+`probe <path>` (metadata JSON), `extract <path>` (text JSON), `inject <body> <spec>`
+(write base64/text/extract into the request body at `@@II_ATT_n@@` markers),
+`search <rootsJson> <query> <limit> <kindsJson>`, `peek <path> <maxChars>`.
+If this file is missing, stdout is empty, `JSON.parse` throws in `Ai.qml`, and
+every attach fails with "Could not read that file." — **always print JSON on
+stdout for probe/extract/search/peek** (errors as `{"error": ...}`, `inject`
+exits non-zero with a plain message instead).
+
+Screen snip → attach chain: `AiChat` emits `GlobalStates.snipForAiRequested()`
+→ `RegionSelector.askAI()` sets `action = AskAI` and opens → `RegionSelection.snip()`
+pipes the crop to `wl-copy` and calls `Ai.handleClipboardAndAttach()` → cliphist
+entry decoded → `Ai.attachFile()`. `GlobalStates` carries signals, not just
+booleans — cross-component requests go through it.
+
+Snip → annotate chain (built-in editor): entry via `SnipAction.Edit` (toolbar
+`draw` toggle in `OptionsToolbar`, RMB during a Copy snip, ipc `region annotate`,
+or GlobalShortcut `regionAnnotate`) → `RegionSelection.cropForAnnotation()`
+magick-crops to `screenshotTemp/annotate-<ts>.png`, then emits
+`annotationReady(path, screen)` → `RegionSelector` sets path/screen, dismisses
+the selector first, and opens `AnnotationEditor` on the next tick
+(`Qt.callLater`) — layer-shell surfaces must never coexist (same reason as
+Translate). The editor draws pen/highlight/arrow/shapes/text on a `Canvas` over
+the crop, composites via `view.grabToImage()`, then `wl-copy -t image/png` /
+save-to-`screenSnip.savePath` / handoff to external editor
+(`useSatty ? satty : swappy` — currently satty). RMB→Edit no longer remaps
+Edit→Copy on LMB: only `Copy + RMB` flips to Edit.
+Shapes: the toolbar shape button opens a drop-up (`shapeMenuOpen`, anchored
+above the toolbar, backdrop MouseArea z:9 closes it) offering rect/ellipse/
+triangle (`shapeList`); `drawShape` renders ellipse as 4 beziers (Qt Canvas has
+no `ctx.ellipse`). Per-session reset: `resetState()` runs on `visible` AND
+`imagePath` change and MUST call `canvas.requestPaint()` — the Canvas bitmap
+survives hide/show, so without the repaint the previous snip's drawings stay on
+screen over the new crop.
+
+### 14. ToolbarTabBar Sizes Unstretched Toolbars via `implicitWidth`
+
+`ToolbarTabBar.implicitWidth` must stay `contentItem.implicitWidth` (natural
+tab width), never `0`: `Toolbar` derives its pill width from
+`toolbarLayout.implicitWidth`, so a 0 collapses the pill in toolbars that are
+NOT externally stretched (region selector Row, cheatsheet) — the tab Flickable
+gets ~0 width (tabs invisible) and the unclipped `activeIndicator` spills over
+neighboring buttons (e.g. the selector's close Fab). Stretched contexts (sidebar
+`Layout.fillWidth`) are driven by the parent layout and unaffected by this
+value. If tabs look clipped or a phantom pill appears behind a neighbor, check
+this first.
+
 ## Module Import Reference
 
 ```
