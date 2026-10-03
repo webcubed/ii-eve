@@ -161,6 +161,9 @@ Item {
     BarGroup {
         id: wrapper
         vertical: rootItem.vertical
+        // Culled group = nothing to show; collapse the pill instead of
+        // leaving an empty shell (Row skips invisible children entirely).
+        visible: itemLoader.active
         anchors {
             verticalCenter: root.vertical ? rootItem.verticalCenter : undefined
             horizontalCenter: root.vertical ? undefined : rootItem.horizontalCenter

@@ -44,7 +44,7 @@ AbstractWidget {
     y: targetY
     opacity: {
         if (GlobalStates.screenLocked && !visibleWhenLocked) return 0;
-        if (Config.options.background.widgets.cullWhenOccluded && GlobalStates.widgetsOccluded) return 0;
+        if (Config.options.background.widgets.cullWhenOccluded && GlobalStates.widgetsHidden) return 0;
         return 1;
     }
     Behavior on opacity {

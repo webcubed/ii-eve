@@ -304,9 +304,15 @@ proc.exec(["cmd", args])
 Background widgets (`modules/ii/background/widgets/`) are always loaded when enabled. To reduce GPU/CPU usage, use the cull-on-occlude feature:
 
 - **Config**: `Config.options.background.widgets.cullWhenOccluded` (bool)
-- **State**: `GlobalStates.widgetsOccluded` (true when overview, app launcher, search, lock screen, OSK, etc. are open)
-- When cull is enabled, `FadeLoader.shown` bindings in `Background.qml` add `&& !bgRoot.widgetsOccluded`
+- **State**: cull fires only on `GlobalStates.widgetsHidden` (`screenLocked ||
+  fullscreenActive`) — the states where widgets are actually invisible.
+  Transient overlays (search, overview, launcher, OSK, …) leave widgets
+  visible, so they must NOT cull (user report: search-key culling was wrong).
+  `GlobalStates.widgetsOccluded` (the overlay list) still drives
+  `widgetsVisible`/polling gates — don't cull from it.
+- When cull is enabled, `FadeLoader.shown` bindings in `Background.qml` add `&& !bgRoot.widgetsOccluded` (backed by `widgetsHidden`)
 - `AbstractBackgroundWidget.qml` opacity also checks this, so even extension-loaded widgets are culled
+- Culled **bar** groups also hide: `BarComponent` wrapper `visible: itemLoader.active` — otherwise the empty `BarGroup` pill stays on screen (the "empty pills" artifact; Row skips invisible children, so the layout reflows cleanly)
 
 ### 12. Background Widget Grid Placement
 
@@ -394,8 +400,16 @@ this first.
 
 `Connections { target: Hyprland; function onRawEvent(event) {...} }` streams
 socket2 events as `event.name`/`event.data` (precedent: `Brightness.qml`).
-The `fullscreen` event (data `0/1`) drives `GlobalStates.fullscreenActive`,
-startup-synced via `hyprctl activewindow -j`. Per-second work is gated on it:
+`GlobalStates.fullscreenActive` = the FOCUSED window is fullscreen — but
+event-driven inference alone went stale (culling visible widgets until the
+user forced a focus event), so detection is self-verifying:
+`fullscreen`/`activewindow`/`activewindowv2`/`workspace`/`workspacev2`
+events restart a 150 ms debounce → `requestFullscreenSync()` → queued
+`fsSyncProc.exec(["hyprctl","activewindow","-j"])` (queue flag if the
+process is running — failures leave the flag as-is, fail-open toward
+SHOWING widgets), plus a 2 s heartbeat `Timer` that only runs while the flag
+is `true` (stale-true can't outlive 2 s; zero forks when false), plus the
+startup sync. Per-second work is gated on it:
 `ResourceUsage.pollingVisible` (bar open + not locked + not fullscreen, or the
 background resources widget visible, or dashboard open),
 `WorldClock.widgetVisible` (enable flag + `widgetsVisible` + not fullscreen),

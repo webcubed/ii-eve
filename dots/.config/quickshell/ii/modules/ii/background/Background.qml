@@ -163,7 +163,9 @@ Variants {
         }
 
         property bool mediaModeOpen: mediaModeLoader.active && MprisController.activePlayer
-        readonly property bool widgetsOccluded: GlobalStates.widgetsOccluded && Config.options.background.widgets.cullWhenOccluded
+        // Cull only when widgets are truly hidden (lock/fullscreen), not on
+        // transient overlays like search — widgets stay visible around those.
+        readonly property bool widgetsOccluded: GlobalStates.widgetsHidden && Config.options.background.widgets.cullWhenOccluded
         property bool draggingWidget: false
         property var draggingWidgetCell: Qt.point(-1, -1) // {x: col, y: row} or invalid
         onMediaModeOpenChanged: {

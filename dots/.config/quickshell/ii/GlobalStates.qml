@@ -40,22 +40,49 @@ Singleton {
     property bool workspaceShowNumbers: false
     readonly property bool widgetsOccluded: screenLocked || overviewOpen || appLauncherOpen || searchOpen || crosshairOpen || oskOpen || regionSelectorOpen || sessionOpen
     readonly property bool widgetsVisible: !widgetsOccluded
+    // Widgets are fully hidden (lock screen / fullscreen window) — the only
+    // states where culling is correct. Transient overlays (search, overview,
+    // launcher, …) leave them visible, so occlusion culling must not fire there.
+    readonly property bool widgetsHidden: screenLocked || fullscreenActive
 
     // Focused window is fullscreen → the bar is covered, so its per-second
     // widgets get culled (BarComponent) and pollers pause (ResourceUsage).
-    // Fed by the Hyprland socket2 `fullscreen` event (data 0/1) via onRawEvent.
+    // Detection must never cull visibly-present widgets, so: resync from
+    // `hyprctl activewindow -j` (focused window is the closest observable
+    // proxy) on fullscreen/focus/workspace events, AND re-verify every 2 s
+    // while the flag is true (heartbeat; no forks when false). Sync failures
+    // leave the flag as-is → fail-open toward SHOWING widgets.
     property bool fullscreenActive: false
+    function requestFullscreenSync() {
+        if (fsSyncProc.running) { fsSyncQueued = true; return; }
+        fsSyncProc.exec(["hyprctl", "activewindow", "-j"]);
+    }
+    property bool fsSyncQueued: false
     Connections {
         target: Hyprland
         function onRawEvent(event) {
-            if (event.name === "fullscreen")
-                root.fullscreenActive = event.data === "1";
+            if (event.name === "fullscreen" || event.name === "activewindow"
+                || event.name === "activewindowv2" || event.name === "workspace"
+                || event.name === "workspacev2")
+                fsSyncDebounce.restart();
         }
     }
-    // Initial sync — the event only fires on change, not at startup.
+    // Debounced — focus events churn (window title changes), one fork per burst.
+    Timer {
+        id: fsSyncDebounce
+        interval: 150
+        onTriggered: root.requestFullscreenSync()
+    }
+    // Self-healing: a stale `true` can't outlive 2 s (e.g. workspace switches
+    // with no activewindow event, or a dropped sync at startup).
+    Timer {
+        interval: 2000
+        repeat: true
+        running: root.fullscreenActive
+        onTriggered: root.requestFullscreenSync()
+    }
     Process {
-        command: ["hyprctl", "activewindow", "-j"]
-        running: true
+        id: fsSyncProc
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
@@ -63,7 +90,15 @@ Singleton {
                 } catch (e) {} // no focused window / non-JSON error output
             }
         }
+        onExited: {
+            if (root.fsSyncQueued) {
+                root.fsSyncQueued = false;
+                fsSyncProc.exec(["hyprctl", "activewindow", "-j"]);
+            }
+        }
     }
+    // Initial sync — events only fire on change, not at startup.
+    Component.onCompleted: root.requestFullscreenSync()
     property bool settingsOpen: false
     property list<real> visualizerPoints: []
     property bool phoneMicRunning: false
