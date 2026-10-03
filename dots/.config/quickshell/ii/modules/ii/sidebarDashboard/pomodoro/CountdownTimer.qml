@@ -13,23 +13,38 @@ Item {
 
     readonly property bool hasStarted: Persistent.states.timer.countdown.start > 0
 
-    property bool presetModalOpen: false
-    property int selectedPresetMinutes: 5
+    // Typed duration entry → seconds; 0 = unparseable.
+    // Accepts: "90" (minutes), "1:30" (mm:ss), "1:30:00" (h:mm:ss), "1h30m", "45s"
+    function parseDuration(raw) {
+        const s = String(raw).trim().toLowerCase().replace(/\s+/g, "");
+        if (!s) return 0;
+        let m = s.match(/^(\d+):(\d{1,2}):(\d{1,2})$/);
+        if (m) return (+m[1]) * 3600 + (+m[2]) * 60 + (+m[3]);
+        m = s.match(/^(\d+):(\d{1,2})$/);
+        if (m) return (+m[1]) * 60 + (+m[2]);
+        m = s.match(/^(\d+h)?(\d+m)?(\d+s)?$/);
+        if (m && (m[1] || m[2] || m[3])) {
+            return (m[1] ? parseInt(m[1]) : 0) * 3600 + (m[2] ? parseInt(m[2]) : 0) * 60 + (m[3] ? parseInt(m[3]) : 0);
+        }
+        if (/^\d+$/.test(s)) return parseInt(s, 10) * 60;
+        return 0;
+    }
 
-    function openPresetModal() {
-        selectedPresetMinutes = TimerService.countdownDuration > 0 ? Math.round(TimerService.countdownDuration / 60) : 5;
-        presetModalOpen = true;
+    // h:mm:ss readout (also the value restored to the field when it loses focus)
+    readonly property string displayText: {
+        const total = Math.max(0, TimerService.countdownLeft);
+        const h = Math.floor(total / 3600);
+        const m = Math.floor((total % 3600) / 60).toString().padStart(2, '0');
+        const s = Math.floor(total % 60).toString().padStart(2, '0');
+        return h > 0 ? `${h}:${m}:${s}` : `${m}:${s}`;
     }
-    function closePresetModal() { presetModalOpen = false; }
-    function applyPreset(minutes: int) {
-        TimerService.countdownSet(minutes);
-        presetModalOpen = false;
-        selectedPresetMinutes = minutes;
-    }
-    function adjustMinutes(delta: int) {
-        let currentMins = TimerService.countdownDuration > 0 ? Math.round(TimerService.countdownDuration / 60) : 1;
-        let newMins = Math.max(1, Math.min(999, currentMins + delta));
-        TimerService.countdownSet(newMins);
+
+    // Keeps the field synced to the live readout whenever the user isn't typing in it
+    Binding {
+        target: timeField
+        property: "text"
+        value: countdownTab.displayText
+        when: timeField && !timeField.activeFocus
     }
 
     // Main timer content
@@ -38,7 +53,6 @@ Item {
         anchors.fill: parent
         anchors.margins: 12
         spacing: 12
-        visible: !countdownTab.presetModalOpen
 
         // Timer display (centered, takes space)
         CircularProgress {
@@ -60,18 +74,36 @@ Item {
                 anchors.centerIn: parent
                 spacing: 2
 
-                StyledText {
+                // Editable readout: type a time (Enter or click away to apply) while idle
+                TextField {
+                    id: timeField
                     Layout.alignment: Qt.AlignHCenter
-                    text: {
-                        let total = Math.max(0, TimerService.countdownLeft);
-                        let h = Math.floor(total / 3600);
-                        let m = Math.floor((total % 3600) / 60).toString().padStart(2, '0');
-                        let s = Math.floor(total % 60).toString().padStart(2, '0');
-                        return h > 0 ? `${h}:${m}:${s}` : `${m}:${s}`;
-                    }
+                    Layout.preferredWidth: 170
+                    Layout.preferredHeight: 52
+                    readOnly: TimerService.countdownRunning
+                    selectByMouse: true
+                    horizontalAlignment: Text.AlignHCenter
+                    font.family: Appearance.font.family.main
                     font.pixelSize: 40
                     font.weight: Font.DemiBold
                     color: Appearance.m3colors.m3onSurface
+                    leftPadding: 6
+                    rightPadding: 6
+                    background: Rectangle {
+                        radius: Appearance.rounding.small
+                        color: timeField.activeFocus ? Appearance.colors.colLayer2 : "transparent"
+                    }
+
+                    function applyTyped() {
+                        const secs = countdownTab.parseDuration(text);
+                        if (secs <= 0) {
+                            text = countdownTab.displayText;
+                            return;
+                        }
+                        TimerService.countdownSet(Math.max(1, Math.min(999, Math.round(secs / 60))));
+                    }
+                    onAccepted: applyTyped()
+                    onEditingFinished: applyTyped()
                 }
 
                 StyledText {
@@ -89,140 +121,7 @@ Item {
             }
         }
 
-        // Time control: coarse jumps flanking the ±1m stepper — one row.
-        // With ±15m/±1h available, only a few direct presets are needed.
-        RowLayout {
-            Layout.alignment: Qt.AlignHCenter
-            spacing: 6
-
-            RippleButton {
-                implicitWidth: 46
-                implicitHeight: 38
-                buttonRadius: Appearance.rounding.small
-                enabled: !TimerService.countdownRunning
-                onClicked: adjustMinutes(-60)
-                colBackground: Appearance.colors.colLayer2
-                colBackgroundHover: Appearance.colors.colLayer2Hover
-                contentItem: StyledText {
-                    anchors.centerIn: parent
-                    text: "-1h"
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    font.weight: Font.DemiBold
-                    color: Appearance.colors.colOnLayer2
-                }
-            }
-            RippleButton {
-                implicitWidth: 46
-                implicitHeight: 38
-                buttonRadius: Appearance.rounding.small
-                enabled: !TimerService.countdownRunning
-                onClicked: adjustMinutes(-15)
-                colBackground: Appearance.colors.colLayer2
-                colBackgroundHover: Appearance.colors.colLayer2Hover
-                contentItem: StyledText {
-                    anchors.centerIn: parent
-                    text: "-15m"
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    font.weight: Font.DemiBold
-                    color: Appearance.colors.colOnLayer2
-                }
-            }
-
-            Rectangle {
-                implicitWidth: stepperRow.implicitWidth + 8
-                implicitHeight: 38
-                radius: Appearance.rounding.small
-                color: Appearance.colors.colLayer2
-
-                RowLayout {
-                    id: stepperRow
-                    anchors.centerIn: parent
-                    spacing: 2
-
-                    RippleButton {
-                        implicitWidth: 36
-                        implicitHeight: 36
-                        buttonRadius: Appearance.rounding.small
-                        enabled: !TimerService.countdownRunning
-                        onClicked: adjustMinutes(-1)
-                        colBackground: Appearance.colors.colLayer3
-                        colBackgroundHover: Appearance.colors.colLayer3Hover
-
-                        contentItem: MaterialSymbol {
-                            anchors.centerIn: parent
-                            text: "remove"
-                            iconSize: 20
-                            color: Appearance.colors.colOnLayer2
-                        }
-                    }
-
-                    StyledText {
-                        Layout.leftMargin: 4
-                        Layout.rightMargin: 4
-                        text: {
-                            const mins = TimerService.countdownDuration > 0
-                                ? Math.round(TimerService.countdownDuration / 60) : 1;
-                            return `${mins}m`;
-                        }
-                        font.pixelSize: Appearance.font.pixelSize.small
-                        font.weight: Font.DemiBold
-                        color: Appearance.colors.colOnLayer2
-                    }
-
-                    RippleButton {
-                        implicitWidth: 36
-                        implicitHeight: 36
-                        buttonRadius: Appearance.rounding.small
-                        enabled: !TimerService.countdownRunning
-                        onClicked: adjustMinutes(1)
-                        colBackground: Appearance.colors.colLayer3
-                        colBackgroundHover: Appearance.colors.colLayer3Hover
-
-                        contentItem: MaterialSymbol {
-                            anchors.centerIn: parent
-                            text: "add"
-                            iconSize: 20
-                            color: Appearance.colors.colOnLayer2
-                        }
-                    }
-                }
-            }
-
-            RippleButton {
-                implicitWidth: 46
-                implicitHeight: 38
-                buttonRadius: Appearance.rounding.small
-                enabled: !TimerService.countdownRunning
-                onClicked: adjustMinutes(15)
-                colBackground: Appearance.colors.colLayer2
-                colBackgroundHover: Appearance.colors.colLayer2Hover
-                contentItem: StyledText {
-                    anchors.centerIn: parent
-                    text: "+15m"
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    font.weight: Font.DemiBold
-                    color: Appearance.colors.colOnLayer2
-                }
-            }
-            RippleButton {
-                implicitWidth: 46
-                implicitHeight: 38
-                buttonRadius: Appearance.rounding.small
-                enabled: !TimerService.countdownRunning
-                onClicked: adjustMinutes(60)
-                colBackground: Appearance.colors.colLayer2
-                colBackgroundHover: Appearance.colors.colLayer2Hover
-                contentItem: StyledText {
-                    anchors.centerIn: parent
-                    text: "+1h"
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    font.weight: Font.DemiBold
-                    color: Appearance.colors.colOnLayer2
-                }
-            }
-        }
-
-        // A few direct presets (the coarse jumps cover everything else)
+        // Basic presets; anything else goes straight into the ring's time field
         GridLayout {
             columns: 4
             columnSpacing: 6
@@ -231,7 +130,7 @@ Item {
             Layout.fillWidth: true
 
             Repeater {
-                model: [10, 25, 60, 90]
+                model: [5, 10, 25, 60]
                 delegate: RippleButton {
                     required property int modelData
                     property bool isSelected: TimerService.countdownDuration === modelData * 60
@@ -292,191 +191,7 @@ Item {
                 }
             }
 
-            RippleButton {
-                implicitHeight: 36
-                implicitWidth: 86
-                buttonRadius: Appearance.rounding.small
-                onClicked: openPresetModal()
-                enabled: !TimerService.countdownRunning
-                colBackground: Appearance.colors.colLayer2
-                colBackgroundHover: Appearance.colors.colLayer2Hover
-                contentItem: Row {
-                    anchors.centerIn: parent
-                    spacing: 4
-                    MaterialSymbol {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "add"
-                        iconSize: 18
-                        color: Appearance.colors.colOnLayer2
-                    }
-                    StyledText {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: Translation.tr("Custom")
-                        color: Appearance.colors.colOnLayer2
-                        font.weight: Font.Medium
-                    }
-                }
-            }
         }
     }
 
-    // Modal overlay - custom time input
-    Rectangle {
-        id: presetOverlay
-        anchors.fill: parent
-        color: "#99000000"
-        visible: countdownTab.presetModalOpen
-        z: 100
-
-        MouseArea {
-            anchors.fill: parent
-            onClicked: closePresetModal()
-        }
-
-        Rectangle {
-            anchors.centerIn: parent
-            width: Math.min(320, parent.width - 20)
-            implicitHeight: modalContent.implicitHeight + 36
-            radius: Appearance.rounding.normal
-            color: Appearance.colors.colLayer1
-
-            MouseArea {
-                anchors.fill: parent
-            }
-
-            ColumnLayout {
-                id: modalContent
-                anchors.fill: parent
-                anchors.margins: 18
-                spacing: 14
-
-                StyledText {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: Translation.tr("Custom Duration")
-                    font.pixelSize: Appearance.font.pixelSize.large
-                    font.weight: Font.DemiBold
-                    color: Appearance.colors.colOnSurface
-                }
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    implicitHeight: 46
-                    radius: Appearance.rounding.small
-                    color: Appearance.colors.colLayer2
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 4
-                        spacing: 8
-
-                        RippleButton {
-                            implicitWidth: 38
-                            implicitHeight: 38
-                            buttonRadius: Appearance.rounding.small
-                            enabled: presetModalOpen
-                            onClicked: selectedPresetMinutes = Math.max(1, selectedPresetMinutes - 1)
-                            colBackground: Appearance.colors.colLayer3
-                            colBackgroundHover: Appearance.colors.colLayer3Hover
-                            contentItem: MaterialSymbol {
-                                anchors.centerIn: parent
-                                text: "remove"
-                                iconSize: 20
-                                color: Appearance.colors.colOnLayer2
-                            }
-                        }
-
-                        Item {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            StyledText {
-                                anchors.centerIn: parent
-                                text: `${selectedPresetMinutes} ${selectedPresetMinutes === 1 ? Translation.tr("minute") : Translation.tr("minutes")}`
-                                font.pixelSize: Appearance.font.pixelSize.small
-                                font.weight: Font.DemiBold
-                                color: Appearance.colors.colOnSurface
-                            }
-                        }
-
-                        RippleButton {
-                            implicitWidth: 38
-                            implicitHeight: 38
-                            buttonRadius: Appearance.rounding.small
-                            enabled: presetModalOpen
-                            onClicked: selectedPresetMinutes = Math.min(999, selectedPresetMinutes + 1)
-                            colBackground: Appearance.colors.colLayer3
-                            colBackgroundHover: Appearance.colors.colLayer3Hover
-                            contentItem: MaterialSymbol {
-                                anchors.centerIn: parent
-                                text: "add"
-                                iconSize: 20
-                                color: Appearance.colors.colOnLayer2
-                            }
-                        }
-                    }
-                }
-
-                RowLayout {
-                    Layout.alignment: Qt.AlignHCenter
-                    spacing: 6
-
-                    Repeater {
-                        model: [5, 10, 15, 25, 30, 45, 60]
-                        delegate: RippleButton {
-                            required property int modelData
-                            property bool isSelected: selectedPresetMinutes === modelData
-                            implicitWidth: 40
-                            implicitHeight: 28
-                            buttonRadius: Appearance.rounding.small
-                            onClicked: selectedPresetMinutes = modelData
-                            colBackground: isSelected ? Appearance.colors.colPrimary : Appearance.colors.colLayer2
-                            colBackgroundHover: isSelected ? Appearance.colors.colPrimaryHover : Appearance.colors.colLayer2Hover
-                            contentItem: StyledText {
-                                anchors.centerIn: parent
-                                text: modelData >= 60 ? `${modelData / 60}h` : `${modelData}m`
-                                font.pixelSize: Appearance.font.pixelSize.smaller
-                                font.weight: Font.DemiBold
-                                color: isSelected ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer2
-                            }
-                        }
-                    }
-                }
-
-                RowLayout {
-                    Layout.alignment: Qt.AlignHCenter
-                    spacing: 12
-
-                    RippleButton {
-                        implicitHeight: 34
-                        implicitWidth: 85
-                        buttonRadius: Appearance.rounding.small
-                        onClicked: closePresetModal()
-                        colBackground: Appearance.colors.colLayer2
-                        colBackgroundHover: Appearance.colors.colLayer2Hover
-                        contentItem: StyledText {
-                            anchors.centerIn: parent
-                            text: Translation.tr("Cancel")
-                            color: Appearance.colors.colOnLayer2
-                            font.weight: Font.Medium
-                        }
-                    }
-
-                    RippleButton {
-                        implicitHeight: 34
-                        implicitWidth: 85
-                        buttonRadius: Appearance.rounding.small
-                        onClicked: applyPreset(Math.max(1, selectedPresetMinutes))
-                        enabled: selectedPresetMinutes > 0
-                        colBackground: Appearance.colors.colPrimary
-                        colBackgroundHover: Appearance.colors.colPrimaryHover
-                        contentItem: StyledText {
-                            anchors.centerIn: parent
-                            text: Translation.tr("Apply")
-                            color: Appearance.colors.colOnPrimary
-                            font.weight: Font.Medium
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
