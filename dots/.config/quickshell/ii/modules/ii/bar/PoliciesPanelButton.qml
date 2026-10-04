@@ -24,6 +24,11 @@ RippleButton {
         GlobalStates.sidebarLeftOpen = !GlobalStates.sidebarLeftOpen;
     }
 
+    // Right-click opens the app launcher (overview/search)
+    altAction: () => {
+        GlobalStates.overviewOpen = !GlobalStates.overviewOpen;
+    }
+
     Connections {
         target: Ai
         function onResponseFinished() {

@@ -12,7 +12,6 @@ Singleton {
         { id: "active_window", icon: "label", title: "Active window" },
         { id: "music_player", icon: "music_note", title: "Music player" },
         { id: "workspaces", icon: "workspaces", title: "Workspaces" },
-        { id: "launcher", icon: "rocket_launch", title: "App launcher" },
         { id: "system_monitor", icon: "monitor_heart", title: "System monitor" },
         { id: "clock", icon: "nest_clock_farsight_analog", title: "Clock" },
         { id: "system_tray", icon: "system_update_alt", title: "System tray" },
