@@ -300,7 +300,7 @@ Item {
         anchors.fill: parent
         cursorShape: Qt.PointingHandCursor
         hoverEnabled: true
-        acceptedButtons: Qt.RightButton | Qt.LeftButton | Qt.BackButton
+        acceptedButtons: Qt.RightButton | Qt.MiddleButton | Qt.LeftButton | Qt.BackButton
         
         property int hoverIndex: {
             const position = root.vertical ? mouseY : mouseX;
@@ -324,9 +324,13 @@ Item {
         }
 
         onPressed: (event) => {
-            if (event.button === Qt.RightButton) {
-                GlobalStates.overviewOpen = !GlobalStates.overviewOpen
-            } 
+            if (event.button === Qt.RightButton || event.button === Qt.MiddleButton) {
+                // Move the active window to the hovered chip (silent: stay on current workspace)
+                const wsId = workspaceOffset + workspaceGroup * workspacesShown + hoverIndex + 1;
+                const active = HyprlandData.windowList.find(w => w.focusHistoryID === 0);
+                if (active && active.workspace.id !== wsId)
+                    Hyprland.dispatch(`hl.dsp.window.move({ workspace = ${wsId}, follow = false, window = "address:${active.address}" })`);
+            }
             if (event.button === Qt.BackButton) {
                 Hyprland.dispatch(`hl.dsp.workspace.toggle_special("special")`);
             }

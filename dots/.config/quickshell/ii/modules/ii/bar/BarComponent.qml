@@ -62,7 +62,8 @@ Item {
             "dashboard_panel_button": [dashboardPanelButton, dashboardPanelButtonVert, dashboardPanelButtonExpressive, dashboardPanelButtonExpressiveVert],
             "network_speed": [networkSpeedComp, networkSpeedComp],
             "aternos": [aternosComp, aternosComp],
-            "ai_panel_button": [aiPanelButtonComp, aiPanelButtonComp]
+            "ai_panel_button": [aiPanelButtonComp, aiPanelButtonComp],
+            "launcher": [launcherComp, launcherComp]
         })
 
     readonly property bool isMinimal: {
@@ -410,5 +411,9 @@ Item {
     Component {
         id: aiPanelButtonComp
         AiPanelButton {}
+    }
+    Component {
+        id: launcherComp
+        LauncherButton {}
     }
 }
