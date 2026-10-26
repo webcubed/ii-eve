@@ -177,14 +177,18 @@ AbstractBackgroundWidget {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         radius: Appearance.rounding.full
-                        color: ColorUtils.transparentize(timerCard.fgColor, 0.85)
+                        // Bound to the singletons rather than an id from the enclosing
+                        // component: items in this extraContent slot are compiled outside the
+                        // TimerCard scope, so `timerCard.fgColor` there fails and the pill
+                        // silently falls back to a solid white Rectangle.
+                        color: ColorUtils.transparentize(Appearance.colors.colOnPrimaryContainer, 0.82)
 
                         StyledText {
                             anchors.centerIn: parent
                             text: "+" + modelData + "m"
                             font.pixelSize: Appearance.font.pixelSize.smallest
                             font.weight: Font.DemiBold
-                            color: timerCard.fgColor
+                            color: Appearance.colors.colOnPrimaryContainer
                         }
 
                         MouseArea {

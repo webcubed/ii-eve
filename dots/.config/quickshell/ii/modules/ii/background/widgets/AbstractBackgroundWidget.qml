@@ -102,6 +102,14 @@ AbstractWidget {
             bg.draggingWidgetCell = Qt.point(Math.max(0, Math.min(col, gridColumns - 1)), Math.max(0, Math.min(row, gridRows - 1)));
         }
     }
+    // `released` only fires while we still hold the implicit grab. If the grab is lost mid
+    // drag (pointer leaves the window, another surface takes the press) the canvas was left
+    // with draggingWidget stuck true, which pinned the alignment grid over the whole desktop.
+    onContainsPressChanged: {
+        if (root.containsPress) return;
+        var bg = resolveBgRoot();
+        if (bg) bg.draggingWidget = false;
+    }
     onReleased: {
         var bg = resolveBgRoot();
         if (bg) bg.draggingWidget = false;
