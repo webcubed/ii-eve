@@ -15,6 +15,11 @@ Singleton {
         if (s.startsWith("file://")) {
             try { return decodeURIComponent(s.slice(7)); } catch (e) { return s.slice(7); }
         }
+        // Qt hands out single-slash URLs (`file:/home/...`) for some resolved paths; treating
+        // those as plain strings made callers create a literal `file:` directory on disk.
+        if (s.startsWith("file:/")) {
+            try { return decodeURIComponent("/" + s.slice(6)); } catch (e) { return "/" + s.slice(6); }
+        }
         return s;
     }
 
