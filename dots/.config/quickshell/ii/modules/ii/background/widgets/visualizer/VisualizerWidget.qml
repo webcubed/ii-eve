@@ -14,7 +14,14 @@ AbstractBackgroundWidget {
 
     readonly property MprisPlayer activePlayer: MprisController.activePlayer
     readonly property bool isPlaying: activePlayer?.isPlaying ?? false
-    readonly property list<real> points: GlobalStates.visualizerPoints
+    // Nothing ever filled GlobalStates.visualizerPoints, so this widget sat on the desktop
+    // drawing flat bars. Read the shell's shared cava stream instead; it only runs while
+    // something is actually playing.
+    readonly property list<real> points: Cava.points
+    readonly property string cavaKey: "visualizer:" + (root.bgRoot?.screen?.name ?? "default")
+    onIsPlayingChanged: Cava.setDemand(root.cavaKey, root.isPlaying)
+    Component.onCompleted: Cava.setDemand(root.cavaKey, root.isPlaying)
+    Component.onDestruction: Cava.setDemand(root.cavaKey, false)
 
     property real barWidth: 4
     property real barSpacing: 8
@@ -74,6 +81,10 @@ AbstractBackgroundWidget {
     x: 0
     y: screenHeight - implicitHeight
     draggable: false
+    // Pure decoration, and it spans the full screen width: as a live MouseArea it would
+    // swallow every click meant for the cards sharing its band. Stay inert so input falls
+    // through to them.
+    enabled: false
 
     Row {
         anchors.bottom: parent.bottom

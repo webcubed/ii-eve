@@ -22,7 +22,12 @@ Scope {
     readonly property real widgetWidth: Appearance.sizes.mediaControlsWidth
     readonly property real widgetHeight: Appearance.sizes.mediaControlsHeight
     property real popupRounding: Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1
-    property list<real> visualizerPoints: []
+    // Shares the shell's single cava capture rather than starting its own while open.
+    property list<real> visualizerPoints: Cava.points
+    property bool wantsCava: mediaControlsLoader.active
+    onWantsCavaChanged: Cava.setDemand("mediaControls", root.wantsCava)
+    Component.onCompleted: Cava.setDemand("mediaControls", root.wantsCava)
+    Component.onDestruction: Cava.setDemand("mediaControls", false)
 
     function filterDuplicatePlayers(players) {
         let filtered = [];
@@ -65,24 +70,6 @@ Scope {
         return filtered;
     }
 
-    Process {
-        id: cavaProc
-        running: mediaControlsLoader.active
-        onRunningChanged: {
-            if (!cavaProc.running) {
-                root.visualizerPoints = [];
-            }
-        }
-        command: ["cava", "-p", `${FileUtils.trimFileProtocol(Directories.scriptPath)}/cava/raw_output_config.txt`]
-        stdout: SplitParser {
-            onRead: data => {
-                // Parse `;`-separated values into the visualizerPoints array
-                let points = data.split(";").map(p => parseFloat(p.trim())).filter(p => !isNaN(p));
-                root.visualizerPoints = points;
-            }
-        }
-    }
-
     Loader {
         id: mediaControlsLoader
         active: GlobalStates.mediaControlsOpen
@@ -102,7 +89,7 @@ Scope {
             color: "transparent"
             WlrLayershell.namespace: "quickshell:mediaControls"
             
-            readonly property var rect: Persistent.states.media.popupRect
+            readonly property var rect: GlobalStates.mediaPopupRect
             readonly property real barThickness: {
                 if (Config.options.bar.vertical) {
                     return Config.options.bar.sizes.width || 40;
@@ -115,34 +102,30 @@ Scope {
                 left: !Config.options.bar.vertical || !Config.options.bar.bottom
                 right: Config.options.bar.vertical && Config.options.bar.bottom
             }
+            // A horizontal bar gets the panel centred across the screen, tucked under the
+            // bar; a vertical bar keeps it next to the pill it was opened from. The pill
+            // rect is only a hint — when it is missing (not clicked through a pill, or the
+            // shell just reloaded) fall back to centring rather than to the window corner.
             margins {
                 top: {
-                    if (rect.width === 0) return 0;
                     if (Config.options.bar.vertical) {
-                        let targetY = rect.y + (rect.height / 2) - (panelWindow.implicitHeight / 2);
-                        return Math.max(0, Math.min(targetY, screen.height - panelWindow.implicitHeight));
-                    } else {
-                        if (!Config.options.bar.bottom) {
-                            return barThickness;
-                        } else {
-                            return screen.height - barThickness - panelWindow.implicitHeight;
-                        }
+                        const h = panelWindow.implicitHeight;
+                        const targetY = (rect && rect.width > 0)
+                            ? rect.y + (rect.height / 2) - (h / 2)
+                            : (screen.height - h) / 2;
+                        return Math.max(0, Math.min(targetY, screen.height - h));
                     }
+                    return Config.options.bar.bottom
+                        ? screen.height - barThickness - panelWindow.implicitHeight - Appearance.sizes.elevationMargin
+                        : barThickness + Appearance.sizes.elevationMargin;
                 }
                 left: {
-                    if (rect.width === 0) return 0;
                     if (Config.options.bar.vertical) {
-                        if (!Config.options.bar.bottom) {
-                            return barThickness;
-                        }
-                        return 0;
-                    } else {
-                        let targetX = rect.x + (rect.width / 2) - (panelWindow.implicitWidth / 2);
-                        return Math.max(0, Math.min(targetX, screen.width - panelWindow.implicitWidth));
+                        return Config.options.bar.bottom ? 0 : barThickness;
                     }
+                    return Math.max(0, (screen.width - panelWindow.implicitWidth) / 2);
                 }
                 right: {
-                    if (rect.width === 0) return 0;
                     if (Config.options.bar.vertical && Config.options.bar.bottom) {
                         return barThickness;
                     }

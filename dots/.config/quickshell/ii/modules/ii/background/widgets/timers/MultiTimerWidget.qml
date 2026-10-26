@@ -32,6 +32,10 @@ AbstractBackgroundWidget {
         property bool running: false
         property int shape: MaterialShape.Shape.Cookie12Sided
         property color bgColor: Appearance.colors.colPrimaryContainer
+        // Foreground paired with bgColor — each card sits on a different container tone, so
+        // the label, time and pills all read from this instead of the primary container's
+        // on-colour.
+        property color fgColor: Appearance.colors.colOnPrimaryContainer
         property color shapeColor: Appearance.colors.colPrimary
         property var onToggle: () => {}
         property var onReset: () => {}
@@ -52,14 +56,15 @@ AbstractBackgroundWidget {
         ColumnLayout {
             anchors {
                 fill: parent
-                margins: 14
+                margins: 11
             }
-            spacing: -4
+            spacing: 2
 
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 4
 
+                // Play/pause affordance sits top-right; the middle stays free for the time.
                 Item { Layout.fillWidth: true }
 
                 MaterialShapeWrappedMaterialSymbol {
@@ -67,11 +72,11 @@ AbstractBackgroundWidget {
                     color: timerCard.shapeColor
                     colSymbol: Appearance.colors.colOnPrimary
                     text: timerCard.running ? "pause" : timerCard.icon
-                    iconSize: 18
+                    iconSize: 16
                     fill: 1
-                    padding: 6
-                    implicitWidth: 34
-                    implicitHeight: 34
+                    padding: 5
+                    implicitWidth: 30
+                    implicitHeight: 30
 
                     MouseArea {
                         anchors.fill: parent
@@ -83,31 +88,32 @@ AbstractBackgroundWidget {
 
             Item { Layout.fillHeight: true }
 
-            ColumnLayout {
-                Layout.leftMargin: 2
-                Layout.topMargin: -40
-                spacing: -4
-                StyledText {
-                    text: timerCard.value
-                    font.pixelSize: Appearance.font.pixelSize.large
-                    font.weight: Font.Bold
-                    font.features: { "tnum": 1 }
-                    color: Appearance.colors.colOnPrimaryContainer
-                }
+            StyledText {
+                Layout.fillWidth: true
+                Layout.leftMargin: 1
+                text: timerCard.value
+                font.pixelSize: Appearance.font.pixelSize.large
+                font.weight: Font.Bold
+                font.features: { "tnum": 1 }
+                color: timerCard.fgColor
+                elide: Text.ElideRight
+            }
 
-                StyledText {
-                    text: timerCard.label
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    color: Appearance.colors.colOnPrimaryContainer
-                    opacity: 0.6
-                }
+            StyledText {
+                Layout.fillWidth: true
+                Layout.leftMargin: 1
+                text: timerCard.label
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                color: timerCard.fgColor
+                opacity: 0.65
+                elide: Text.ElideRight
             }
 
             Item {
                 id: extraSlot
                 Layout.fillWidth: true
-                Layout.preferredHeight: children.length > 0 ? 22 : 0
-                Layout.topMargin: children.length > 0 ? 6 : 0
+                Layout.preferredHeight: children.length > 0 ? 20 : 0
+                Layout.topMargin: children.length > 0 ? 5 : 0
             }
         }
     }
@@ -129,6 +135,7 @@ AbstractBackgroundWidget {
             label: TimerService.pomodoroBreak ? "Break" : "Focus"
             running: TimerService.pomodoroRunning
             bgColor: Appearance.colors.colTertiaryContainer
+            fgColor: Appearance.colors.colOnTertiaryContainer
             shapeColor: Appearance.colors.colTertiary
             shape: MaterialShape.Shape.Flower
             onToggle: () => TimerService.togglePomodoro()
@@ -143,6 +150,7 @@ AbstractBackgroundWidget {
             running: TimerService.stopwatchRunning
             shape: MaterialShape.Shape.Sunny
             bgColor: Appearance.colors.colSecondaryContainer
+            fgColor: Appearance.colors.colOnSecondaryContainer
             shapeColor: Appearance.colors.colSecondary
             onToggle: () => TimerService.toggleStopwatch()
             onReset: () => TimerService.stopwatchReset()
@@ -169,14 +177,14 @@ AbstractBackgroundWidget {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         radius: Appearance.rounding.full
-                        color: ColorUtils.transparentize(Appearance.colors.colOnTertiaryContainer, 0.85)
+                        color: ColorUtils.transparentize(timerCard.fgColor, 0.85)
 
                         StyledText {
                             anchors.centerIn: parent
                             text: "+" + modelData + "m"
                             font.pixelSize: Appearance.font.pixelSize.smallest
                             font.weight: Font.DemiBold
-                            color: Appearance.colors.colOnPrimaryContainer
+                            color: timerCard.fgColor
                         }
 
                         MouseArea {

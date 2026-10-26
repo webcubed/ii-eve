@@ -20,8 +20,16 @@ AbstractBackgroundWidget {
     readonly property string clockStyle: GlobalStates.screenLocked ? Config.options.background.widgets.clock.styleLocked : Config.options.background.widgets.clock.style
     readonly property bool forceCenter: (GlobalStates.screenLocked && Config.options.lock.centerClock)
     readonly property bool shouldShow: (!Config.options.background.widgets.clock.showOnlyWhenLocked || GlobalStates.screenLocked)
-    readonly property color colTextSecondary: Appearance.colors.colOnLayer3
-    readonly property color colTextTertiary: Appearance.colors.colOnLayer3
+    // Locked, the wallpaper sits under a blurred, darkened scrim, so the wallpaper-adaptive
+    // on-container tones stop describing what is behind the text: derive the supporting
+    // colours from the scrim's own on-colour instead.
+    readonly property bool onLockScrim: GlobalStates.screenLocked && Config.options.lock.blur.enable
+    readonly property color colTextSecondary: onLockScrim
+        ? ColorUtils.transparentize(Appearance.m3colors.m3onBackground, 0.25)
+        : Appearance.colors.colOnLayer3
+    readonly property color colTextTertiary: onLockScrim
+        ? ColorUtils.transparentize(Appearance.m3colors.m3onBackground, 0.45)
+        : Appearance.colors.colOnLayer3
     readonly property string customClockColorKey: Config.options.background.widgets.clock.color ?? ""
     readonly property color resolvedClockColor: {
         if (customClockColorKey === "") return root.colText;

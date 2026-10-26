@@ -21,6 +21,11 @@ Singleton {
     property bool barOpen: true
     property bool crosshairOpen: false
     property bool mediaControlsOpen: false
+    // Where the media pill sat when it was clicked, so the controls panel can line up with
+    // it. Deliberately transient: screen coordinates are meaningless in the next session
+    // (another layout, another monitor), and a stale persisted rect used to park the panel
+    // in the top-left corner.
+    property var mediaPopupRect: Qt.rect(0, 0, 0, 0)
     property bool osdBrightnessOpen: false
     property bool osdVolumeOpen: false
     property bool oskOpen: false

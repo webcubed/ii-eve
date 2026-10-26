@@ -166,9 +166,13 @@ Variants {
         }
 
         property bool mediaModeOpen: mediaModeLoader.active && MprisController.activePlayer
-        // Cull only when widgets are truly hidden (lock/fullscreen), not on
-        // transient overlays like search — widgets stay visible around those.
-        readonly property bool widgetsOccluded: GlobalStates.widgetsHidden && Config.options.background.widgets.cullWhenOccluded
+        // Cull only when a fullscreen window covers the desktop, not on transient overlays
+        // like search. The lock screen is excluded on purpose: while locked each widget
+        // decides for itself through `visibleWhenLocked`, so a global cull would also hide
+        // the clock the lock screen asks for.
+        readonly property bool widgetsOccluded: !GlobalStates.screenLocked
+            && GlobalStates.widgetsHidden
+            && Config.options.background.widgets.cullWhenOccluded
         property bool draggingWidget: false
         property var draggingWidgetCell: Qt.point(-1, -1) // {x: col, y: row} or invalid
         onMediaModeOpenChanged: {
@@ -496,7 +500,6 @@ Variants {
                     Connections {
                         target: bgRoot
                         function onDraggingWidgetChanged() {
-                            console.log("[grid-dbg] draggingWidget:", bgRoot.draggingWidget, "canvas size:", gridOverlay.width, "x", gridOverlay.height);
                             if (gridOverlay.visible) {
                                 gridOverlay.requestPaint();
                                 Qt.callLater(() => gridOverlay.requestPaint());
@@ -551,7 +554,11 @@ Variants {
                     radius: 4
                 }
 
+                // Each widget keeps the stacking order its config asks for: the visualizer
+                // (z: -1000) is decoration behind everything else, so it no longer sits on
+                // top of the cards sharing its band and eats their clicks.
                 FadeLoader {
+                    z: Config.options.background.widgets.weather.z ?? 0
                     shown: Config.options.background.widgets.weather.enable && !bgRoot.widgetsOccluded
                     sourceComponent: WeatherWidget {
                         bgRoot: bgRoot
@@ -564,6 +571,7 @@ Variants {
                 }
 
                 FadeLoader {
+                    z: Config.options.background.widgets.clock.z ?? 0
                     shown: Config.options.background.widgets.clock.enable && !bgRoot.widgetsOccluded
                     sourceComponent: ClockWidget {
                         bgRoot: bgRoot
@@ -587,6 +595,7 @@ Variants {
                 FadeLoader {
                     id: mediaLoader
                     property bool enableLoading: true
+                    z: Config.options.background.widgets.media.z ?? 0
                     shown: Config.options.background.widgets.media.enable && enableLoading && !bgRoot.widgetsOccluded
                     sourceComponent: MediaWidget {
                         bgRoot: bgRoot
@@ -608,6 +617,7 @@ Variants {
             }
 
             FadeLoader {
+                z: Config.options.background.widgets.calendar.z ?? 0
                 shown: Config.options.background.widgets.calendar.enable && !bgRoot.widgetsOccluded
                 sourceComponent: CalendarWidget {
                     bgRoot: bgRoot
@@ -620,6 +630,7 @@ Variants {
             }
 
             FadeLoader {
+                z: Config.options.background.widgets.customImage.z ?? 0
                 shown: Config.options.background.widgets.customImage.enable && !bgRoot.widgetsOccluded
                 sourceComponent: CustomImage {
                     bgRoot: bgRoot
@@ -632,6 +643,7 @@ Variants {
             }
 
             FadeLoader {
+                z: Config.options.background.widgets.imageConverter.z ?? 0
                 shown: Config.options.background.widgets.imageConverter.enable && !bgRoot.widgetsOccluded
                 sourceComponent: ImageConverterWidget {
                     bgRoot: bgRoot
@@ -644,6 +656,7 @@ Variants {
             }
 
             FadeLoader {
+                z: Config.options.background.widgets.notes.z ?? 0
                 shown: Config.options.background.widgets.notes.enable && !bgRoot.widgetsOccluded
                 sourceComponent: NotesWidget {
                     bgRoot: bgRoot
@@ -656,6 +669,7 @@ Variants {
             }
 
             FadeLoader {
+                z: Config.options.background.widgets.resources.z ?? 0
                 shown: Config.options.background.widgets.resources.enable && !bgRoot.widgetsOccluded
                 sourceComponent: ResourcesWidget {
                     bgRoot: bgRoot
@@ -668,6 +682,7 @@ Variants {
             }
 
             FadeLoader {
+                z: Config.options.background.widgets.customText.z ?? 0
                 shown: Config.options.background.widgets.customText.enable && !bgRoot.widgetsOccluded
                 sourceComponent: CustomTextWidget {
                     bgRoot: bgRoot
@@ -681,6 +696,7 @@ Variants {
             }
 
             FadeLoader {
+                z: Config.options.background.widgets.todo.z ?? 0
                 shown: Config.options.background.widgets.todo.enable && !bgRoot.widgetsOccluded
                 sourceComponent: TodoWidget {
                     bgRoot: bgRoot
@@ -694,6 +710,7 @@ Variants {
             }
 
             FadeLoader {
+                z: Config.options.background.widgets.timers.z ?? 0
                 shown: Config.options.background.widgets.timers.enable && !bgRoot.widgetsOccluded
                 sourceComponent: MultiTimerWidget {
                     bgRoot: bgRoot
@@ -707,6 +724,7 @@ Variants {
             }
 
             FadeLoader {
+                z: Config.options.background.widgets.usercard.z ?? 0
                 shown: Config.options.background.widgets.usercard.enable && !bgRoot.widgetsOccluded
                 sourceComponent: UserCardWidget {
                     bgRoot: bgRoot
@@ -719,6 +737,7 @@ Variants {
             }
 
             FadeLoader {
+                z: Config.options.background.widgets.visualizer.z ?? 0
                 shown: Config.options.background.widgets.visualizer.enable && !bgRoot.widgetsOccluded
                 sourceComponent: VisualizerWidget {
                     bgRoot: bgRoot
@@ -731,6 +750,7 @@ Variants {
             }
 
             FadeLoader {
+                z: Config.options.background.widgets.worldclock.z ?? 0
                 shown: Config.options.background.widgets.worldclock.enable && !bgRoot.widgetsOccluded
                 sourceComponent: WorldClockWidget {
                     bgRoot: bgRoot
@@ -743,6 +763,7 @@ Variants {
             }
 
             FadeLoader {
+                z: Config.options.background.widgets.timer.z ?? 0
                 shown: Config.options.background.widgets.timer.enable && !bgRoot.widgetsOccluded
                 sourceComponent: TimerWidget {
                     bgRoot: bgRoot

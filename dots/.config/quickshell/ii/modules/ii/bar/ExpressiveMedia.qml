@@ -103,7 +103,7 @@ Item {
                 activePlayer.next();
             else if (event.button === Qt.LeftButton) {
                 var globalPos = root.mapToItem(null, 0, 0);
-                Persistent.states.media.popupRect = Qt.rect(globalPos.x, globalPos.y, root.width, root.height);
+                GlobalStates.mediaPopupRect = Qt.rect(globalPos.x, globalPos.y, root.width, root.height);
                 GlobalStates.mediaControlsOpen = !GlobalStates.mediaControlsOpen;
             }
         }

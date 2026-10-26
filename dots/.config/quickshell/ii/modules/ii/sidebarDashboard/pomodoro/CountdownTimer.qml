@@ -12,6 +12,14 @@ Item {
     Layout.fillHeight: true
 
     readonly property bool hasStarted: Persistent.states.timer.countdown.start > 0
+    readonly property bool finished: TimerService.countdownDuration > 0 && TimerService.countdownLeft <= 0
+    readonly property bool running: TimerService.countdownRunning
+    /// 0..1 share of the countdown still to go, so the ring drains as it runs.
+    readonly property real remainingRatio: {
+        if (finished) return 1;
+        if (TimerService.countdownDuration <= 0) return 0;
+        return Math.max(0, Math.min(1, TimerService.countdownLeft / TimerService.countdownDuration));
+    }
 
     // Typed duration entry → seconds; 0 = unparseable.
     // Accepts: "90" (minutes), "1:30" (mm:ss), "1:30:00" (h:mm:ss), "1h30m", "45s"
@@ -39,15 +47,37 @@ Item {
         return h > 0 ? `${h}:${m}:${s}` : `${m}:${s}`;
     }
 
-    // Keeps the field synced to the live readout whenever the user isn't typing in it
-    Binding {
-        target: timeField
-        property: "text"
-        value: countdownTab.displayText
-        when: timeField && !timeField.activeFocus
+    /// Wall-clock time the countdown will hit zero, shown while it runs.
+    readonly property string endsAt: {
+        if (!running) return "";
+        const end = new Date(Date.now() + Math.max(0, TimerService.countdownLeft) * 1000);
+        return `${end.getHours().toString().padStart(2, "0")}:${end.getMinutes().toString().padStart(2, "0")}`;
     }
 
-    // Main timer content
+    readonly property string statusText: {
+        if (finished) return Translation.tr("Finished");
+        if (running) return Translation.tr("Running");
+        if (hasStarted) return Translation.tr("Paused");
+        return TimerService.countdownDuration > 0 ? Translation.tr("Ready") : Translation.tr("Countdown");
+    }
+
+    // While the field has focus it owns the text; otherwise it mirrors the live readout.
+    property bool typing: false
+    property string typedText: ""
+
+    function commitTyped() {
+        // Read-only while running: focusing the field must not re-arm the timer with the
+        // text it happened to be showing.
+        if (countdownTab.running) {
+            countdownTab.typing = false;
+            return;
+        }
+        const secs = parseDuration(countdownTab.typedText);
+        // Keep the typed precision: "1:30" means 90 seconds, not two minutes.
+        if (secs > 0) TimerService.countdownSetSeconds(Math.min(359999, secs));
+        countdownTab.typing = false;
+    }
+
     ColumnLayout {
         id: mainLayout
         anchors.fill: parent
@@ -59,85 +89,105 @@ Item {
             id: timerDisplay
             Layout.alignment: Qt.AlignHCenter
             Layout.fillHeight: true
-            lineWidth: 6
-            implicitSize: 170
+            lineWidth: 7
+            implicitSize: 178
             enableAnimation: true
-            // Completed countdown: full ring in accent instead of an empty track
-            value: (TimerService.countdownDuration > 0 && TimerService.countdownLeft <= 0)
-                ? 1
-                : (TimerService.countdownDuration <= 0 ? 0 : TimerService.countdownLeft / TimerService.countdownDuration)
-            colPrimary: (TimerService.countdownDuration > 0 && TimerService.countdownLeft <= 0)
+            animationDuration: 420
+            value: countdownTab.remainingRatio
+            // A quiet track keeps the remaining time the thing the eye lands on.
+            colSecondary: Appearance.colors.colLayer3
+            // An idle ring has nothing to show, and a zero-length arc still paints a round
+            // cap — a stray dot at twelve o'clock. Keep it invisible until there is progress.
+            colPrimary: (countdownTab.finished || countdownTab.remainingRatio > 0)
                 ? Appearance.colors.colPrimary
-                : Appearance.m3colors.m3onSecondaryContainer
+                : "transparent"
 
-            ColumnLayout {
+            Item {
                 anchors.centerIn: parent
-                spacing: 2
+                width: timerDisplay.implicitSize - timerDisplay.lineWidth * 5
+                height: readoutColumn.implicitHeight
 
-                // Editable readout: type a time (Enter or click away to apply) while idle
-                TextField {
-                    id: timeField
-                    Layout.alignment: Qt.AlignHCenter
-                    Layout.preferredWidth: 170
-                    Layout.preferredHeight: 52
-                    readOnly: TimerService.countdownRunning
-                    selectByMouse: true
-                    horizontalAlignment: Text.AlignHCenter
-                    font.family: Appearance.font.family.main
-                    font.pixelSize: 40
-                    font.weight: Font.DemiBold
-                    color: Appearance.m3colors.m3onSurface
-                    leftPadding: 6
-                    rightPadding: 6
-                    background: Rectangle {
-                        radius: Appearance.rounding.small
-                        color: timeField.activeFocus ? Appearance.colors.colLayer2 : "transparent"
-                    }
+                ColumnLayout {
+                    id: readoutColumn
+                    anchors.centerIn: parent
+                    width: parent.width
+                    spacing: 1
 
-                    function applyTyped() {
-                        const secs = countdownTab.parseDuration(text);
-                        if (secs <= 0) {
-                            text = countdownTab.displayText;
-                            return;
+                    // Editable readout: type a time (Enter or click away to apply) while idle
+                    TextField {
+                        id: timeField
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 46
+                        text: countdownTab.typing ? countdownTab.typedText : countdownTab.displayText
+                        readOnly: countdownTab.running
+                        selectByMouse: true
+                        horizontalAlignment: Text.AlignHCenter
+                        font.family: Appearance.font.family.main
+                        font.pixelSize: text.length > 5 ? 30 : 36
+                        font.weight: Font.DemiBold
+                        color: countdownTab.finished ? Appearance.colors.colPrimary : Appearance.m3colors.m3onSurface
+                        leftPadding: 4
+                        rightPadding: 4
+                        background: Rectangle {
+                            radius: Appearance.rounding.small
+                            color: timeField.activeFocus ? Appearance.colors.colLayer2 : "transparent"
+
+                            Behavior on color {
+                                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                            }
                         }
-                        TimerService.countdownSet(Math.max(1, Math.min(999, Math.round(secs / 60))));
-                    }
-                    onAccepted: applyTyped()
-                    onEditingFinished: applyTyped()
-                }
 
-                StyledText {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: TimerService.countdownRunning ? Translation.tr("Running") :
-                          TimerService.countdownLeft <= 0 && TimerService.countdownDuration > 0 ? Translation.tr("Finished") :
-                          !countdownTab.hasStarted ? (TimerService.countdownDuration > 0 ? Translation.tr("Ready") : Translation.tr("Countdown")) :
-                          Translation.tr("Paused")
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    font.weight: TimerService.countdownDuration > 0 && TimerService.countdownLeft <= 0 ? Font.DemiBold : Font.Normal
-                    color: TimerService.countdownDuration > 0 && TimerService.countdownLeft <= 0
-                        ? Appearance.colors.colPrimary
-                        : Appearance.colors.colSubtext
+                        onActiveFocusChanged: {
+                            if (activeFocus && !countdownTab.running) {
+                                countdownTab.typedText = countdownTab.displayText;
+                                countdownTab.typing = true;
+                            } else if (!activeFocus && countdownTab.typing) {
+                                countdownTab.commitTyped();
+                            }
+                        }
+                        onAccepted: {
+                            countdownTab.commitTyped();
+                            timeField.focus = false;
+                        }
+                    }
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        horizontalAlignment: Text.AlignHCenter
+                        text: countdownTab.statusText
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        font.weight: countdownTab.finished ? Font.DemiBold : Font.Normal
+                        color: countdownTab.finished ? Appearance.colors.colPrimary : Appearance.colors.colSubtext
+                    }
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        horizontalAlignment: Text.AlignHCenter
+                        visible: text.length > 0
+                        text: countdownTab.running ? `${Translation.tr("Ends at")} ${countdownTab.endsAt}` : ""
+                        font.pixelSize: Appearance.font.pixelSize.smaller
+                        color: Appearance.colors.colSubtext
+                        opacity: 0.75
+                    }
                 }
             }
         }
 
         // Basic presets; anything else goes straight into the ring's time field
-        GridLayout {
-            columns: 4
-            columnSpacing: 6
-            rowSpacing: 6
-            Layout.alignment: Qt.AlignHCenter
+        RowLayout {
             Layout.fillWidth: true
+            spacing: 6
 
             Repeater {
                 model: [5, 10, 25, 60]
                 delegate: RippleButton {
                     required property int modelData
                     property bool isSelected: TimerService.countdownDuration === modelData * 60
-                    implicitWidth: 48
+
+                    Layout.fillWidth: true
                     implicitHeight: 32
                     buttonRadius: Appearance.rounding.small
-                    enabled: !TimerService.countdownRunning
+                    enabled: !countdownTab.running
                     onClicked: TimerService.countdownSet(modelData)
                     colBackground: isSelected ? Appearance.colors.colSecondaryContainer : Appearance.colors.colLayer2
                     colBackgroundHover: isSelected ? Appearance.colors.colSecondaryContainerHover : Appearance.colors.colLayer2Hover
@@ -146,7 +196,8 @@ Item {
                         anchors.centerIn: parent
                         text: modelData >= 60 ? `${modelData / 60}h` : `${modelData}m`
                         font.pixelSize: Appearance.font.pixelSize.small
-                        font.weight: Font.DemiBold
+                        font.weight: isSelected ? Font.DemiBold : Font.Medium
+                        horizontalAlignment: Text.AlignHCenter
                         color: isSelected ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnLayer2
                     }
                 }
@@ -155,43 +206,69 @@ Item {
 
         // Action buttons row
         RowLayout {
-            Layout.alignment: Qt.AlignHCenter
+            Layout.fillWidth: true
             spacing: 8
 
             RippleButton {
+                Layout.fillWidth: true
                 implicitHeight: 36
-                implicitWidth: 100
                 buttonRadius: Appearance.rounding.small
                 onClicked: TimerService.countdownToggle()
-                colBackground: TimerService.countdownRunning ? Appearance.colors.colSecondaryContainer : Appearance.colors.colPrimary
-                colBackgroundHover: TimerService.countdownRunning ? Appearance.colors.colSecondaryContainerHover : Appearance.colors.colPrimaryHover
-                contentItem: StyledText {
+                colBackground: countdownTab.running ? Appearance.colors.colSecondaryContainer : Appearance.colors.colPrimary
+                colBackgroundHover: countdownTab.running ? Appearance.colors.colSecondaryContainerHover : Appearance.colors.colPrimaryHover
+                colRipple: countdownTab.running ? Appearance.colors.colSecondaryContainerActive : Appearance.colors.colPrimaryActive
+
+                contentItem: RowLayout {
                     anchors.centerIn: parent
-                    text: TimerService.countdownRunning ? Translation.tr("Pause") :
-                          !countdownTab.hasStarted ? Translation.tr("Start") : Translation.tr("Resume")
-                    color: TimerService.countdownRunning ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnPrimary
-                    font.weight: Font.Medium
+                    spacing: 6
+
+                    MaterialSymbol {
+                        Layout.alignment: Qt.AlignVCenter
+                        text: countdownTab.running ? "pause" : "play_arrow"
+                        iconSize: Appearance.font.pixelSize.normal
+                        color: countdownTab.running ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnPrimary
+                    }
+
+                    StyledText {
+                        Layout.alignment: Qt.AlignVCenter
+                        text: countdownTab.running ? Translation.tr("Pause") : (countdownTab.hasStarted ? Translation.tr("Resume") : Translation.tr("Start"))
+                        color: countdownTab.running ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnPrimary
+                        font.weight: Font.Medium
+                    }
                 }
             }
 
             RippleButton {
+                Layout.fillWidth: false
                 implicitHeight: 36
-                implicitWidth: 86
+                implicitWidth: 92
                 buttonRadius: Appearance.rounding.small
+                enabled: (TimerService.countdownDuration > 0 && TimerService.countdownLeft !== TimerService.countdownDuration)
+                    || countdownTab.running || countdownTab.hasStarted
                 onClicked: TimerService.countdownReset()
-                enabled: (TimerService.countdownDuration > 0 && TimerService.countdownLeft !== TimerService.countdownDuration) || TimerService.countdownRunning || countdownTab.hasStarted
                 colBackground: Appearance.colors.colErrorContainer
                 colBackgroundHover: Appearance.colors.colErrorContainerHover
                 colRipple: Appearance.colors.colErrorContainerActive
-                contentItem: StyledText {
+
+                contentItem: RowLayout {
                     anchors.centerIn: parent
-                    text: Translation.tr("Reset")
-                    color: Appearance.colors.colOnErrorContainer
-                    font.weight: Font.Medium
+                    spacing: 6
+
+                    MaterialSymbol {
+                        Layout.alignment: Qt.AlignVCenter
+                        text: "restart_alt"
+                        iconSize: Appearance.font.pixelSize.normal
+                        color: Appearance.colors.colOnErrorContainer
+                    }
+
+                    StyledText {
+                        Layout.alignment: Qt.AlignVCenter
+                        text: Translation.tr("Reset")
+                        color: Appearance.colors.colOnErrorContainer
+                        font.weight: Font.Medium
+                    }
                 }
             }
-
         }
     }
-
 }

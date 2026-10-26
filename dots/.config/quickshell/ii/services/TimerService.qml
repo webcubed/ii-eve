@@ -173,12 +173,19 @@ Singleton {
     }
 
     function countdownSet(minutes) {
+        countdownSetSeconds(minutes * 60);
+    }
+
+    // Same as countdownSet but keeps sub-minute precision, for durations typed into the
+    // countdown panel ("1:30", "90s") that would otherwise be rounded to whole minutes.
+    function countdownSetSeconds(seconds) {
+        const total = Math.max(1, Math.round(seconds));
         countdownStop();
-        Persistent.states.timer.countdown.duration = minutes * 60;
-        Persistent.states.timer.countdown.left = minutes * 60;
+        Persistent.states.timer.countdown.duration = total;
+        Persistent.states.timer.countdown.left = total;
         Persistent.states.timer.countdown.start = 0;
-        root.countdownDuration = minutes * 60;
-        root.countdownLeft = minutes * 60;
+        root.countdownDuration = total;
+        root.countdownLeft = total;
     }
 
     function countdownToggle() {
@@ -217,8 +224,12 @@ Singleton {
     readonly property int countdownSecondsLeft: countdownLeft
     function formatSeconds(totalSeconds) {
         const s = Math.max(0, Math.round(totalSeconds));
-        const m = Math.floor(s / 60);
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
         const sec = s % 60;
+        // Hours only appear once they matter, so short timers stay "4:59" and hour-long
+        // ones don't read as "90:00".
+        if (h > 0) return `${h}:${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
         return `${m}:${sec.toString().padStart(2, "0")}`;
     }
     function addCountdownMinutes(minutes) {

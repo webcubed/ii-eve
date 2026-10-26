@@ -83,30 +83,19 @@ Item {
     }
     implicitHeight: Appearance.sizes.barHeight
 
-    property list<real> visualizerPoints: []
+    // Shares the shell's single cava capture instead of spawning one per visualizer.
+    property list<real> visualizerPoints: Cava.points
 
     Behavior on implicitWidth {
         animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(root)
     }
 
-    Process {
-        id: cavaProc
-        running: activePlayer?.isPlaying ?? false
-        command: ["cava", "-p", `${FileUtils.trimFileProtocol(Directories.scriptPath)}/cava/raw_output_config.txt`]
-        stdout: SplitParser {
-            onRead: data => {
-                let points = data.split(";").map(p => parseFloat(p.trim())).filter(p => !isNaN(p));
-                root.visualizerPoints = points;
-            }
-        }
-        onRunningChanged: {
-            if (!running) root.visualizerPoints = [];
-        }
-    }
-
+    onIsPlayingChanged: Cava.setDemand("bar", root.isPlaying)
     Component.onCompleted: {
-        LyricsService.initiliazeLyrics()
+        Cava.setDemand("bar", root.isPlaying);
+        LyricsService.initiliazeLyrics();
     }
+    Component.onDestruction: Cava.setDemand("bar", false)
 
     readonly property string artSource: activePlayer?.trackArtUrl && activePlayer.trackArtUrl !== "" ? activePlayer.trackArtUrl : ""
 
@@ -187,13 +176,8 @@ Item {
         onPressed: (event) => {
             if (event.button === Qt.LeftButton) {
                 if (!hasMedia) return;
-                if (Persistent.states.media?.popupRect) {
-                    var globalPos = root.mapToItem(null, 0, 0);
-                    Persistent.states.media.popupRect.x = globalPos.x;
-                    Persistent.states.media.popupRect.y = globalPos.y;
-                    Persistent.states.media.popupRect.width = root.width;
-                    Persistent.states.media.popupRect.height = root.height;
-                }
+                var globalPos = root.mapToItem(null, 0, 0);
+                GlobalStates.mediaPopupRect = Qt.rect(globalPos.x, globalPos.y, root.width, root.height);
                 GlobalStates.mediaControlsOpen = !GlobalStates.mediaControlsOpen;
                 return;
             }

@@ -50,7 +50,9 @@ AbstractWidget {
     y: targetY
     opacity: {
         if (GlobalStates.screenLocked && !visibleWhenLocked) return 0;
-        if (Config.options.background.widgets.cullWhenOccluded && GlobalStates.widgetsHidden) return 0;
+        // While locked the line above already decided; culling here would blank every
+        // widget including the ones the lock screen keeps on purpose (the clock).
+        if (!GlobalStates.screenLocked && Config.options.background.widgets.cullWhenOccluded && GlobalStates.widgetsHidden) return 0;
         return 1;
     }
     Behavior on opacity {
@@ -135,9 +137,12 @@ AbstractWidget {
     property color dominantColor: Appearance.colors.colPrimary
     property bool dominantColorIsDark: dominantColor.hslLightness < 0.5
     property color colText: {
-        const onNormalBackground = (GlobalStates.screenLocked && Config.options.lock.blur.enable)
+        const onLockScrim = (GlobalStates.screenLocked && Config.options.lock.blur.enable)
         const adaptiveColor = ColorUtils.colorWithLightness(Appearance.colors.colPrimary, (dominantColorIsDark ? 0.8 : 0.12))
-        return onNormalBackground ? Appearance.colors.colOnLayer0 : adaptiveColor;
+        // Locked, the text sits on the blurred, darkened scrim rather than the wallpaper, so
+        // the wallpaper-adaptive tint above no longer matches what is behind it. Use the
+        // neutral on-background colour so the clock does not come out tinted.
+        return onLockScrim ? Appearance.m3colors.m3onBackground : adaptiveColor;
     }
 
     property bool wallpaperIsVideo: Config.options.background.wallpaperPath.endsWith(".mp4") || Config.options.background.wallpaperPath.endsWith(".webm") || Config.options.background.wallpaperPath.endsWith(".mkv") || Config.options.background.wallpaperPath.endsWith(".avi") || Config.options.background.wallpaperPath.endsWith(".mov")

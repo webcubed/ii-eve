@@ -187,6 +187,7 @@ Singleton {
             }
             root.notify(newNotifObject);
             // console.log(notifToString(newNotifObject));
+            root.trimHistory();
             notifFileView.setText(stringifyList(root.list));
         }
     }
@@ -238,8 +239,24 @@ Singleton {
             root.unread++;
         }
         root.notify(notifObject);
+        root.trimHistory();
         notifFileView.setText(stringifyList(root.list));
         return notificationId;
+    }
+
+    // The history is written back to disk on every change, so an old, ever-growing list costs
+    // both memory and a full re-serialisation per notification. Keep the newest entries and
+    // drop the oldest objects (with their timers) once past the cap.
+    readonly property int historyLimit: 200
+
+    function trimHistory() {
+        if (root.list.length <= root.historyLimit) return;
+        const dropped = root.list.slice(0, root.list.length - root.historyLimit);
+        dropped.forEach((notif) => {
+            if (notif?.timer) notif.timer.destroy();
+            notif?.destroy();
+        });
+        root.list = root.list.slice(-root.historyLimit);
     }
 
     function discardNotification(id) {
@@ -340,6 +357,10 @@ Singleton {
             root.list.forEach((notif) => {
                 maxId = Math.max(maxId, notif.notificationId)
             })
+
+            // A history restored from disk can already be past the cap; trim once here so a
+            // long-lived install doesn't come back with thousands of dead rows.
+            root.trimHistory()
 
             console.log("[Notifications] File loaded")
             root.idOffset = maxId

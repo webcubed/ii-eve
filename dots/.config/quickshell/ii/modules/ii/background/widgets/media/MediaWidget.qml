@@ -83,7 +83,15 @@ AbstractBackgroundWidget {
     property bool downloaded: false
     property string displayedArtFilePath: root.downloaded ? Qt.resolvedUrl(artFilePath) : ""
 
-    property list<real> visualizerPoints: [] 
+    // Shares the shell's single cava capture; it only runs while a player is actually
+    // producing sound (this used to capture audio permanently, even with nothing playing).
+    property list<real> visualizerPoints: Cava.points
+    readonly property bool wantsVisualizer: Config.options.background.widgets.media.visualizer.enable
+        && (root.currentPlayer?.isPlaying ?? false)
+    readonly property string cavaKey: "mediaWidget:" + (root.bgRoot?.screen?.name ?? "default")
+    onWantsVisualizerChanged: Cava.setDemand(root.cavaKey, root.wantsVisualizer)
+    Component.onCompleted: Cava.setDemand(root.cavaKey, root.wantsVisualizer)
+    Component.onDestruction: Cava.setDemand(root.cavaKey, false)
 
     implicitHeight: contentItem.implicitHeight
     implicitWidth: contentItem.implicitWidth
@@ -128,23 +136,6 @@ AbstractBackgroundWidget {
         command: ["sh", "-c", '[ -f "$1" ] || curl -4 -sSL --max-time 30 "$2" -o "$1"', "coverart", artFilePath, targetFile]
         onExited: (exitCode, exitStatus) => {
             root.downloaded = true
-        }
-    }
-
-    Process {
-        id: cavaProc
-        running: Config.options.background.widgets.media.visualizer.enable
-        onRunningChanged: {
-            if (!cavaProc.running) {
-                root.visualizerPoints = [];
-            }
-        }
-        command: ["cava", "-p", `${FileUtils.trimFileProtocol(Directories.scriptPath)}/cava/raw_output_config.txt`]
-        stdout: SplitParser {
-            onRead: data => {
-                let points = data.split(";").map(p => parseFloat(p.trim())).filter(p => !isNaN(p));
-                root.visualizerPoints = points;
-            }
         }
     }
 
