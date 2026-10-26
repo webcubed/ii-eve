@@ -511,6 +511,7 @@ Item {
         return false;
     }
 
+    Keys.forwardTo: [messageInputField]
     Keys.onPressed: event => {
         if (root.handleShortcut(event)) {
             event.accepted = true;
@@ -521,7 +522,6 @@ Item {
         // composer here would move its focus and send that key to the chat.
         if (root.canvasViewOpen)
             return;
-        messageInputField.forceActiveFocus();
         if (event.modifiers === Qt.NoModifier) {
             if (event.key === Qt.Key_PageUp) {
                 messageListView.contentY = Math.max(0, messageListView.contentY - messageListView.height / 2);
@@ -1793,7 +1793,7 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                         // Not `atYEnd`: an answer streaming in moves the view itself,
                         // and this would offer a way back to where the reader already
                         // was on every token.
-                        shown: !messageListView.following
+                        shown: !messageListView.following && messageListView.unseenMessageCount > 0 && messageListView.contentHeight > messageListView.height
                         newItemCount: messageListView.unseenMessageCount
                         downAction: () => messageListView.pinToEnd()
                     }
@@ -2378,7 +2378,10 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                                             : (!holdsControl && !holdsShift);
                                         if (shouldSend) {
                                             const inputText = messageInputField.text;
-                                            root.handleInput(inputText);
+                                            const result = root.handleInput(inputText);
+                                            if (result.accepted) {
+                                                messageInputField.clear();
+                                            }
                                             event.accepted = true;
                                         } else {
                                             // Shift+Enter always writes a new
@@ -2653,7 +2656,10 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                                                     return;
                                                 }
                                                 const inputText = messageInputField.text;
-                                                root.handleInput(inputText);
+                                                const result = root.handleInput(inputText);
+                                                if (result.accepted) {
+                                                    messageInputField.clear();
+                                                }
                                             }
                                         }
 

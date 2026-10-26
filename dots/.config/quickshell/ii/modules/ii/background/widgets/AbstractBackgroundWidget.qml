@@ -16,14 +16,20 @@ AbstractWidget {
     required property int scaledScreenHeight
     required property real wallpaperScale
     property var bgRoot
+    property Item wallpaperItem: null
     property bool visibleWhenLocked: Config.options.lock.showWidgets
     property var configEntry: Config.options.background.widgets[configEntryName] ?? ({})
     property string placementStrategy: configEntry.placementStrategy ?? "free"
     readonly property bool gridEnabled: Config.options.background.widgets.grid.enabled
-    readonly property int gridColumns: Config.options.background.widgets.grid.columns
-    readonly property int gridRows: Config.options.background.widgets.grid.rows
-    readonly property real gridCellWidth: scaledScreenWidth / gridColumns
-    readonly property real gridCellHeight: scaledScreenHeight / gridRows
+    // Snap to the widget design grid (144x132 pitch, see WidgetGrid.qml) rather
+    // than dividing the screen evenly, so card sizes and positions share one
+    // rhythm and edges land on the same lines
+    readonly property int gridColumns: WidgetGrid.effectiveColumns(scaledScreenWidth, Config.options.background.widgets.grid.columns)
+    readonly property int gridRows: WidgetGrid.effectiveRows(scaledScreenHeight, Config.options.background.widgets.grid.rows)
+    readonly property real gridCellWidth: WidgetGrid.cellWidth
+    readonly property real gridCellHeight: WidgetGrid.cellHeight
+    readonly property real gridOriginX: WidgetGrid.originX(scaledScreenWidth, gridColumns)
+    readonly property real gridOriginY: WidgetGrid.originY(scaledScreenHeight, gridRows)
     property int gridColumn: {
         if (!Config.ready) return 0;
         const col = configEntry.gridColumn ?? 0;
@@ -35,10 +41,10 @@ AbstractWidget {
         return Math.max(0, Math.min(row, gridRows - 1));
     }
     property real targetX: gridEnabled
-        ? Math.max(0, Math.min(gridColumn * gridCellWidth, scaledScreenWidth - width))
+        ? Math.max(0, Math.min(gridOriginX + gridColumn * gridCellWidth, scaledScreenWidth - width))
         : Math.max(0, Math.min(configEntry.x ?? 0, scaledScreenWidth - width))
     property real targetY: gridEnabled
-        ? Math.max(0, Math.min(gridRow * gridCellHeight, scaledScreenHeight - height))
+        ? Math.max(0, Math.min(gridOriginY + gridRow * gridCellHeight, scaledScreenHeight - height))
         : Math.max(0, Math.min(configEntry.y ?? 0, scaledScreenHeight - height))
     x: targetX
     y: targetY
@@ -89,8 +95,8 @@ AbstractWidget {
         onTriggered: {
             var bg = resolveBgRoot();
             if (!bg) return;
-            const col = Math.floor(root.x / gridCellWidth);
-            const row = Math.floor(root.y / gridCellHeight);
+            const col = Math.floor((root.x - root.gridOriginX) / gridCellWidth);
+            const row = Math.floor((root.y - root.gridOriginY) / gridCellHeight);
             bg.draggingWidgetCell = Qt.point(Math.max(0, Math.min(col, gridColumns - 1)), Math.max(0, Math.min(row, gridRows - 1)));
         }
     }
@@ -98,8 +104,8 @@ AbstractWidget {
         var bg = resolveBgRoot();
         if (bg) bg.draggingWidget = false;
         if (gridEnabled) {
-            const col = Math.round(root.x / gridCellWidth);
-            const row = Math.round(root.y / gridCellHeight);
+            const col = Math.round((root.x - root.gridOriginX) / gridCellWidth);
+            const row = Math.round((root.y - root.gridOriginY) / gridCellHeight);
             const snappedCol = Math.max(0, Math.min(col, gridColumns - 1));
             const snappedRow = Math.max(0, Math.min(row, gridRows - 1));
             configEntry.gridColumn = snappedCol;

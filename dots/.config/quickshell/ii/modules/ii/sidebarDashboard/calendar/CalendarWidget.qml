@@ -136,7 +136,23 @@ Item {
                     delegate: CalendarDayButton {
                         day: calendarLayout[modelData][index].day
                         isToday: calendarLayout[modelData][index].today
-                        taskList: CalendarService.getTasksByDate(new Date(calendarLayout[modelData][index].year, calendarLayout[modelData][index].month, calendarLayout[modelData][index].day))
+                        taskList: {
+                            // Reference CalendarService.events so binding re-evaluates when events load
+                            CalendarService.events;
+                            Todo.list;
+                            const date = new Date(calendarLayout[modelData][index].year, calendarLayout[modelData][index].month, calendarLayout[modelData][index].day);
+                            const khalEvents = CalendarService.getTasksByDate(date);
+                            const todoDeadlines = Todo.getTasksWithDeadline(date).map(function(item) {
+                                return {
+                                    content: "📋 " + item.content,
+                                    startDate: new Date(item.deadline),
+                                    endDate: new Date(item.deadline),
+                                    color: Appearance.colors.colTertiary,
+                                    description: ""
+                                };
+                            });
+                            return khalEvents.concat(todoDeadlines);
+                        }
                     }
 
                 }

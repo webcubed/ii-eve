@@ -36,7 +36,11 @@ Scope {
                 readonly property bool monitorIsFocused: realOverviewLoader.monitorIsFocused
                 readonly property int monitorIndex: realOverviewLoader.monitorIndex
 
-                readonly property bool isScrollingLayout: Persistent.states.hyprland.layout === "scrolling"
+                // Overview "Style" (settings): "niri" pins the scrolling overview even on a
+                // non-scrolling layout, while "default" keeps following the compositor layout.
+                readonly property bool stylePinsScrollingOverview: Config.options.overview.style === "niri"
+                readonly property bool isScrollingLayout: stylePinsScrollingOverview
+                    || Persistent.states.hyprland.layout === "scrolling"
                 property string searchingText: ""
 
                 WlrLayershell.namespace: "quickshell:overview"

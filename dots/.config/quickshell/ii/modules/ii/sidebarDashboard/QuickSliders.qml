@@ -22,7 +22,11 @@ Rectangle {
     property real verticalPadding: 4
     property real horizontalPadding: 12
 
-    property bool showBrightness: Config.options.sidebar.quickSliders.showBrightness 
+    // Brightness monitor is undefined on monitors without a controllable backlight
+    // (e.g. a desktop DP panel), so the brightness slider must drop out instead of
+    // dereferencing null.
+    readonly property bool brightnessAvailable: root.brightnessMonitor !== undefined && root.brightnessMonitor !== null
+    property bool showBrightness: Config.options.sidebar.quickSliders.showBrightness && root.brightnessAvailable
     property bool showVolume: Config.options.sidebar.quickSliders.showVolume 
     property bool showGamma: Config.options.sidebar.quickSliders.showGamma
     property bool showMic: Config.options.sidebar.quickSliders.showMic 
@@ -52,9 +56,9 @@ Rectangle {
         Repeater {
             id: repeater
             model: [
-                { show: showBrightness, icon: "brightness_6", 
-                getVal: () => root.brightnessMonitor.brightness, 
-                setVal: (v) => root.brightnessMonitor.setBrightness(v) },
+                { show: showBrightness, icon: "brightness_6",
+                getVal: () => root.brightnessMonitor?.brightness ?? 0,
+                setVal: (v) => root.brightnessMonitor?.setBrightness(v) },
                 { show: showVolume, icon: "volume_up", 
                 getVal: () => Audio.sink.audio.volume, 
                 setVal: (v) => { Audio.sink.audio.volume = v } },
@@ -62,18 +66,18 @@ Rectangle {
                 getVal: () => Audio.source.audio.volume, 
                 setVal: (v) => { Audio.source.audio.volume = v } },
                 { show: showGamma, icon: "light_mode",  secondaryIcon: "wb_twilight",
-                getVal: () => Hyprsunset.gamma >= 100 ? 0.3 + root.brightnessMonitor?.brightness * 0.7 : (Hyprsunset.gamma - Hyprsunset.gammaLowerLimit) / (100 - Hyprsunset.gammaLowerLimit) * 0.3,
+                getVal: () => Hyprsunset.gamma >= 100 ? 0.3 + (root.brightnessMonitor?.brightness ?? 1) * 0.7 : (Hyprsunset.gamma - Hyprsunset.gammaLowerLimit) / (100 - Hyprsunset.gammaLowerLimit) * 0.3,
                 setVal: (v) => {
                     if (v >= 0.3) {
                         // 0.3 - 1.0 brightness
-                        root.brightnessMonitor.setBrightness((v - 0.3) / 0.7);
+                        root.brightnessMonitor?.setBrightness((v - 0.3) / 0.7);
                         if (Hyprsunset.gamma < 100) {
                             Hyprsunset.setGamma(100);
                         }
                     } else {
                         // 0 - 0.3 gamma
-                        if (root.brightnessMonitor.brightness !== 0) {
-                            root.brightnessMonitor.setBrightness(0);
+                        if ((root.brightnessMonitor?.brightness ?? 1) !== 0) {
+                            root.brightnessMonitor?.setBrightness(0);
                         }
                         Hyprsunset.setGamma((v / 0.3 * (100 - Hyprsunset.gammaLowerLimit) + Hyprsunset.gammaLowerLimit));
                     }

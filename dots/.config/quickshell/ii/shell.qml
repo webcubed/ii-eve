@@ -32,7 +32,12 @@ ShellRoot {
         Cliphist.refresh()
         Wallpapers.load()
         Updates.load()
-        BluetoothAgent.load()
+        // Touch BluetoothAgent so the BlueZ pairing agent registers
+        // immediately, not on first pairing prompt.
+        BluetoothAgent.ready
+        // Peripheral battery notifications must run even when the bar's
+        // SystemIcons widget isn't in the layout.
+        PeripheralBattery.devices
         // Touch PolkitService so the agent registers immediately,
         // not on first FullscreenPolkitWindow construction.
         PolkitService.agent

@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
 import Quickshell.Services.UPower
+import Quickshell.Services.Mpris
 import qs
 import qs.services
 import qs.modules.common
@@ -18,6 +19,17 @@ MouseArea {
     property bool active: false
     property bool showInputField: active || context.currentText.length > 0
     readonly property bool requirePasswordToPower: Config.options.lock.security.requirePasswordToPower
+    readonly property MprisPlayer activePlayer: {
+        const preferred = (Config.options?.bar?.media?.preferredPlayer ?? "").trim().toLowerCase()
+        if (preferred.length === 0) return MprisController.activePlayer
+        for (const p of MprisController.players) {
+            if ((p.identity ?? "").toLowerCase().includes(preferred) ||
+                (p.desktopEntry ?? "").toLowerCase().includes(preferred))
+                return p
+        }
+        return MprisController.activePlayer
+    }
+    readonly property string artUrl: activePlayer?.trackArtUrl ?? ""
 
     // Force focus on entry
     function forceFieldFocus() {
@@ -231,6 +243,7 @@ MouseArea {
     // Left toolbar
     Toolbar {
         id: leftIsland
+        visible: Config.options.lock.showToolbars
         anchors {
             right: mainIsland.left
             top: mainIsland.top
@@ -244,7 +257,127 @@ MouseArea {
         IconAndTextPair {
             Layout.leftMargin: 8
             icon: "account_circle"
+            visible: !Config.options.lock.showMedia || root.activePlayer === null
             text: SystemInfo.username
+        }
+
+        // Media player info
+        Loader {
+            Layout.leftMargin: 2
+            Layout.rightMargin: 2
+            Layout.alignment: Qt.AlignVCenter
+            active: root.activePlayer !== null
+            visible: active && Config.options.lock.showMedia
+
+            sourceComponent: Item {
+                implicitWidth: mediaRow.implicitWidth
+                implicitHeight: mediaRow.implicitHeight
+
+                readonly property string cleanedTitle: StringUtils.cleanMusicTitle(root.activePlayer?.trackTitle) || ""
+
+                RowLayout {
+                    id: mediaRow
+                    spacing: 8
+                    anchors.centerIn: parent
+
+                    Rectangle {
+                        id: artRect
+                        implicitWidth: 40
+                        implicitHeight: 40
+                        radius: Appearance.rounding.full
+                        color: Appearance.colors.colPrimaryContainer
+                        Layout.alignment: Qt.AlignVCenter
+                        clip: true
+
+                        layer.enabled: true
+                        layer.effect: OpacityMask {
+                            maskSource: Rectangle {
+                                width: artRect.width
+                                height: artRect.height
+                                radius: artRect.radius
+                            }
+                        }
+
+                        StyledImage {
+                            anchors.centerIn: parent
+                            width: artRect.width
+                            height: artRect.height
+                            source: {
+                                if (!root.artUrl || root.artUrl.length === 0) return ""
+                                if (root.artUrl.startsWith("/")) return "file://" + root.artUrl
+                                return root.artUrl
+                            }
+                            fillMode: Image.PreserveAspectCrop
+                            cache: false
+                            antialiasing: true
+                            sourceSize.width: artRect.width * 2
+                            sourceSize.height: artRect.height * 2
+                            visible: root.artUrl !== ""
+                        }
+
+                        MaterialSymbol {
+                            anchors.centerIn: parent
+                            fill: 1
+                            text: "music_note"
+                            iconSize: Appearance.font.pixelSize.normal
+                            color: Appearance.colors.colOnSecondaryContainer
+                            visible: root.artUrl === ""
+                        }
+                    }
+
+                    Column {
+                        Layout.alignment: Qt.AlignVCenter
+                        spacing: -2
+
+                        StyledText {
+                            horizontalAlignment: Text.AlignLeft
+                            elide: Text.ElideRight
+                            maximumLineCount: 1
+                            width: Math.min(implicitWidth, 180)
+                            color: Appearance.colors.colOnSurfaceVariant
+                            text: root.activePlayer?.trackArtist || " "
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                        }
+
+                        StyledText {
+                            horizontalAlignment: Text.AlignLeft
+                            elide: Text.ElideRight
+                            maximumLineCount: 1
+                            width: Math.min(implicitWidth, 180)
+                            color: Appearance.colors.colOnSurfaceVariant
+                            text: cleanedTitle
+                            font.weight: Font.Medium
+                            font.pixelSize: Appearance.font.pixelSize.small
+                        }
+                    }
+
+                    ClippedFilledCircularProgress {
+                        id: mediaCircProg
+                        Layout.alignment: Qt.AlignVCenter
+                        lineWidth: Appearance.rounding.unsharpen
+                        value: (root.activePlayer?.length ?? 0) > 0
+                            ? root.activePlayer.position / root.activePlayer.length
+                            : 0
+                        implicitSize: 24
+                        colPrimary: Appearance.colors.colOnSurfaceVariant
+                        enableAnimation: false
+
+                        Item {
+                            anchors.centerIn: parent
+                            width: mediaCircProg.implicitSize
+                            height: mediaCircProg.implicitSize
+
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                fill: 1
+                                text: "music_note"
+                                iconSize: Appearance.font.pixelSize.normal
+                                color: Appearance.colors.colOnSurfaceVariant
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         // Keyboard layout (Xkb)
@@ -253,7 +386,7 @@ MouseArea {
             Layout.fillHeight: true
 
             active: true
-            visible: active
+            visible: !Config.options.lock.showMedia || root.activePlayer === null
 
             sourceComponent: Row {
                 spacing: 8
@@ -291,6 +424,7 @@ MouseArea {
     // Right toolbar
     Toolbar {
         id: rightIsland
+        visible: Config.options.lock.showToolbars
         anchors {
             left: mainIsland.right
             top: mainIsland.top

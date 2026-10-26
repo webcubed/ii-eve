@@ -384,6 +384,11 @@ ContentPage {
                             displayName: Translation.tr("Scroller"),
                             icon: "keyboard_double_arrow_up",
                             value: "scroller"
+                        },
+                        {
+                            displayName: Translation.tr("Current"),
+                            icon: "text_fields",
+                            value: "current"
                         }
                     ]
                 }
@@ -396,6 +401,16 @@ ContentPage {
                 checked: Config.options.bar.mediaPlayer.lyrics.useGradientMask
                 onCheckedChanged: {
                     Config.options.bar.mediaPlayer.lyrics.useGradientMask = checked;
+                }
+            }
+
+            ConfigSwitch {
+                enabled: Config.options.bar.mediaPlayer.lyrics.enable
+                buttonIcon: "dynamic_feed"
+                text: Translation.tr("Dynamic width (based on lyrics text)")
+                checked: Config.options.bar.mediaPlayer.lyrics.dynamicSize ?? false
+                onCheckedChanged: {
+                    Config.options.bar.mediaPlayer.lyrics.dynamicSize = checked;
                 }
             }
             

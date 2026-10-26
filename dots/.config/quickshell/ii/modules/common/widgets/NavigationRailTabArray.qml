@@ -7,6 +7,7 @@ Item {
     id: root
     property int currentIndex: 0
     property bool expanded: false
+    property color colToggled: Appearance.colors.colSecondaryContainer
     default property alias tabData: tabBarColumn.data
     property bool _isInitialized: false
     Component.onCompleted: _isInitialized = true
@@ -36,7 +37,7 @@ Item {
             topMargin: itemHeight * root.currentIndex + (root.expanded ? 0 : ((itemHeight - baseHighlightHeight) / 2))
         }
         radius: Appearance.rounding.full
-        color: Appearance.colors.colSecondaryContainer
+        color: root.colToggled
         implicitHeight: root.expanded ? itemHeight : baseHighlightHeight
         implicitWidth: root._currentButton?.visualWidth ?? (root.expanded ? 130 : itemHeight)
 

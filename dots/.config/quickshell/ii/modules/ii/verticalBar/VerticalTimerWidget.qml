@@ -9,8 +9,10 @@ Item {
 
     readonly property bool pRunning: TimerService.pomodoroRunning ?? false
     readonly property bool sRunning: TimerService.stopwatchRunning ?? false
+    readonly property bool cRunning: TimerService.countdownRunning ?? false
     readonly property bool hasStop: TimerService.stopwatchTime > 0
     readonly property bool hasPomo: TimerService.pomodoroSecondsLeft > 0 && (TimerService.pomodoroSecondsLeft < TimerService.pomodoroLapDuration || pRunning)
+    readonly property bool hasCountdown: TimerService.countdownLeft > 0 && (TimerService.countdownLeft < TimerService.countdownDuration || cRunning)
 
     property color colBackground: Appearance.colors.colPrimary // to be used from BarComponent
 
@@ -20,7 +22,7 @@ Item {
     implicitWidth: Appearance.sizes.verticalBarWidth
     implicitHeight: columnLayout.implicitHeight + columnLayout.spacing * 4
 
-    property bool compVisible: ((hasStop || sRunning) && root.showStopwatch) || ((pRunning || hasPomo) && root.showPomodoro)
+    property bool compVisible: ((hasStop || sRunning) && root.showStopwatch) || ((pRunning || hasPomo) && root.showPomodoro) || (hasCountdown || cRunning)
 
     onCompVisibleChanged: rootItem.toggleVisible(compVisible)
     Component.onCompleted: rootItem.toggleVisible(compVisible)
@@ -103,6 +105,39 @@ Item {
                     TimerService.togglePomodoro()
                 }
             } 
+        }
+
+        Loader {
+            active: hasCountdown
+            visible: active
+            Layout.preferredHeight: 50
+            Layout.bottomMargin: 10
+            Layout.alignment: Qt.AlignHCenter
+            Layout.leftMargin: 2
+
+            sourceComponent: ColumnLayout {
+                MaterialSymbol {
+                    text: root.cRunning ? "hourglass_top" : "hourglass_disabled"
+                    color: Appearance.colors.colOnPrimary
+                    iconSize: Appearance.font.pixelSize.large
+                }
+
+                StyledText {
+                    text: {
+                        const t = TimerService.countdownLeft
+                        return Math.floor(t/60).toString().padStart(2,'0') + "\n" + (t%60).toString().padStart(2,'0')
+                    }
+                    color: Appearance.colors.colOnPrimary
+                }
+            }
+            MouseArea {
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    TimerService.countdownToggle()
+                }
+            }
         }
 
     }

@@ -19,6 +19,18 @@ Singleton {
     }
 
     /**
+     * Converts a folder path to a file:// URL. Returns "" for empty input.
+     * @param {string} path
+     * @returns {string}
+     */
+    function folderUrl(path) {
+        const trimmed = root.trimFileProtocol(path ?? "").trim();
+        if (trimmed === "") return "";
+        const expanded = trimmed.startsWith("~") ? Quickshell.env("HOME") + trimmed.slice(1) : trimmed;
+        return "file://" + expanded.replace(/\/+$/, "");
+    }
+
+    /**
      * Extracts the file name from a file path
      * @param {string} str
      * @returns {string}

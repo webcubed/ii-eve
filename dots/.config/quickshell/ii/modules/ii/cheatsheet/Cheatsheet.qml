@@ -1,6 +1,7 @@
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import "commands"
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -69,9 +70,30 @@ Scope { // Scope
         }
     }
 
-    readonly property var visibleTabs: root.extensionTabs.length > 0
+    Component {
+        id: cheatsheetCommandsComponent
+        CheatsheetCommands {}
+    }
+
+    Component {
+        id: cheatsheetTimetableComponent
+        CheatsheetTimetable {}
+    }
+
+    Component {
+        id: cheatsheetPeriodicTableComponent
+        CheatsheetPeriodicTable {}
+    }
+
+    readonly property var builtInTabs: [
+        { key: "commands", icon: "terminal", name: Translation.tr("Commands"), component: cheatsheetCommandsComponent },
+        { key: "timetable", icon: "calendar_month", name: Translation.tr("Timetable"), component: cheatsheetTimetableComponent },
+        { key: "periodicTable", icon: "science", name: Translation.tr("Periodic table"), component: cheatsheetPeriodicTableComponent }
+    ]
+
+    readonly property var visibleTabs: root.builtInTabs.concat(root.extensionTabs.length > 0
         ? root.extensionTabs
-        : [{ key: "empty", icon: "extension_off", name: Translation.tr("Cheat sheet"), component: emptyPlaceholderComponent }]
+        : [{ key: "empty", icon: "extension_off", name: Translation.tr("Cheat sheet"), component: emptyPlaceholderComponent }])
 
     readonly property var tabButtonList: root.visibleTabs.map(t => ({ icon: t.icon, name: t.name }))
 
@@ -103,11 +125,7 @@ Scope { // Scope
             property bool _focusReady: false
             WlrLayershell.keyboardFocus: {
                 if (!_focusReady) return WlrKeyboardFocus.None;
-                const icon = root.tabButtonList[swipeView.currentIndex]?.icon;
-                // Keybinds tab also needs OnDemand so the search field can take text input.
-                return (icon === "terminal" || icon === "keyboard")
-                    ? WlrKeyboardFocus.OnDemand
-                    : WlrKeyboardFocus.None;
+                return WlrKeyboardFocus.OnDemand;
             }
             Timer {
                 id: focusUpgradeTimer
@@ -162,11 +180,17 @@ Scope { // Scope
                 implicitWidth: cheatsheetColumnLayout.implicitWidth + padding * 2
                 implicitHeight: cheatsheetColumnLayout.implicitHeight + padding * 2
 
-                Keys.onPressed: event => { // Esc to close
+                Keys.onPressed: event => {
                     if (event.key === Qt.Key_Escape) {
                         cheatsheetRoot.hide();
-                    }
-                    if (event.modifiers === Qt.ControlModifier) {
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Left) {
+                        tabBar.decrementCurrentIndex();
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Right) {
+                        tabBar.incrementCurrentIndex();
+                        event.accepted = true;
+                    } else if (event.modifiers === Qt.ControlModifier) {
                         if (event.key === Qt.Key_PageDown) {
                             tabBar.incrementCurrentIndex();
                             event.accepted = true;
@@ -272,8 +296,13 @@ Scope { // Scope
                             model: root.visibleTabs
                             delegate: Loader {
                                 required property var modelData
+                                required property int index
                                 sourceComponent: modelData.component
                                 onLoaded: {
+                                    if (item && "tabIndex" in item)
+                                        item.tabIndex = index;
+                                    if (item && "keyNavTarget" in item)
+                                        item.keyNavTarget = cheatsheetBackground;
                                     if (modelData.extensionId && item) {
                                         if ("extensionId" in item) {
                                             item.extensionId = modelData.extensionId;

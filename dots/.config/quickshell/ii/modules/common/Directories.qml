@@ -45,6 +45,9 @@ Singleton {
     property string shellConfigName: "config.json"
     property string shellConfigPath: `${Directories.shellConfig}/${Directories.shellConfigName}`
 	property string customAppsPath: FileUtils.trimFileProtocol(`${Directories.state}/user/customApps.json`)
+    // Per-app usage stats sampler state (AppStats service); the sampler is given this
+    // directory via --state-dir, so the shell and the daemon must agree on it.
+    property string appStats: FileUtils.trimFileProtocol(`${Directories.state}/appStats`)
 	property string todoPath: FileUtils.trimFileProtocol(`${Directories.state}/user/todo.json`)
 	property string commandsPath: FileUtils.trimFileProtocol(`${Directories.state}/user/commands.json`)
 	property string notesPath: FileUtils.trimFileProtocol(`${Directories.state}/user/notes.json`)
@@ -64,7 +67,19 @@ Singleton {
     property string userAiPrompts: FileUtils.trimFileProtocol(`${Directories.shellConfig}/ai/prompts`)
     property string userActions: FileUtils.trimFileProtocol(`${Directories.shellConfig}/actions`)
     property string aiChats: FileUtils.trimFileProtocol(`${Directories.state}/user/ai/chats`)
+    property string aiSessions: FileUtils.trimFileProtocol(`${Directories.state}/user/ai/sessions`)
+    property string aiSessionsScriptPath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/ai/sessions.py`)
+    property string aiExports: FileUtils.trimFileProtocol(`${Directories.state}/user/ai/exports`)
+    property string aiDrafts: FileUtils.trimFileProtocol(`${Directories.state}/user/ai/drafts`)
+    property string aiDraftsScriptPath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/ai/drafts.py`)
+    property string aiSettingsIndexScriptPath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/ai/settings_index.py`)
+    property string aiRagIndexDir: FileUtils.trimFileProtocol(`${Directories.state}/user/ai/rag_index`)
+    property string aiRagScriptPath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/ai/rag.py`)
+    property string aiWebScriptPath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/ai/web.py`)
+    property string aiHttpScriptPath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/ai/http_request.py`)
     property string aiTranslationScriptPath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/ai/gemini-translate.sh`)
+    property string aiLastAnswer: FileUtils.trimFileProtocol(`${Directories.state}/user/ai/last_answer.json`)
+    property string aiAttachScriptPath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/ai/attach.py`)
     property string recordScriptPath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/videos/record.sh`)
     property string extractColorsScriptPath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/wallpapers/extract-colors.sh`)
     property string colorCachePath: FileUtils.trimFileProtocol(`${Directories.cache}/wallpapers/colors.json`)

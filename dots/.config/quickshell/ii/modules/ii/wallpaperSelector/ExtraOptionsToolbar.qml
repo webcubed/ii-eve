@@ -79,6 +79,8 @@ Toolbar {
 
     ToolbarTextField {
         id: filterField
+        // Hidden when the searchbar is turned off in settings; keyboard "goto" still works.
+        visible: Config.options.wallpaperSelector.showSearchbar
         placeholderText: {
             if (wallpaperSelectorContent.browserMode) return Translation.tr("Search API (e.g. nature, city)");
             return focus ? Translation.tr("Search wallpapers") : Translation.tr("Hit \"/\" to search")

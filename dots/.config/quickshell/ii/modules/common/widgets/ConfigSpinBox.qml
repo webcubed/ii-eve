@@ -12,6 +12,7 @@ Item {
     property alias stepSize: spinBoxWidget.stepSize
     property alias from: spinBoxWidget.from
     property alias to: spinBoxWidget.to
+    signal valueModified()
     
     Layout.fillWidth: true
     implicitHeight: rowLayout.implicitHeight + 16
@@ -72,6 +73,7 @@ Item {
             id: spinBoxWidget
             Layout.fillWidth: false
             value: root.value
+            onValueModified: root.valueModified()
         }
     }
 }

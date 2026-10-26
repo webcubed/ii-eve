@@ -51,7 +51,7 @@ AbstractBackgroundWidget {
     property string artFileName: artUrl ? Qt.md5(artUrl) : ""
     property string artFilePath: artFileName ? `${artDownloadLocation}/${artFileName}` : ""
 
-    property real widgetSize: 200
+    property real widgetSize: WidgetGrid.spanWidth(2) - 2 * WidgetGrid.gutter // Square art inset by one gutter per side
     property real controlsSize: 55
     property real buttonIconSize: 30
     property bool showSwitchButton: false
@@ -122,7 +122,7 @@ AbstractBackgroundWidget {
 
     Process { // Cover art downloader
         id: coverArtDownloader
-        property string targetFile: root.artUrl
+        property string targetFile: root.artUrl ?? ""
         property string artFilePath: root.artFilePath
         // Pass paths as positional args to avoid shell injection from MPRIS-supplied URLs.
         command: ["sh", "-c", '[ -f "$1" ] || curl -4 -sSL --max-time 30 "$2" -o "$1"', "coverart", artFilePath, targetFile]
@@ -158,8 +158,9 @@ AbstractBackgroundWidget {
     Item {
         id: contentItem
 
-        implicitWidth: root.widgetSize
-        implicitHeight: root.widgetSize
+        // 2x2 grid card: square art inset by one gutter on each side
+        implicitWidth: WidgetGrid.spanWidth(2)
+        implicitHeight: WidgetGrid.spanHeight(2)
 
     
         Image { // using a loader somehow breaks the image
@@ -167,7 +168,7 @@ AbstractBackgroundWidget {
             anchors.fill: parent
             source: root.displayedArtFilePath
             sourceSize.width: contentItem.implicitWidth
-            sourceSize.height: sourceSize.width
+            sourceSize.height: contentItem.implicitHeight
             fillMode: Image.PreserveAspectCrop
             cache: false
             antialiasing: true
@@ -188,8 +189,8 @@ AbstractBackgroundWidget {
         FadeLoader {
             id: loopButtonLoader
             anchors {
-                right: parent.right
-                bottom: parent.bottom
+                right: artBackground.right
+                bottom: artBackground.bottom
             }
             z: 3
             shown: root.hovering
@@ -223,7 +224,9 @@ AbstractBackgroundWidget {
         
         MaterialShape { // Art background
             id: artBackground
-            anchors.fill: parent
+            anchors.centerIn: parent
+            width: Math.min(parent.width, parent.height)
+            height: width
             color: Appearance.colors.colPrimaryContainer
             shapeString: Config.options.background.widgets.media.backgroundShape
             
@@ -288,8 +291,8 @@ AbstractBackgroundWidget {
         FadeLoader {
             shown: root.showRestButtons
             anchors {
-                left: parent.left
-                bottom: parent.bottom
+                left: artBackground.left
+                bottom: artBackground.bottom
             }
             sourceComponent: ControlButton {
                 id: playButton
@@ -314,8 +317,8 @@ AbstractBackgroundWidget {
         Loader {
             active: root.showRestButtons
             anchors {
-                top: parent.top
-                right: parent.right
+                top: artBackground.top
+                right: artBackground.right
             }
             sourceComponent: Rectangle {
                 anchors {

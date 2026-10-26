@@ -1,4 +1,3 @@
-import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -7,384 +6,291 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
 import Qt.labs.synchronizer
-import Quickshell
-import qs.modules.common.functions
-import "phone"
 
 Item {
     id: root
     required property var scopeRoot
-    property int sidebarPadding: 12
+    property int sidebarPadding: 10
     anchors.fill: parent
-    focus: true
-    property var visitedTabs: ({})
-    property string routedSessionRequestId: ""
+    property bool aiChatEnabled: Config.options.policies.ai !== 0
+    property bool translatorEnabled: Config.options.policies.translator !== 0
+    property bool animeEnabled: Config.options.policies.weeb !== 0
+    property bool animeCloset: Config.options.policies.weeb === 2
+    property bool mediaEnabled: Config.options.policies.player !== 0
+    property bool wallpapersEnabled: Config.options.policies.wallpapers !== 0
+    property bool tailscaleEnabled: Config.ready && (Config.options.policies?.tailscale ?? 0) !== 0
+    property bool dockerEnabled: Config.ready && (Config.options.policies?.docker ?? 0) !== 0
+    property bool vpnEnabled: Config.ready && (Config.options.policies?.vpn ?? 0) !== 0
+    property bool emailEnabled: Config.ready && (Config.options.policies?.email ?? 0) !== 0
+    property bool notesEnabled: Config.ready && (Config.options.policies?.notes ?? 0) !== 0
+    property bool phoneEnabled: Config.options.policies.phone !== 0
 
-    // Policy controls must be handled at the content boundary as well as by
-    // the surrounding PanelWindow/TopLayer. The active tab can contain a
-    // TextEdit, which otherwise consumes Ctrl+D/P/O before the window-level
-    // Keys handler sees it.
-    Keys.priority: Keys.BeforeItem
-    Keys.onPressed: event => {
-        if ((event.modifiers & Qt.ControlModifier) === 0) {
-            // Arrow keys navigate tabs unless a non-empty text input has focus
-            if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
-                const focusItem = Quickshell.activeFocusItem;
-                const isTextInput = focusItem && (focusItem instanceof TextInput || focusItem instanceof TextField ||
-                    (typeof focusItem.text !== "undefined" && typeof focusItem.cursorPosition !== "undefined"));
-                const inputIsEmpty = !isTextInput || !focusItem.text || focusItem.text.length === 0;
-                if (inputIsEmpty) {
-                    if (event.key === Qt.Key_Left) swipeView.decrementCurrentIndex();
-                    else swipeView.incrementCurrentIndex();
-                    Persistent.states.sidebar.policies.tab = swipeView.currentIndex;
-                    event.accepted = true;
-                }
-                return;
-            }
-            return;
-        }
+    property bool _sidebarExtended: scopeRoot.extend
+    property int _maxTextTabs: _sidebarExtended ? 4 : 3
 
-        const controller = root.scopeRoot;
-        if (event.key === Qt.Key_O) {
-            if (controller && typeof controller.togglePoliciesExtended === "function")
-                controller.togglePoliciesExtended();
-            else
-                GlobalStates.policiesExtended = !GlobalStates.policiesExtended;
-        } else if (event.key === Qt.Key_D) {
-            if (controller && typeof controller.togglePoliciesDetach === "function")
-                controller.togglePoliciesDetach();
-            else
-                GlobalStates.policiesDetached = !GlobalStates.policiesDetached;
-        } else if (event.key === Qt.Key_P) {
-            if (controller && typeof controller.togglePoliciesPin === "function")
-                controller.togglePoliciesPin();
-            else
-                GlobalStates.policiesPinned = !GlobalStates.policiesPinned;
-        } else if (event.key === Qt.Key_PageDown) {
-            swipeView.incrementCurrentIndex();
-        } else if (event.key === Qt.Key_PageUp) {
-            swipeView.decrementCurrentIndex();
-        } else {
-            return;
-        }
-        event.accepted = true;
+    property var extensionPages: ExtensionManager.ready
+        ? ExtensionManager.getContributionPoint("sidebarLeftPages") : []
+
+    Connections {
+        target: ExtensionManager
+        function onRefreshExtensions() { root.extensionPages = ExtensionManager.getContributionPoint("sidebarLeftPages") }
+        function onExtensionInstalled() { root.extensionPages = ExtensionManager.getContributionPoint("sidebarLeftPages") }
+        function onExtensionRemoved() { root.extensionPages = ExtensionManager.getContributionPoint("sidebarLeftPages") }
+        function onExtensionToggled() { root.extensionPages = ExtensionManager.getContributionPoint("sidebarLeftPages") }
     }
 
-    // Tab navigation shortcuts
-    Shortcut { sequence: "Ctrl+Tab"; onActivated: { swipeView.incrementCurrentIndex(); Persistent.states.sidebar.policies.tab = swipeView.currentIndex; } }
-    Shortcut { sequence: "Ctrl+Shift+Tab"; onActivated: { swipeView.decrementCurrentIndex(); Persistent.states.sidebar.policies.tab = swipeView.currentIndex; } }
+    property var enabledExtensionPages: root.extensionPages.filter(p => {
+        let key = p.extensionId + ":" + (p.identifier || p.title);
+        return !Config.options.policies.disabledExtensionTabs?.includes(key);
+    })
+
+    property var _allPages: [
+        ...(root.aiChatEnabled ? [{"key": "ai", "icon": "neurology", "name": Translation.tr("Intelligence"), "comp": aiChat, "hidden": false}] : []),
+        ...(root.mediaEnabled ? [{"key": "media", "icon": "music_note", "name": Translation.tr("Media"), "comp": media, "hidden": false}] : []),
+        ...(root.wallpapersEnabled ? [{"key": "wallpapers", "icon": "wallpaper", "name": Translation.tr("Wallpapers"), "comp": wallpaperBrowser, "hidden": false}] : []),
+        ...(root.animeEnabled ? [{"key": "anime", "icon": "bookmark_heart", "name": Translation.tr("Anime"), "comp": anime, "hidden": root.animeCloset}] : []),
+        ...(root.tailscaleEnabled ? [{"key": "tailscale", "icon": "hub", "name": Translation.tr("Tailscale"), "comp": tailscalePage, "hidden": false}] : []),
+        ...(root.dockerEnabled ? [{"key": "docker", "icon": "inventory", "name": Translation.tr("Docker"), "comp": dockerPage, "hidden": false}] : []),
+        ...(root.vpnEnabled ? [{"key": "vpn", "icon": "shield", "name": Translation.tr("VPN"), "comp": vpnPage, "hidden": false}] : []),
+        ...(root.emailEnabled ? [{"key": "email", "icon": "mail", "name": Translation.tr("Email"), "comp": emailPage, "hidden": false}] : []),
+        ...(root.notesEnabled ? [{"key": "notes", "icon": "sticky_note_2", "name": Translation.tr("Notes"), "comp": notesPage, "hidden": false}] : []),
+        ...(root.phoneEnabled ? [{"key": "phone", "icon": "smartphone", "name": Translation.tr("Phone"), "comp": phonePlaceholder, "hidden": false}] : []),
+        ...root.enabledExtensionPages.map(p => ({"key": p.extensionId + ":" + (p.identifier || p.title), "icon": p.icon, "name": p.title, "ext": p, "hidden": false}))
+    ]
+
+    // Rebuild the SwipeView children ONLY when the page set actually changes.
+    // Creating pages inside a reactive `contentChildren` binding causes a binding
+    // loop: every re-evaluation destroys + recreates ALL pages (see AGENTS.md).
+    property bool _rebuildQueued: false
+    onExtensionPagesChanged: root.queueRebuild()
+
+    function queueRebuild() {
+        if (root._rebuildQueued) return;
+        root._rebuildQueued = true;
+        Qt.callLater(() => {
+            root._rebuildQueued = false;
+            root.rebuildPages();
+        });
+    }
+
+    property var _orderedPages: _sortTabsByOrder(_allPages)
+    property var tabButtonList: _orderedPages.filter(p => !p.hidden)
+
+    function _sortTabsByOrder(tabs) {
+        const order = Config.ready ? (Config.options.sidebar?.tabOrder ?? []) : [];
+        if (order.length === 0) return tabs;
+        const result = [];
+        // First add tabs in the stored order (if they still exist)
+        for (let i = 0; i < order.length; i++) {
+            const found = tabs.find(t => t.key === order[i]);
+            if (found) result.push(found);
+        }
+        // Then add any new tabs not in the order list
+        for (let i = 0; i < tabs.length; i++) {
+            if (!result.some(t => t.key === tabs[i].key)) result.push(tabs[i]);
+        }
+        return result;
+    }
+
+    // Tab index and page index are the same — both iterate
+    // the same filtered list (_orderedPages minus hidden items).
+    function _pageIndexForTab(tabIndex) { return tabIndex; }
+    function _tabIndexForPage(pageIndex) { return pageIndex; }
+
+    function _saveTabOrder() {
+        const order = tabButtonList.map(t => t.key);
+        Config.options.sidebar.tabOrder = order;
+    }
+    property int tabCount: swipeView.count
+
+    function focusActiveItem() {
+        swipeView.currentItem.forceActiveFocus()
+    }
+
+    function createExtensionPageInto(item, page) {
+        if (!item || !page) return;
+        if ("extensionId" in item) {
+            item.extensionId = page.extensionId;
+        } else {
+            Object.defineProperty(item, "extensionId", {
+                value: page.extensionId,
+                writable: true,
+                configurable: true,
+                enumerable: true
+            });
+        }
+    }
+
+    property var _currentPageItems: []
+
+    function rebuildPages() {
+        for (let i = root._currentPageItems.length - 1; i >= 0; i--) {
+            root._currentPageItems[i].destroy();
+        }
+        root._currentPageItems = [];
+        swipeView.contentChildren = [];
+        // Use tabButtonList directly — same source as the tab bar
+        const pages = root.tabButtonList;
+        const items = [];
+        for (let i = 0; i < pages.length; i++) {
+            const page = pages[i];
+            if (page.comp) {
+                items.push(page.comp.createObject());
+            } else if (page.ext) {
+                const loader = Qt.createQmlObject('import QtQuick; Loader { active: true }', swipeView);
+                loader.source = "file://" + page.ext.fullPath + "?_t=" + Date.now();
+                const extPage = page.ext;
+                const setExtId = () => {
+                    if (loader.item) root.createExtensionPageInto(loader.item, extPage);
+                };
+                if (loader.status === Loader.Ready) setExtId();
+                else loader.loaded.connect(setExtId);
+                items.push(loader);
+            }
+        }
+        root._currentPageItems = items;
+        swipeView.contentChildren = items;
+    }
+
+    function createExtensionPage(page) {
+        let loader = Qt.createQmlObject('import QtQuick; Loader { active: true }', swipeView)
+        loader.source = "file://" + page.fullPath + "?_t=" + Date.now()
+        let setExtId = () => {
+            if (loader.item) {
+                root.createExtensionPageInto(loader.item, page);
+            }
+        }
+        if (loader.status === Loader.Ready) {
+            setExtId()
+        } else {
+            loader.loaded.connect(setExtId)
+        }
+        return loader
+    }
+
+    Keys.onPressed: (event) => {
+        if (event.modifiers & Qt.ControlModifier) {
+            if (event.key === Qt.Key_PageDown || (event.key === Qt.Key_Tab && !(event.modifiers & Qt.ShiftModifier))) {
+                swipeView.incrementCurrentIndex()
+                event.accepted = true;
+            }
+            else if (event.key === Qt.Key_PageUp || (event.key === Qt.Key_Tab && (event.modifiers & Qt.ShiftModifier))) {
+                swipeView.decrementCurrentIndex()
+                event.accepted = true;
+            }
+        }
+        // Ctrl+Shift+Left/Right to reorder tabs
+        if ((event.modifiers & Qt.ControlModifier) && (event.modifiers & Qt.ShiftModifier)) {
+            if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
+                _moveCurrentTab(event.key === Qt.Key_Right ? 1 : -1);
+                event.accepted = true;
+            }
+        }
+    }
+
+    function _moveCurrentTab(direction) {
+        const idx = root._tabIndexForPage(Persistent.states.sidebar.policies.tab);
+        const order = tabButtonList.map(t => t.key);
+        if (idx < 0 || idx >= order.length) return;
+        const newIdx = idx + direction;
+        if (newIdx < 0 || newIdx >= order.length) return;
+        // Swap
+        const temp = order[idx];
+        order[idx] = order[newIdx];
+        order[newIdx] = temp;
+        // Save to config; the active page stays put, only the tab moves
+        Config.options.sidebar.tabOrder = order;
+    }
+
+    Shortcut { sequence: "Ctrl+Tab"; onActivated: swipeView.incrementCurrentIndex() }
+    Shortcut { sequence: "Ctrl+Shift+Tab"; onActivated: swipeView.decrementCurrentIndex() }
     Shortcut { sequence: "Ctrl+PageDown"; onActivated: swipeView.incrementCurrentIndex() }
     Shortcut { sequence: "Ctrl+PageUp"; onActivated: swipeView.decrementCurrentIndex() }
 
-    // Toggles from Config
-    property bool aiChatEnabled: Ai.enabled
-    property bool translatorEnabled: Config.options.policies.translator !== 0
-    property bool mediaEnabled: Config.options.policies.player !== 0
-    property bool wallpapersEnabled: Config.options.policies.wallpapers !== 0
-    property bool animeEnabled: Config.options.policies.weeb !== 0
-    property bool animeCloset: Config.options.policies.weeb === 2
-    property bool tailscaleEnabled: Config.options.policies.tailscale !== 0
-    property bool dockerEnabled: Config.options.policies.docker !== 0
-    property bool vpnEnabled: Config.options.policies.vpn !== 0
-    property bool emailEnabled: Config.options.policies.email !== 0
-    property bool notesEnabled: Config.options.policies.notes !== 0
+    property var _connectedItems: []
 
-    // Tab and Page mapping
-    property var tabs: [
-        {
-            icon: "neurology",
-            name: Translation.tr("Intelligence"),
-            enabled: root.aiChatEnabled,
-            component: aiChat
-        },
-        {
-            icon: "translate",
-            name: Translation.tr("Translator"),
-            enabled: root.translatorEnabled,
-            component: translator
-        },
-        {
-            icon: "music_note",
-            name: Translation.tr("Media"),
-            enabled: root.mediaEnabled,
-            component: media
-        },
-        {
-            icon: "wallpaper",
-            name: Translation.tr("Wallpapers"),
-            enabled: root.wallpapersEnabled,
-            component: wallpaperBrowser
-        },
-        {
-            icon: "bookmark_heart",
-            name: Translation.tr("Anime"),
-            enabled: root.animeEnabled && !root.animeCloset,
-            component: anime
-        },
-        {
-            icon: "hub",
-            name: Translation.tr("Tailscale"),
-            enabled: root.tailscaleEnabled,
-            component: tailscalePage
-        },
-        {
-            icon: "inventory",
-            name: Translation.tr("Docker"),
-            enabled: root.dockerEnabled,
-            component: dockerPage
-        },
-        {
-            icon: "shield",
-            name: Translation.tr("VPN"),
-            enabled: root.vpnEnabled,
-            component: vpnPage
-        },
-        {
-            icon: "mail",
-            name: Translation.tr("Email"),
-            enabled: root.emailEnabled,
-            component: emailPage
-        },
-        {
-            icon: "sticky_note_2",
-            name: Translation.tr("Notes"),
-            enabled: root.notesEnabled,
-            component: notesPage
-        },
-        {
-            icon: "smartphone",
-            name: Translation.tr("Phone"),
-            enabled: Config.options.policies.phone !== 0,
-            component: phonePlaceholder
+    function connectNavigationSignals() {
+        for (let i = 0; i < swipeView.count; i++) {
+            let item = swipeView.itemAt(i);
+            // Direct items (AiChat, Anime) have signals on item itself;
+            // extension pages are wrapped in Loaders, signals on item.item
+            let target = item && item.navigateLeft ? item :
+                         (item && item.item && item.item.navigateLeft ? item.item : null);
+            if (target && !_connectedItems.includes(target)) {
+                _connectedItems.push(target);
+                target.navigateLeft.connect(() => swipeView.decrementCurrentIndex());
+                target.navigateRight.connect(() => swipeView.incrementCurrentIndex());
+                target.navigateNext.connect(() => swipeView.incrementCurrentIndex());
+                target.navigatePrev.connect(() => swipeView.decrementCurrentIndex());
+            }
         }
-    ]
+    }
 
-    property var activeTabs: tabs.filter(t => t.enabled)
-    property var tabButtonList: activeTabs.map(t => ({
-                icon: t.icon,
-                name: t.name
-            }))
-    property int tabCount: activeTabs.length
-    // Holds the previously-focused tab index so the bounce-in animation
-    // (mirroring the Cheatsheet tab transition) knows the direction.
-    property int _prevTabIndex: Persistent.states.sidebar.policies.tab
     Component.onCompleted: {
-        root._prevTabIndex = Persistent.states.sidebar.policies.tab;
+        Qt.callLater(root.rebuildPages);
+        Qt.callLater(root.connectNavigationSignals);
+        Qt.callLater(() => {
+            const item = swipeView.currentItem;
+            if (item && typeof item.triggerContentEntrance === "function")
+                item.triggerContentEntrance();
+        });
     }
 
-    function validateTabIndex() {
-        if (!Persistent.ready)
-            return;
-        var t = Persistent.states.sidebar.policies.tab;
-        if (tabCount > 0) {
-            if (t < 0 || t >= tabCount) {
-                Persistent.states.sidebar.policies.tab = 0;
-            }
-        } else {
-            if (t !== 0) {
-                Persistent.states.sidebar.policies.tab = 0;
-            }
-        }
-    }
-
-    onActiveTabsChanged: {
-        root.validateTabIndex();
-    }
-
-    Connections {
-        target: Persistent
-        function onReadyChanged() {
-            root.validateTabIndex();
-        }
-    }
-
-    Connections {
-        target: Persistent.states.sidebar.policies
-        ignoreUnknownSignals: true
-        function onTabChanged() {
-            root.validateTabIndex();
-        }
-    }
-
-    Connections {
-        target: GlobalStates
-        function onSidebarLeftOpenChanged() {
-            if (!GlobalStates.sidebarLeftOpen) {
-                root.visitedTabs = {};
-                return;
-            }
-            // Grab focus so the root Keys handler receives Tab/arrows.
-            // focusAiInput() (called later) overrides this for the AI tab.
-            if (root.activeTabs[swipeView.currentIndex]?.icon !== "neurology")
-                root.forceActiveFocus();
-            if ((Config.options?.appearance?.animationMultiplier ?? 1.0) <= 0.25) {
-                toolbarContainer.opacity = 1
-                toolbarTrans.x = 0
-                tabBar.opacity = 1
-                tabBarTrans.x = 0
-                return;
-            }
-                toolbarContainer.opacity = 0
-                toolbarTrans.x = -80
-                tabBar.opacity = 0
-                tabBarTrans.x = -30
-                
-                toolbarEntranceAnim.stop()
-                toolbarEntranceAnim.start()
-
-                if (swipeView.currentItem?.item && typeof swipeView.currentItem.item.triggerContentEntrance === "function") {
-                    swipeView.currentItem.item.triggerContentEntrance();
-                }
-        }
-    }
-
-    ParallelAnimation {
-        id: toolbarEntranceAnim
-
-        // Clean slide-in of navbar container from left-to-right (-80 -> 0)
-        SequentialAnimation {
-            PauseAnimation { duration: 30 }
-            ParallelAnimation {
-                NumberAnimation { target: toolbarContainer; property: "opacity"; to: 1.0; duration: 280; easing.type: Easing.OutCubic }
-                NumberAnimation { target: toolbarTrans; property: "x"; to: 0; duration: 360; easing.type: Easing.OutCubic }
-            }
-        }
-
-        // Staggered slide-in of tab buttons inside the navbar
-        SequentialAnimation {
-            PauseAnimation { duration: 90 }
-            ParallelAnimation {
-                NumberAnimation { target: tabBar; property: "opacity"; to: 1.0; duration: 250; easing.type: Easing.OutCubic }
-                NumberAnimation { target: tabBarTrans; property: "x"; to: 0; duration: 320; easing.type: Easing.OutCubic }
-            }
-        }
-    }
-
-    function focusActiveItem() {
-        if (swipeView.currentItem && swipeView.currentItem.item) {
-            swipeView.currentItem.item.forceActiveFocus();
-        }
-    }
-
-    // Nothing in the focus chain hands focus down to the tab contents, so the AI chat
-    // input never gets it on its own. Focus it explicitly when the sidebar opens on that
-    // tab, when the user switches to it, and when its Loader finishes activating.
-    function focusAiInput() {
-        if (!GlobalStates.sidebarLeftOpen) return;
-        if (root.activeTabs[swipeView.currentIndex]?.icon !== "neurology") return;
-        swipeView.currentItem?.item?.forceActiveFocus();
-    }
-
-    // Consume a sidebar deep-link only after the AI tab is the visible
-    // SwipeView item. A requested session is selected first; until the session
-    // store confirms that selection the router intent remains pending.
-    function tryConsumeSurfaceIntent() {
-        const intent = Ai.surfaceRouter.pendingIntent;
-        if (!intent || intent.surface !== "sidebar")
-            return;
-        if (!GlobalStates.sidebarLeftOpen || intent.monitorName !== GlobalStates.activeLeftSidebarMonitor)
-            return;
-        if (root.activeTabs[swipeView.currentIndex]?.icon !== "neurology" || !swipeView.currentItem?.item)
-            return;
-        if (intent.sessionId.length > 0 && Ai.sessions.currentId !== intent.sessionId) {
-            if (root.routedSessionRequestId !== intent.requestId) {
-                root.routedSessionRequestId = intent.requestId;
-                Ai.openSession(intent.sessionId);
-            }
-            return;
-        }
-        const chat = swipeView.currentItem.item;
-        if (!chat || typeof chat.applySurfaceIntent !== "function" || !chat.applySurfaceIntent(intent))
-            return;
-        Ai.surfaceRouter.acknowledge(intent.requestId);
-        root.routedSessionRequestId = "";
-    }
-
-    Connections {
-        target: Ai.surfaceRouter
-        function onPendingIntentChanged() {
-            root.tryConsumeSurfaceIntent();
-        }
-    }
-
-    Connections {
-        target: Ai.sessions
-        function onCurrentIdChanged() {
-            root.tryConsumeSurfaceIntent();
-        }
-        function onLoadedChanged() {
-            root.tryConsumeSurfaceIntent();
-        }
-    }
-
-    Connections {
-        target: Ai
-        function onMessageIDsChanged() {
-            root.tryConsumeSurfaceIntent();
-        }
-        function onMessageByIDChanged() {
-            root.tryConsumeSurfaceIntent();
-        }
-    }
-
-    Connections {
-        target: GlobalStates
-        function onSidebarLeftOpenChanged() {
-            if (GlobalStates.sidebarLeftOpen) Qt.callLater(root.focusAiInput);
-            root.tryConsumeSurfaceIntent();
-        }
+    Timer {
+        interval: 500
+        running: true
+        repeat: true
+        onTriggered: root.connectNavigationSignals()
     }
 
     ColumnLayout {
-        // Clip to the sidebar bounds. Without this, the Toolbar (with
-        // Layout.alignment: Qt.AlignHCenter) overflows visibly past the sidebar
-        // edges during width transitions, when the tab count changes at runtime,
-        // or when translated strings are wider than the English defaults.
-        clip: true
         anchors {
             fill: parent
-            leftMargin: sidebarPadding
-            rightMargin: sidebarPadding
-            bottomMargin: sidebarPadding
-            topMargin: sidebarPadding
+            margins: sidebarPadding
         }
         spacing: sidebarPadding
 
-        Item {
-            id: toolbarContainer
-            visible: activeTabs.length > 1
-            Layout.alignment: Qt.AlignHCenter
-            Layout.preferredHeight: mainToolbar.implicitHeight
-            Layout.maximumWidth: parent.width - sidebarPadding * 2
-            Layout.preferredWidth: Math.min(mainToolbar.implicitWidth, parent.width - sidebarPadding * 2)
-
-            transform: Translate {
-                id: toolbarTrans
-                x: 0
+        Toolbar {
+            visible: tabButtonList.length > 1
+            Layout.fillWidth: true
+            enableShadow: false
+            colBackground: Appearance.colors.colLayer3
+            ToolbarTabBar {
+                id: tabBar
+                Layout.alignment: Qt.AlignHCenter
+                tabButtonList: root.tabButtonList
+                maxTextTabs: root._maxTextTabs
+                currentIndex: Math.min(root._tabIndexForPage(Persistent.states.sidebar.policies.tab), Math.max(0, root.tabButtonList.length - 1))
+                onCurrentIndexChanged: Persistent.states.sidebar.policies.tab = root._pageIndexForTab(currentIndex)
+                onTabReordered: (fromIdx, toIdx) => {
+                    const keys = root.tabButtonList.map(t => t.key);
+                    const item = keys.splice(fromIdx, 1)[0];
+                    keys.splice(toIdx, 0, item);
+                    Config.options.sidebar.tabOrder = keys;
+                }
             }
 
-            Toolbar {
-                id: mainToolbar
-                anchors.fill: parent
-                enableShadow: false
-                colBackground: Appearance.colors.colLayer3
-                ToolbarTabBar {
-                    id: tabBar
-                    Layout.alignment: Qt.AlignHCenter
-                    tabButtonList: root.tabButtonList
-                    maxTextTabs: root.scopeRoot.extend ? 4 : 3
-                    currentIndex: Persistent.states.sidebar.policies.tab
+            MaterialSymbol {
+                id: editModeToggle
+                Layout.alignment: Qt.AlignVCenter
+                iconSize: 18
+                text: tabBar.editMode ? "check" : "drag_indicator"
+                color: tabBar.editMode ? Appearance.colors.colPrimary : Appearance.colors.colSubtext
+                opacity: editModeMouse.containsMouse ? 1 : 0.6
 
-                    transform: Translate {
-                        id: tabBarTrans
-                        x: 0
-                    }
+                MouseArea {
+                    id: editModeMouse
+                    anchors.fill: parent
+                    anchors.margins: -6
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: tabBar.editMode = !tabBar.editMode
+                }
 
-                    onCurrentIndexChanged: {
-                        if (currentIndex >= 0 && currentIndex < root.tabCount && Persistent.states.sidebar.policies.tab !== currentIndex) {
-                            Persistent.states.sidebar.policies.tab = currentIndex;
-                        }
-                    }
+                StyledToolTip {
+                    extraVisibleCondition: false
+                    alternativeVisibleCondition: editModeMouse.containsMouse
+                    text: tabBar.editMode ? Translation.tr("Done reordering") : Translation.tr("Reorder tabs")
                 }
             }
         }
@@ -392,158 +298,34 @@ Item {
         Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            implicitWidth: swipeView.implicitWidth
+            implicitHeight: swipeView.implicitHeight
             radius: Appearance.rounding.normal
-            color: "transparent"
+            color: Appearance.colors.colLayer1
 
-            SwipeView {
+            SwipeView { // Content pages
                 id: swipeView
                 anchors.fill: parent
                 spacing: 10
-                
-                onCountChanged: {
-                    if (count > 0 && Persistent.states.sidebar.policies.tab >= 0 && Persistent.states.sidebar.policies.tab < count) {
-                        currentIndex = Persistent.states.sidebar.policies.tab;
-                    }
-                }
-                
-                Connections {
-                    target: Persistent.states.sidebar.policies
-                    function onTabChanged() {
-                        if (swipeView.currentIndex !== Persistent.states.sidebar.policies.tab && Persistent.states.sidebar.policies.tab >= 0 && Persistent.states.sidebar.policies.tab < swipeView.count) {
-                            swipeView.currentIndex = Persistent.states.sidebar.policies.tab;
-                        }
-                    }
-                }
-
+                currentIndex: Math.min(Persistent.states.sidebar.policies.tab, Math.max(0, swipeView.count - 1))
                 onCurrentIndexChanged: {
-                    if (currentIndex >= 0 && currentIndex < root.tabCount && Persistent.states.sidebar.policies.tab !== currentIndex) {
-                        Persistent.states.sidebar.policies.tab = currentIndex;
-                    }
-                    Qt.callLater(() => {
-                        root._prevTabIndex = currentIndex;
-                    });
-                    
-                    if (currentIndex >= 0) {
-                        var visited = root.visitedTabs;
-                        if (!visited[currentIndex]) {
-                            visited[currentIndex] = true;
-                            root.visitedTabs = visited;
-                        }
-                    }
-
-                    if (swipeView.currentItem?.item && typeof swipeView.currentItem.item.triggerContentEntrance === "function") {
-                        swipeView.currentItem.item.triggerContentEntrance();
-                    }
-
-                    Qt.callLater(root.focusAiInput);
-                    Qt.callLater(root.tryConsumeSurfaceIntent);
-                    // Non-AI tabs: hand focus back to root so arrows/Tab navigate tabs
-                    if (root.activeTabs[currentIndex]?.icon !== "neurology")
-                        Qt.callLater(() => { if (GlobalStates.sidebarLeftOpen) root.forceActiveFocus(); });
-                }
-
-                Component.onCompleted: {
-                    if (contentItem) {
-                        contentItem.highlightMoveDuration = 0;
-                    }
-                    if (count > 0 && Persistent.states.sidebar.policies.tab >= 0 && Persistent.states.sidebar.policies.tab < count) {
-                        currentIndex = Persistent.states.sidebar.policies.tab;
-                    }
-                    var visited = root.visitedTabs;
-                    visited[currentIndex] = true;
-                    root.visitedTabs = visited;
+                    Persistent.states.sidebar.policies.tab = currentIndex;
+                    const item = swipeView.currentItem;
+                    if (item && typeof item.triggerContentEntrance === "function")
+                        item.triggerContentEntrance();
                 }
 
                 clip: true
-
-                Repeater {
-                    model: root.activeTabs
-                    Loader {
-                        id: tabDelegate
-                        required property var modelData
-                        required property int index
-
-                        active: (GlobalStates.sidebarLeftOpen && (SwipeView.isCurrentItem || !!root.visitedTabs[index]))
-                                || (modelData.icon === "smartphone" && (GlobalStates.phoneMicRunning || GlobalStates.phoneCameraRunning))
-                        sourceComponent: modelData.component
-
-                        transform: Translate {
-                            id: trans
-                            x: 0
-                        }
-
-                        onLoaded: {
-                            if (item) {
-                                item.anchors.fill = this;
-                                root.tryConsumeSurfaceIntent();
-
-                                // Opening the sidebar and changing policy toggles can
-                                // activate this Loader asynchronously. In that case
-                                // the open/index handlers may run before AiChat exists,
-                                // leaving its entrance-only content at opacity 0.
-                                if (isCurrent && GlobalStates.sidebarLeftOpen) {
-                                    Qt.callLater(function() {
-                                        if (tabDelegate.item && tabDelegate.isCurrent && GlobalStates.sidebarLeftOpen && typeof tabDelegate.item.triggerContentEntrance === "function") {
-                                            tabDelegate.item.triggerContentEntrance();
-                                        }
-                                    });
-                                    Qt.callLater(root.focusAiInput);
-                                }
-                            }
-                        }
-
-                        readonly property bool isCurrent: swipeView.currentIndex === index
-                        onIsCurrentChanged: {
-                            if (isCurrent) {
-                                const diff = index - root._prevTabIndex;
-                                if (diff !== 0) {
-                                    bounceAnim.stop();
-                                    opacityAnim.stop();
-                                    trans.x = diff > 0 ? 120 : -120;
-                                    tabDelegate.opacity = 0;
-                                    bounceAnim.start();
-                                    opacityAnim.start();
-                                }
-                                // Trigger entrance animation for the tab content
-                                Qt.callLater(function() {
-                                    if (tabDelegate.item && typeof tabDelegate.item.triggerContentEntrance === "function") {
-                                        tabDelegate.item.triggerContentEntrance();
-                                    }
-                                });
-                            } else {
-                                tabDelegate.opacity = 1;
-                                trans.x = 0;
-                            }
-                        }
-
-                        NumberAnimation {
-                            id: bounceAnim
-                            target: trans
-                            property: "x"
-                            to: 0
-                            duration: 420
-                            easing.type: Easing.OutBack
-                            easing.overshoot: 1.45
-                        }
-
-                        NumberAnimation {
-                            id: opacityAnim
-                            target: tabDelegate
-                            property: "opacity"
-                            from: 0
-                            to: 1
-                            duration: 280
-                            easing.type: Easing.OutCubic
-                        }
+                layer.enabled: true
+                layer.effect: OpacityMask {
+                    maskSource: Rectangle {
+                        width: swipeView.width
+                        height: swipeView.height
+                        radius: Appearance.rounding.small
                     }
                 }
-            }
 
-            // Show placeholder if no tabs are active
-            Loader {
-                anchors.fill: parent
-                active: root.activeTabs.length === 0
-                sourceComponent: placeholder
+                // contentChildren is set imperatively via rebuildPages()
             }
         }
 
@@ -554,14 +336,6 @@ Item {
         Component {
             id: translator
             Translator {}
-        }
-        Component {
-            id: media
-            SidebarPlayerControl {}
-        }
-        Component {
-            id: wallpaperBrowser
-            WallpaperBrowserUI {}
         }
         Component {
             id: anime
@@ -588,8 +362,24 @@ Item {
             NotesPage {}
         }
         Component {
+            id: media
+            SidebarPlayerControl {}
+        }
+        Component {
+            id: wallpaperBrowser
+            WallpaperBrowserUI {}
+        }
+        Component {
             id: phonePlaceholder
-            Phone {}
+            Item {
+                property string extensionId: ""
+                anchors.fill: parent
+                StyledText {
+                    anchors.centerIn: parent
+                    text: Translation.tr("Phone")
+                    color: Appearance.colors.colSubtext
+                }
+            }
         }
         Component {
             id: placeholder

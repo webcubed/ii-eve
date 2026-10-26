@@ -1,4 +1,5 @@
 import qs.modules.common
+import qs.modules.common.functions
 import qs.services
 import QtQuick
 import QtQuick.Controls
@@ -13,9 +14,11 @@ Item {
 
     readonly property int highlightStyle: Config.options.background.mediaMode.syllable.textHighlightStyle
     readonly property int currentIndex: LyricsService.currentIndex
-    readonly property bool isPlaying: LyricsService.activePlayer?.isPlaying ?? false
+    readonly property bool isPlaying: LyricsService.activePlayer.isPlaying 
     
     property real largeFontSize: Appearance.font.pixelSize.hugeass * 2.0
+    property color activeColor: Appearance.colors.colPrimary
+    property color highlightColor: ColorUtils.getContrastingTextColor(activeColor)
 
     Component.onCompleted: {
         LyricsService.initiliazeLyrics()
@@ -43,6 +46,7 @@ Item {
         anchors.fill: parent
         layer.enabled: true
         layer.effect: OpacityMask {
+            source: maskedContainer
             maskSource: listMaskSource
         }
 
@@ -100,7 +104,6 @@ Item {
                     }
                 }
 
-                
                 Item {
                     id: scalerItem
                     anchors.fill: parent
@@ -138,7 +141,7 @@ Item {
 
                         layer.enabled: isCurrent
                         layer.effect: DropShadow {
-                            color: Appearance.colors.colPrimary
+                            color: root.activeColor
                             horizontalOffset: 0
                             verticalOffset: 0
                             radius: 20
@@ -180,7 +183,7 @@ Item {
         NumberAnimation on currentX {
             from: -150
             to: lyricsList.width + 150
-            duration: isCurrent ? LyricsService.getLineDuration(index) * 1300 : 0
+            duration: isCurrent ? Math.min(800, Math.max(400, LyricsService.getLineDuration(index) * 350)) : 0
             running: isCurrent && root.isPlaying
             easing.type: Easing.Linear
         }
@@ -189,8 +192,8 @@ Item {
         end: Qt.point(currentX + 200, 0)
         
         gradient: Gradient {
-            GradientStop { position: 0.0; color: Appearance.colors.colPrimary } 
-            GradientStop { position: 0.8; color: "white" } 
+            GradientStop { position: 0.0; color: root.activeColor } 
+            GradientStop { position: 0.8; color: root.highlightColor } 
             GradientStop { position: 1.0; color: "transparent" } 
         }
     }
@@ -213,8 +216,8 @@ Item {
         end: Qt.point(0, currentY + 100)
 
         gradient: Gradient {
-            GradientStop { position: 0.0; color: Appearance.colors.colPrimary }
-            GradientStop { position: 0.5; color: "transparent" }
+            GradientStop { position: 0.0; color: root.highlightColor }
+            GradientStop { position: 0.5; color: ColorUtils.transparentize(root.activeColor, 0.2) }
             GradientStop { position: 1.0; color: "transparent" }
         }
     }

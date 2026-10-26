@@ -23,6 +23,25 @@ Singleton {
     property string logo: ""
     property string desktopEnvironment: ""
     property string windowingSystem: ""
+    property string cpu: ""
+    property string gpu: ""
+    property string memory: ""
+    property string disk: ""
+    property string shell: ""
+    property string packages: ""
+    property string installAge: ""
+    property string kernelVersion: ""
+
+    function refresh() {
+        getCpu.running = false;        getCpu.running = true
+        getGpu.running = false;        getGpu.running = true
+        getMemory.running = false;     getMemory.running = true
+        getDisk.running = false;       getDisk.running = true
+        getShell.running = false;      getShell.running = true
+        getPackages.running = false;   getPackages.running = true
+        getInstallAge.running = false; getInstallAge.running = true
+        getKernel.running = false;     getKernel.running = true
+    }
 
     Timer {
         triggeredOnStart: true
@@ -132,5 +151,77 @@ Singleton {
     FileView {
         id: fileOsRelease
         path: "/etc/os-release"
+    }
+
+    Process {
+        id: getKernel
+        running: false
+        command: ["uname", "-r"]
+        stdout: SplitParser { onRead: data => root.kernelVersion = data.trim() }
+    }
+
+    Process {
+        id: getCpu
+        running: false
+        command: ["bash", "-c", "grep -m1 'model name' /proc/cpuinfo | cut -d':' -f2- | sed 's/^ //' | sed 's/Intel(R)/Intel®/' | sed 's/Core(TM)/Core™/' | sed 's/CPU //' | sed 's/  */ /g' | sed 's/ @ */ @/'"]
+        stdout: SplitParser { onRead: data => root.cpu = data.trim() }
+    }
+
+    Process {
+        id: getGpu
+        running: false
+        command: ["bash", "-c", `gpu=$(glxinfo 2>/dev/null | grep 'renderer string' | grep -o 'Intel(R) HD Graphics [0-9]\\{4\\}' | sed 's/Intel(R)/Intel®/')
+            if [ -z "$gpu" ]; then
+                gpus=$(lspci | grep -iE 'vga|3d|display')
+                line=$(echo "$gpus" | grep -vi 'Intel Corporation' | head -1)
+                [ -z "$line" ] && line=$(echo "$gpus" | head -1)
+                gpu=$(echo "$line" | sed -E '
+                    s/.*: //;
+                    s/ *\\(rev [0-9a-f]+\\)//;
+                    s/Advanced Micro Devices, Inc\\. \\[AMD\\/ATI\\]//;
+                    s/NVIDIA Corporation//;
+                    s/Intel Corporation//;
+                    s/.*\\[([^]]+)\\]$/\\1/;
+                    s/^ *//;
+                    s/ *$//
+                ')
+            fi
+            echo "$gpu"`]
+        stdout: SplitParser { onRead: data => root.gpu = data.trim() }
+    }
+
+    Process {
+        id: getMemory
+        running: false
+        command: ["bash", "-c", "LC_ALL=C free -h | awk '/^Mem:/ {print $3 \" / \" $2}'"]
+        stdout: SplitParser { onRead: data => root.memory = data.trim() }
+    }
+
+    Process {
+        id: getDisk
+        running: false
+        command: ["bash", "-c", "df -h / | awk 'NR==2 {print $3 \" / \" $2}'"]
+        stdout: SplitParser { onRead: data => root.disk = data.trim() }
+    }
+
+    Process {
+        id: getShell
+        running: false
+        command: ["bash", "-c", "echo $SHELL | awk -F'/' '{print $NF}'"]
+        stdout: SplitParser { onRead: data => root.shell = data.trim() }
+    }
+
+    Process {
+        id: getPackages
+        running: false
+        command: ["bash", "-c", "pacman_count=$(pacman -Q | wc -l); flatpak_count=$(flatpak list 2>/dev/null | wc -l || echo 0); if [ \"$flatpak_count\" -gt 0 ]; then echo \"$pacman_count pacman, $flatpak_count fp\"; else echo \"$pacman_count pacman\"; fi"]
+        stdout: SplitParser { onRead: data => root.packages = data.trim() }
+    }
+
+    Process {
+        id: getInstallAge
+        running: false
+        command: ["bash", "-c", "install_sec=$(stat -c %W /); if [ \"$install_sec\" -le 0 ]; then install_sec=$(stat -c %Y /); fi; now_sec=$(date +%s); age_sec=$((now_sec - install_sec)); days=$((age_sec / 86400)); echo \"$days days\""]
+        stdout: SplitParser { onRead: data => root.installAge = data.trim() }
     }
 }

@@ -115,6 +115,22 @@ Rectangle {
                 root.selectedTab = Math.max(root.selectedTab - 1, 0);
             }
             event.accepted = true;
+        } else if (event.key === Qt.Key_Up) {
+            root.selectedTab = Math.max(root.selectedTab - 1, 0);
+            event.accepted = true;
+        } else if (event.key === Qt.Key_Down) {
+            root.selectedTab = Math.min(root.selectedTab + 1, root.tabs.length - 1);
+            event.accepted = true;
+        } else if (event.key === Qt.Key_Right) {
+            if (root.selectedTab === 2 && tabStack.item && "subTabNext" in tabStack.item) {
+                tabStack.item.subTabNext();
+            }
+            event.accepted = true;
+        } else if (event.key === Qt.Key_Left) {
+            if (root.selectedTab === 2 && tabStack.item && "subTabPrev" in tabStack.item) {
+                tabStack.item.subTabPrev();
+            }
+            event.accepted = true;
         }
     }
 

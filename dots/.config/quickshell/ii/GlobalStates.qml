@@ -53,6 +53,7 @@ Singleton {
     // while the flag is true (heartbeat; no forks when false). Sync failures
     // leave the flag as-is → fail-open toward SHOWING widgets.
     property bool fullscreenActive: false
+    onFullscreenActiveChanged: console.log(`[cull] fullscreenActive = ${fullscreenActive}`)
     function requestFullscreenSync() {
         if (fsSyncProc.running) { fsSyncQueued = true; return; }
         fsSyncProc.exec(["hyprctl", "activewindow", "-j"]);
@@ -86,7 +87,11 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
-                    root.fullscreenActive = Number(JSON.parse(text).fullscreen ?? 0) > 0;
+                    const fs = JSON.parse(text).fullscreen;
+                    // hyprctl fullscreen enum: 0 = none, 1 = MAXIMIZED, 2 = FULLSCREEN.
+                    // Maximized windows respect the bar's exclusive zone (bar stays
+                    // visible) — only true fullscreen covers it, so only 2 culls.
+                    root.fullscreenActive = Number(fs ?? 0) === 2;
                 } catch (e) {} // no focused window / non-JSON error output
             }
         }
@@ -100,6 +105,17 @@ Singleton {
     // Initial sync — events only fire on change, not at startup.
     Component.onCompleted: root.requestFullscreenSync()
     property bool settingsOpen: false
+    property var settingsTarget: null
+
+    function openSettingsAt(pageId, label, section, subsection) {
+        root.settingsOpen = true;
+        Qt.callLater(() => {
+            root.settingsTarget = { page: pageId, label: label ?? "", section: section ?? "", subsection: subsection ?? "" };
+        });
+    }
+    function openSettingsPage(pageId, subPage, sectionTitle) {
+        openSettingsAt(pageId, "", sectionTitle ?? "", subPage ?? "");
+    }
     property list<real> visualizerPoints: []
     property bool phoneMicRunning: false
     property bool phoneCameraRunning: false
@@ -138,6 +154,32 @@ Singleton {
     // helper properties
     readonly property bool policiesOnLeft: Config.options.sidebar.position === "default" || Config.options.sidebar.position === "left"
     readonly property bool dashboardOnLeft: Config.options.sidebar.position === "inverted" || Config.options.sidebar.position === "left"
+
+    // Actions selectable for the bottom hot corners (settings → Interface → Hot Corners).
+    // Values are GlobalStates property names so toggleState() can flip them by name.
+    readonly property var hotCornerOptions: [
+        { displayName: Translation.tr("None"), value: "none" },
+        { displayName: Translation.tr("Left Sidebar"), value: "sidebarLeftOpen" },
+        { displayName: Translation.tr("Right Sidebar"), value: "sidebarRightOpen" },
+        { displayName: Translation.tr("Overview"), value: "overviewOpen" },
+        { displayName: Translation.tr("Wallpaper Selector"), value: "wallpaperSelectorOpen" },
+        { displayName: Translation.tr("Media Controls"), value: "mediaControlsOpen" },
+        { displayName: Translation.tr("Overlay"), value: "overlayOpen" },
+        { displayName: Translation.tr("Screenshot Region"), value: "regionSelectorOpen" },
+        { displayName: Translation.tr("Screen Translator"), value: "screenTranslatorOpen" },
+        { displayName: Translation.tr("On-screen Keyboard"), value: "oskOpen" },
+        { displayName: Translation.tr("Session Menu"), value: "sessionOpen" }
+    ]
+
+    function toggleState(name) {
+        if (!name || name === "none")
+            return
+        // Only allow known panel states: a stale/typo'd config value must not
+        // scribble arbitrary properties onto this singleton.
+        if (!root.hotCornerOptions.some(option => option.value === name))
+            return
+        root[name] = !root[name]
+    }
 
     onPoliciesPanelOpenChanged: {
         if (policiesPanelOpen) {

@@ -130,12 +130,78 @@ Singleton {
                 Quickshell.execDetached(["notify-send", "Genius API", Translation.tr("API key saved!"), "-a", "Shell"]);
             }
         },
+        // System commands (require confirmation for destructive actions)
+        {
+            action: "lock",
+            execute: () => {
+                Quickshell.execDetached(["loginctl", "lock-session"]);
+            }
+        },
+        {
+            action: "logout",
+            execute: () => {
+                root._requestConfirmation("logout", Translation.tr("Log out?"), Translation.tr("This will close all your applications."), () => {
+                    Hyprland.dispatch("exit");
+                });
+            }
+        },
+        {
+            action: "suspend",
+            execute: () => {
+                root._requestConfirmation("suspend", Translation.tr("Suspend?"), Translation.tr("This will suspend your system to RAM."), () => {
+                    Quickshell.execDetached(["systemctl", "suspend"]);
+                });
+            }
+        },
+        {
+            action: "reboot",
+            execute: () => {
+                root._requestConfirmation("reboot", Translation.tr("Reboot?"), Translation.tr("This will restart your system."), () => {
+                    Quickshell.execDetached(["systemctl", "reboot"]);
+                });
+            }
+        },
+        {
+            action: "poweroff",
+            execute: () => {
+                root._requestConfirmation("poweroff", Translation.tr("Power off?"), Translation.tr("This will shut down your system."), () => {
+                    Quickshell.execDetached(["systemctl", "poweroff"]);
+                });
+            }
+        },
+        {
+            action: "hypridle",
+            execute: () => {
+                Quickshell.execDetached(["hypridle"]);
+            }
+        },
     ]
 
     // Combined built-in and user actions
     property var allActions: searchActions.concat(userActionScripts)
 
     property string mathResult: ""
+
+    // Confirmation dialog support for destructive system commands
+    signal confirmationRequested(string actionId, string title, string message, var callback)
+    property var _pendingCallbacks: ({})
+
+    function _requestConfirmation(actionId, title, message, callback) {
+        _pendingCallbacks[actionId] = callback
+        confirmationRequested(actionId, title, message, callback)
+    }
+
+    function confirmAction(actionId) {
+        if (_pendingCallbacks[actionId]) {
+            _pendingCallbacks[actionId]()
+            delete _pendingCallbacks[actionId]
+        }
+    }
+
+    function cancelAction(actionId) {
+        delete _pendingCallbacks[actionId]
+    }
+
     property bool clipboardWorkSafetyActive: {
         const enabled = Config.options.workSafety.enable.clipboard;
         const sensitiveNetwork = (StringUtils.stringListContainsSubstring(Network.networkName.toLowerCase(), Config.options.workSafety.triggerCondition.networkNameKeywords));

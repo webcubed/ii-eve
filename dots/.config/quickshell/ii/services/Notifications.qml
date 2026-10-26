@@ -66,7 +66,13 @@ Singleton {
         onTriggered: () => {
             const index = root.list.findIndex((notif) => notif.notificationId === notificationId);
             const notifObject = root.list[index];
-            print("[Notifications] Notification timer triggered for ID: " + notificationId + ", transient: " + notifObject?.isTransient);
+            // The notification may already be gone (dismissed / replaced) by the time the
+            // timer fires; without this guard the read below throws a TypeError and
+            // destroy() is skipped, leaking the timer.
+            if (notifObject == null) {
+                destroy()
+                return
+            }
             if (notifObject.isTransient) root.discardNotification(notificationId);
             else root.timeoutNotification(notificationId);
             destroy()
@@ -187,6 +193,53 @@ Singleton {
 
     function markAllRead() {
         root.unread = 0;
+    }
+
+    // Internal (shell-owned) notifications use negative ids so they can never
+    // collide with ids from the notification server.
+    function nextInternalNotificationId(): int {
+        let candidate = -1;
+        const used = new Set((root.list ?? []).map((notif) => Number(notif.notificationId)));
+        while (used.has(candidate))
+            candidate--;
+        return candidate;
+    }
+
+    /**
+     * Adds a shell-owned notification without going through the notification
+     * server. Used by services (e.g. KDE Connect file transfers) that need to
+     * surface their own events.
+     */
+    function publishInternalNotification(options: var): var {
+        if (root.silent)
+            return null;
+        const notificationId = root.nextInternalNotificationId();
+        const notifObject = notifComponent.createObject(root, {
+            "notificationId": notificationId,
+            "appName": String(options?.appName ?? "Quickshell"),
+            "appIcon": String(options?.appIcon ?? ""),
+            "summary": String(options?.summary ?? ""),
+            "body": String(options?.body ?? ""),
+            "urgency": String(options?.urgency ?? "normal"),
+            "time": Date.now(),
+        });
+        if (!notifObject)
+            return null;
+        root.list = [...root.list, notifObject];
+        if (!root.popupInhibited) {
+            notifObject.popup = true;
+            const expire = Number(options?.expireTimeout ?? -1);
+            if (expire != 0) {
+                notifObject.timer = notifTimerComponent.createObject(root, {
+                    "notificationId": notificationId,
+                    "interval": expire < 0 ? (Config?.options.notifications.timeout ?? 7000) : expire,
+                });
+            }
+            root.unread++;
+        }
+        root.notify(notifObject);
+        notifFileView.setText(stringifyList(root.list));
+        return notificationId;
     }
 
     function discardNotification(id) {

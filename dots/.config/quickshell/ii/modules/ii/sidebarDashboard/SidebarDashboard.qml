@@ -145,4 +145,58 @@ Scope {
             GlobalStates.sidebarRightOpen = false;
         }
     }
+
+    GlobalShortcut {
+        name: "timerPomodoroToggle"
+        description: "Toggle pomodoro timer"
+        onPressed: TimerService.togglePomodoro()
+    }
+
+    GlobalShortcut {
+        name: "timerStopwatchToggle"
+        description: "Toggle stopwatch"
+        onPressed: TimerService.toggleStopwatch()
+    }
+
+    GlobalShortcut {
+        name: "timerStopwatchLap"
+        description: "Record stopwatch lap"
+        onPressed: TimerService.stopwatchRecordLap()
+    }
+
+    GlobalShortcut {
+        name: "timerStopwatchReset"
+        description: "Reset stopwatch"
+        onPressed: TimerService.stopwatchReset()
+    }
+
+    GlobalShortcut {
+        name: "timerCountdownToggle"
+        description: "Toggle countdown timer"
+        onPressed: TimerService.countdownToggle()
+    }
+
+    GlobalShortcut {
+        name: "timerCountdownReset"
+        description: "Reset countdown timer"
+        onPressed: TimerService.countdownReset()
+    }
+
+    GlobalShortcut {
+        name: "timerCountdown5"
+        description: "Set countdown to 5 minutes and start"
+        onPressed: { TimerService.countdownSet(5); TimerService.countdownToggle(); }
+    }
+
+    GlobalShortcut {
+        name: "timerCountdown15"
+        description: "Set countdown to 15 minutes and start"
+        onPressed: { TimerService.countdownSet(15); TimerService.countdownToggle(); }
+    }
+
+    GlobalShortcut {
+        name: "timerCountdown25"
+        description: "Set countdown to 25 minutes and start"
+        onPressed: { TimerService.countdownSet(25); TimerService.countdownToggle(); }
+    }
 }

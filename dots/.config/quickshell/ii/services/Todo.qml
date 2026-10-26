@@ -27,10 +27,13 @@ Singleton {
           todoFileView.setText(JSON.stringify(root.list))
     }
 
-    function addTask(desc) {
+    function addTask(desc, deadline) {
         const item = {
             "content": desc,
             "done": false,
+        }
+        if (deadline) {
+            item["deadline"] = deadline instanceof Date ? deadline.toISOString() : deadline;
         }
         addItem(item)
       }
@@ -49,6 +52,28 @@ Singleton {
                 taskDate.getDate() === currentDay &&
                 taskDate.getMonth() === currentMonth &&
                 taskDate.getFullYear() === currentYear
+              ) {
+                res.push(root.list[i]);
+              }
+        }
+
+        return res;
+    }
+
+    function getTasksWithDeadline(currentDate) {
+        const res = [];
+        
+        const currentDay = currentDate.getDate();
+        const currentMonth = currentDate.getMonth();
+        const currentYear = currentDate.getFullYear();
+
+        for (let i = 0; i < root.list.length; i++) {
+            if (!root.list[i]['deadline']) continue;
+            const deadlineDate = new Date(root.list[i]['deadline']);
+            if (
+                deadlineDate.getDate() === currentDay &&
+                deadlineDate.getMonth() === currentMonth &&
+                deadlineDate.getFullYear() === currentYear
               ) {
                 res.push(root.list[i]);
               }
@@ -113,8 +138,13 @@ Singleton {
             const fileContents = todoFileView.text()
             root.list = JSON.parse(fileContents)
 
-            for (let i=0; i< root.list.length; i++){ //parse date as date object
-              root.list[i]['date'] = new Date(root.list[i]['date'])
+            for (let i=0; i< root.list.length; i++){
+              if (root.list[i]['date']) {
+                root.list[i]['date'] = new Date(root.list[i]['date'])
+              }
+              if (root.list[i]['deadline']) {
+                root.list[i]['deadline'] = new Date(root.list[i]['deadline'])
+              }
             }
 
             console.log("[To Do] File loaded")

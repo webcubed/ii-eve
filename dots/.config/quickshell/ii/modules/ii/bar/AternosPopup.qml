@@ -243,7 +243,7 @@ LazyLoader {
                                         return Translation.tr("Players: %1/%2").arg(s.players ?? "?").arg(s.slots ?? "?");
                                     }
                                     extraVisibleCondition: false
-                                    alternativeVisibleCondition: playersRow.containsMouse
+                                    alternativeVisibleCondition: playersRow.hovered
                                 }
                                 HoverHandler { id: playersRow }
                             }
@@ -252,6 +252,23 @@ LazyLoader {
                                 StyledText { text: { let s = Aternos.servers[root.currentServerIndex]; return s ? `${s.software||"?"} ${s.version||""}` : ""; } font.pixelSize: Appearance.font.pixelSize.small; color: Appearance.colors.colSubtext; anchors.verticalCenter: parent.verticalCenter }
                             }
                             Item { Layout.fillWidth: true }
+                        }
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            visible: {
+                                let s = Aternos.servers[root.currentServerIndex];
+                                if (!s) return false;
+                                return (s.status || "").toLowerCase() === "online" && (s.playerlist || []).length > 0;
+                            }
+                            text: {
+                                let s = Aternos.servers[root.currentServerIndex];
+                                let pl = (s && s.playerlist) || [];
+                                return Translation.tr("Online players: %1").arg(pl.join(", "));
+                            }
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            color: Appearance.colors.colSubtext
+                            wrapMode: Text.Wrap
                         }
 
                         Rectangle { Layout.fillWidth: true; height: 1; color: Appearance.colors.colLayer3 }

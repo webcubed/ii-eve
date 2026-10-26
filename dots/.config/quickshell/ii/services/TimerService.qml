@@ -212,4 +212,25 @@ Singleton {
         Persistent.states.timer.countdown.start = 0;
         root.countdownLeft = dur;
     }
+
+    // --- end4-pC compatibility API (for the imported timers widget) ---
+    readonly property int countdownSecondsLeft: countdownLeft
+    function formatSeconds(totalSeconds) {
+        const s = Math.max(0, Math.round(totalSeconds));
+        const m = Math.floor(s / 60);
+        const sec = s % 60;
+        return `${m}:${sec.toString().padStart(2, "0")}`;
+    }
+    function addCountdownMinutes(minutes) {
+        const addSeconds = minutes * 60;
+        const dur = (Persistent.states.timer.countdown.duration ?? 0) + addSeconds;
+        Persistent.states.timer.countdown.duration = dur;
+        root.countdownDuration = dur;
+        if (!root.countdownRunning) {
+            Persistent.states.timer.countdown.left = dur;
+            root.countdownLeft = dur;
+        }
+    }
+    function toggleCountdown() { countdownToggle(); }
+    function resetCountdown() { countdownReset(); }
 }

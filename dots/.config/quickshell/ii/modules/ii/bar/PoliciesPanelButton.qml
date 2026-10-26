@@ -9,6 +9,14 @@ RippleButton {
 
     property bool showPing: false
 
+    // Icon color picked in settings (Interface/Bar → Left sidebar button). The
+    // "onLayer0" default keeps this widget's designed color.
+    readonly property color customIconColor: {
+        const name = Config.options.custom.iconColor
+        if (!name || name === "onLayer0") return Appearance.colors.colOnLayer0
+        return Appearance.colors[`col${name.charAt(0).toUpperCase()}${name.slice(1)}`] ?? Appearance.colors.colOnLayer0
+    }
+
     property real buttonPadding: 5
     implicitWidth: distroIcon.width + buttonPadding * 2
     implicitHeight: distroIcon.height + buttonPadding * 2
@@ -57,9 +65,10 @@ RippleButton {
         anchors.centerIn: parent
         width: 19.5
         height: 19.5
-        source: Config.options.bar.topLeftIcon == 'distro' ? SystemInfo.distroIcon : `${Config.options.bar.topLeftIcon}-symbolic`
-        colorize: true
-        color: Appearance.colors.colOnLayer0
+        source: Config.options.custom.distroIcon || (Config.options.bar.topLeftIcon == 'distro' ? SystemInfo.distroIcon : `${Config.options.bar.topLeftIcon}-symbolic`)
+        customFolder: Config.options.custom.iconsPath
+        colorize: Config.options.custom.colorizeIcon
+        color: leftSidebarButton.customIconColor
 
         Rectangle {
             opacity: leftSidebarButton.showPing ? 1 : 0

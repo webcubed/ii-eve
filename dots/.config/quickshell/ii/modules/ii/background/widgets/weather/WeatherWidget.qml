@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Layouts
 import qs
 import qs.services
 import qs.modules.common
@@ -9,52 +10,549 @@ import qs.modules.ii.background.widgets
 
 AbstractBackgroundWidget {
     id: root
-
     configEntryName: "weather"
+    hoverEnabled: true
 
-    implicitHeight: backgroundShape.implicitHeight
-    implicitWidth: backgroundShape.implicitWidth
+    readonly property real cardSpacing: 12
+    readonly property real singleWidth: 132
+    readonly property real cardHeight: root.sizeMode === "2x2" ? WidgetGrid.spanHeight(2) : root.sizeMode === "1x1" ? WidgetGrid.spanHeight(1) : 120
 
-    StyledDropShadow {
-        target: backgroundShape
+    readonly property real snapWidth1: root.singleWidth
+    readonly property real snapWidth2: root.singleWidth * 2 + root.cardSpacing
+    readonly property real snapWidth3: root.singleWidth * 3 + root.cardSpacing * 2
+
+    property string sizeMode: root.configEntry.sizeMode ?? "2x2"
+
+    property real widgetWidth: {
+        switch (root.sizeMode) {
+            case "1x1": return root.snapWidth1
+            case "1x2": return root.snapWidth2
+            case "2x2": return root.snapWidth2
+            default:    return root.snapWidth3
+        }
+    }
+    readonly property bool isCompact: root.sizeMode !== "1x3"
+
+    function modeForWidth(value) {
+        var mid1 = (root.snapWidth1 + root.snapWidth2) / 2
+        var mid2 = (root.snapWidth2 + root.snapWidth3) / 2
+        if (value < mid1) return "1x1"
+        if (value < mid2) return "2x2"
+        return "1x3"
     }
 
-    MaterialShape {
-        id: backgroundShape
-        anchors.fill: parent
-        shape: MaterialShape.Shape.Pill
-        color: Appearance.colors.colPrimaryContainer
-        implicitSize: 200
+    implicitHeight: card.implicitHeight
+    implicitWidth: card.implicitWidth
 
-        StyledText {
-            font {
-                pixelSize: 80
-                family: Appearance.font.family.expressive
-                weight: Font.Medium
-            }
-            color: Appearance.colors.colPrimary
-            text: {
-                const t = String(Weather.data?.temp ?? "");
-                return t.length > 0 ? t.slice(0, -1) : "--°";
-            }
-            anchors {
-                right: parent.right
-                top: parent.top
-                rightMargin: 16
-                topMargin: 20
+    Behavior on widgetWidth {
+        animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
+    }
+
+    Rectangle {
+        id: card
+        implicitWidth: root.widgetWidth
+        implicitHeight: root.cardHeight
+        radius: Appearance.rounding?.verylarge ?? 30
+        color: Appearance.colors.colPrimaryContainer
+
+        StyledRectangularShadow {
+            target: card
+            z: -2
+        }
+
+        Loader {
+            anchors.fill: parent
+            sourceComponent: {
+                if (root.sizeMode === "2x2") return twoByTwoContent
+                if (root.sizeMode === "1x1") return oneByOneContent
+                if (root.sizeMode === "1x2") return oneByTwoContent
+                return oneByThreeContent
             }
         }
 
-        MaterialSymbol {
-            iconSize: 80
-            color: Appearance.colors.colOnPrimaryContainer
-            text: Icons.getWeatherIcon(Weather.data.wCode) || "cloud_off"
-            anchors {
-                left: parent.left
-                bottom: parent.bottom
+        // 1x1 
+        Component {
+            id: oneByOneContent
+            ColumnLayout {
+                anchors {
+                    fill: parent
+                    margins: 14
+                }
+                spacing: -4
 
-                leftMargin: 16
-                bottomMargin: 20
+                MaterialShapeWrappedMaterialSymbol {
+                    Layout.alignment: Qt.AlignRight
+                    shape: MaterialShape.Shape.Cookie12Sided
+                    color: Appearance.colors.colPrimary
+                    colSymbol: Appearance.colors.colOnPrimary
+                    text: Icons.getWeatherIcon(Weather.data.wCode) ?? "cloud"
+                    iconSize: 18
+                    fill: 1
+                    padding: 6
+                    implicitWidth: 34
+                    implicitHeight: 34
+                }
+
+                Item { Layout.fillHeight: true }
+
+                StyledText {
+                    text: Weather.data?.temp ?? "--°"
+                    font.pixelSize: Appearance.font.pixelSize.hugeass
+                    font.weight: Font.Bold
+                    color: Appearance.colors.colOnPrimaryContainer
+                }
+                StyledText {
+                    Layout.fillWidth: true
+                    text: Weather.data?.city ?? "--"
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    color: Appearance.colors.colOnPrimaryContainer
+                    opacity: 0.6
+                    elide: Text.ElideRight
+                }
+            }
+        }
+
+        // 2x2
+        Component {
+            id: twoByTwoContent
+            ColumnLayout {
+                anchors {
+                    fill: parent
+                    margins: 16
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 12
+
+                    ColumnLayout {
+                        spacing: 0
+                        StyledText {
+                            text: Weather.data?.temp ?? "--°"
+                            font.pixelSize: 46
+                            font.weight: Font.Bold
+                            color: Appearance.colors.colPrimary
+                        }
+                        StyledText {
+                            Layout.topMargin: 2
+                            text: Weather.data?.description ?? "--"
+                            font.pixelSize: Appearance.font.pixelSize.normal
+                            font.weight: Font.DemiBold
+                            color: Appearance.colors.colOnPrimaryContainer
+                            elide: Text.ElideRight
+                        }
+                        StyledText {
+                            text: Weather.data?.city ?? "--"
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            color: Appearance.colors.colOnPrimaryContainer
+                            opacity: 0.6
+                            elide: Text.ElideRight
+                        }
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    MaterialShapeWrappedMaterialSymbol {
+                        Layout.topMargin: 2
+                        shape: MaterialShape.Shape.Cookie12Sided
+                        color: Appearance.colors.colPrimary
+                        colSymbol: Appearance.colors.colOnPrimary
+                        text: Icons.getWeatherIcon(Weather.data.wCode) ?? "cloud"
+                        iconSize: 24
+                        fill: 1
+                        padding: 12
+                        implicitWidth: 56
+                        implicitHeight: 56
+                    }
+                }
+
+                Item { Layout.fillHeight: true }
+
+                GridLayout {
+                    Layout.fillWidth: true
+                    columns: 2
+                    columnSpacing: 16
+                    rowSpacing: 12
+
+                    ColumnLayout {
+                        spacing: 0
+                        RowLayout {
+                            spacing: 6
+                            MaterialSymbol { iconSize: 16; text: "humidity_mid"; color: Appearance.colors.colOnPrimaryContainer; opacity: 0.6 }
+                            StyledText { text: Weather.data?.humidity ?? "--"; font.pixelSize: Appearance.font.pixelSize.small; font.weight: Font.DemiBold; color: Appearance.colors.colOnPrimaryContainer; opacity: 0.85 }
+                        }
+                        StyledText { Layout.topMargin: 1; text: "Humidity"; font.pixelSize: Appearance.font.pixelSize.smaller; color: Appearance.colors.colOnPrimaryContainer; opacity: 0.55 }
+                    }
+                    ColumnLayout {
+                        spacing: 0
+                        RowLayout {
+                            spacing: 6
+                            MaterialSymbol { iconSize: 16; text: "rainy"; color: Appearance.colors.colOnPrimaryContainer; opacity: 0.6 }
+                            StyledText { text: Weather.data?.cr ?? "--"; font.pixelSize: Appearance.font.pixelSize.small; font.weight: Font.DemiBold; color: Appearance.colors.colOnPrimaryContainer; opacity: 0.85 }
+                        }
+                        StyledText { Layout.topMargin: 1; text: "Rain"; font.pixelSize: Appearance.font.pixelSize.smaller; color: Appearance.colors.colOnPrimaryContainer; opacity: 0.55 }
+                    }
+                    ColumnLayout {
+                        spacing: 0
+                        RowLayout {
+                            spacing: 6
+                            MaterialSymbol { iconSize: 16; text: "air"; color: Appearance.colors.colOnPrimaryContainer; opacity: 0.6 }
+                            StyledText { text: Weather.data?.wind ?? "--"; font.pixelSize: Appearance.font.pixelSize.small; font.weight: Font.DemiBold; color: Appearance.colors.colOnPrimaryContainer; opacity: 0.85 }
+                        }
+                        StyledText { Layout.topMargin: 1; text: "Wind"; font.pixelSize: Appearance.font.pixelSize.smaller; color: Appearance.colors.colOnPrimaryContainer; opacity: 0.55 }
+                    }
+                    ColumnLayout {
+                        spacing: 0
+                        RowLayout {
+                            spacing: 6
+                            MaterialSymbol { iconSize: 16; text: "visibility"; color: Appearance.colors.colOnPrimaryContainer; opacity: 0.6 }
+                            StyledText { text: Weather.data?.visib ?? "--"; font.pixelSize: Appearance.font.pixelSize.small; font.weight: Font.DemiBold; color: Appearance.colors.colOnPrimaryContainer; opacity: 0.85 }
+                        }
+                        StyledText { Layout.topMargin: 1; text: "Visibility"; font.pixelSize: Appearance.font.pixelSize.smaller; color: Appearance.colors.colOnPrimaryContainer; opacity: 0.55 }
+                    }
+                }
+
+                Item { Layout.fillHeight: true }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 4
+                    MaterialSymbol { iconSize: 14; text: "wb_twilight"; color: Appearance.colors.colOnPrimaryContainer; opacity: 0.6 }
+                    StyledText { text: Weather.data?.sunrise ?? "--"; font.pixelSize: Appearance.font.pixelSize.smaller; color: Appearance.colors.colOnPrimaryContainer; opacity: 0.6 }
+                    Item { Layout.fillWidth: true }
+                    StyledText { text: Weather.data?.sunset ?? "--"; font.pixelSize: Appearance.font.pixelSize.smaller; color: Appearance.colors.colOnPrimaryContainer; opacity: 0.6 }
+                    MaterialSymbol { iconSize: 14; text: "nights_stay"; color: Appearance.colors.colOnPrimaryContainer; opacity: 0.6 }
+                }
+            }
+        }
+
+        // 1x2
+        Component {
+            id: oneByTwoContent
+            ColumnLayout {
+                anchors {
+                    fill: parent
+                    margins: 14
+                }
+                spacing: 6
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    ColumnLayout {
+                        spacing: -4
+                        StyledText {
+                            text: Weather.data?.temp ?? "--°"
+                            font.pixelSize: Appearance.font.pixelSize.hugeass
+                            font.weight: Font.Bold
+                            color: Appearance.colors.colOnPrimaryContainer
+                        }
+                        StyledText {
+                            text: Weather.data?.city ?? "--"
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            color: Appearance.colors.colOnPrimaryContainer
+                            opacity: 0.6
+                            elide: Text.ElideRight
+                        }
+                        StyledText {
+                            text: Weather.data?.description ?? "--"
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            color: Appearance.colors.colOnPrimaryContainer
+                            opacity: 0.6
+                            elide: Text.ElideRight
+                        }
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    MaterialShapeWrappedMaterialSymbol {
+                        Layout.topMargin: -19
+                        shape: MaterialShape.Shape.Cookie12Sided
+                        color: Appearance.colors.colPrimary
+                        colSymbol: Appearance.colors.colOnPrimary
+                        text: Icons.getWeatherIcon(Weather.data.wCode) ?? "cloud"
+                        iconSize: 18
+                        fill: 1
+                        padding: 6
+                        implicitWidth: 42
+                        implicitHeight: 42
+                    }
+                }
+
+                Item { Layout.fillHeight: true }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 2
+                    spacing: 12
+
+                    RowLayout {
+                        spacing: 2
+                        MaterialSymbol {
+                            iconSize: Appearance.font.pixelSize.smaller
+                            text: "humidity_mid"
+                            color: Appearance.colors.colOnPrimaryContainer
+                            opacity: 0.6
+                        }
+                        StyledText {
+                            text: Weather.data?.humidity ?? "--"
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            color: Appearance.colors.colOnPrimaryContainer
+                            opacity: 0.6
+                        }
+                    }
+
+                    RowLayout {
+                        spacing: 2
+                        MaterialSymbol {
+                            iconSize: Appearance.font.pixelSize.smaller
+                            text: "rainy"
+                            color: Appearance.colors.colOnPrimaryContainer
+                            opacity: 0.6
+                        }
+                        StyledText {
+                            text: Weather.data?.cr ?? "--"
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            color: Appearance.colors.colOnPrimaryContainer
+                            opacity: 0.6
+                        }
+                    }
+
+                    RowLayout {
+                        spacing: 2
+                        MaterialSymbol {
+                            iconSize: Appearance.font.pixelSize.smaller
+                            text: "air"
+                            color: Appearance.colors.colOnPrimaryContainer
+                            opacity: 0.6
+                        }
+                        StyledText {
+                            text: Weather.data?.wind ?? "--"
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            color: Appearance.colors.colOnPrimaryContainer
+                            opacity: 0.6
+                        }
+                    }
+                }
+            }
+        }
+
+        // 1x3
+        Component {
+            id: oneByThreeContent
+            ColumnLayout {
+                anchors {
+                    fill: parent
+                    margins: 14
+                }
+                spacing: 8
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 12
+
+                    StyledText {
+                        Layout.alignment: Qt.AlignTop
+                        text: Weather.data?.temp ?? "--°"
+                        font {
+                            pixelSize: 40
+                            weight: Font.Bold
+                        }
+                        color: Appearance.colors.colPrimary
+                    }
+
+                    ColumnLayout {
+                        Layout.alignment: Qt.AlignVCenter
+                        spacing: 2
+
+                        StyledText {
+                            text: Weather.data?.description ?? ""
+                            font.pixelSize: Appearance.font.pixelSize.normal
+                            font.weight: Font.DemiBold
+                            color: Appearance.colors.colOnPrimaryContainer
+                            elide: Text.ElideRight
+                        }
+                        StyledText {
+                            text: Weather.data?.city ?? "--"
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            color: Appearance.colors.colOnPrimaryContainer
+                            opacity: 0.6
+                            elide: Text.ElideRight
+                        }
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    MaterialShapeWrappedMaterialSymbol {
+                        Layout.topMargin: -5
+                        Layout.alignment: Qt.AlignVCenter
+                        shape: MaterialShape.Shape.Cookie12Sided
+                        color: Appearance.colors.colPrimary
+                        colSymbol: Appearance.colors.colOnPrimary
+                        text: Icons.getWeatherIcon(Weather.data.wCode) ?? "cloud"
+                        iconSize: 24
+                        fill: 1
+                        padding: 10
+                        implicitWidth: 50
+                        implicitHeight: 50
+                    }
+                }
+
+                Item { Layout.fillHeight: true }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 5
+                    spacing: 16
+
+                    RowLayout {
+                        spacing: 2
+                        MaterialSymbol {
+                            iconSize: Appearance.font.pixelSize.smaller
+                            text: "humidity_mid"
+                            color: Appearance.colors.colOnPrimaryContainer
+                            opacity: 0.6
+                        }
+                        StyledText {
+                            text: Weather.data?.humidity ?? "--"
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            color: Appearance.colors.colOnPrimaryContainer
+                            opacity: 0.6
+                        }
+                    }
+
+                    RowLayout {
+                        spacing: 2
+                        MaterialSymbol {
+                            iconSize: Appearance.font.pixelSize.smaller
+                            text: "rainy"
+                            color: Appearance.colors.colOnPrimaryContainer
+                            opacity: 0.6
+                        }
+                        StyledText {
+                            text: Weather.data?.cr ?? "--"
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            color: Appearance.colors.colOnPrimaryContainer
+                            opacity: 0.6
+                        }
+                    }
+
+                    RowLayout {
+                        spacing: 2
+                        MaterialSymbol {
+                            iconSize: Appearance.font.pixelSize.smaller
+                            text: "air"
+                            color: Appearance.colors.colOnPrimaryContainer
+                            opacity: 0.6
+                        }
+                        StyledText {
+                            text: Weather.data?.wind ?? "--"
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            color: Appearance.colors.colOnPrimaryContainer
+                            opacity: 0.6
+                        }
+                    }
+
+                    RowLayout {
+                        spacing: 2
+                        MaterialSymbol {
+                            iconSize: Appearance.font.pixelSize.smaller
+                            text: "visibility"
+                            color: Appearance.colors.colOnPrimaryContainer
+                            opacity: 0.6
+                        }
+                        StyledText {
+                            text: Weather.data?.visib ?? "--"
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            color: Appearance.colors.colOnPrimaryContainer
+                            opacity: 0.6
+                        }
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    ColumnLayout{
+                        Layout.topMargin: -5
+                        Layout.rightMargin: 5
+                        spacing: 1
+                        RowLayout {
+                            spacing: 4
+                            MaterialSymbol {
+                                iconSize: Appearance.font.pixelSize.smaller
+                                text: "wb_twilight"
+                                color: Appearance.colors.colOnPrimaryContainer
+                                opacity: 0.6
+                            }
+                            StyledText {
+                                text: Weather.data?.sunrise ?? "--"
+                                font.pixelSize: Appearance.font.pixelSize.smaller
+                                color: Appearance.colors.colOnPrimaryContainer
+                                opacity: 0.6
+                            }
+                        }
+
+                        RowLayout {
+                            spacing: 4
+                            MaterialSymbol {
+                                iconSize: Appearance.font.pixelSize.smaller
+                                text: "nights_stay"
+                                color: Appearance.colors.colOnPrimaryContainer
+                                opacity: 0.6
+                            }
+                            StyledText {
+                                text: Weather.data?.sunset ?? "--"
+                                font.pixelSize: Appearance.font.pixelSize.smaller
+                                color: Appearance.colors.colOnPrimaryContainer
+                                opacity: 0.6
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            id: resizeHandle
+            width: 16
+            height: 16
+            radius: 4
+            color: Appearance.colors.colOnPrimaryContainer
+            anchors {
+                right: card.right
+                bottom: card.bottom
+                margins: 4
+            }
+            opacity: (root.containsMouse || resizeArea.containsMouse || resizeArea.pressed) ? 0.5 : 0
+            visible: opacity > 0 && !Config.options.background.widgetsLocked
+
+            Behavior on opacity {
+                NumberAnimation { duration: 150 }
+            }
+
+            MouseArea {
+                id: resizeArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.SizeHorCursor
+                preventStealing: true
+
+                property real startWidth: 0
+                property real startX: 0
+
+                onPressed: (mouse) => {
+                    startWidth = root.widgetWidth
+                    startX = mapToItem(null, mouse.x, mouse.y).x
+                }
+                onPositionChanged: (mouse) => {
+                    if (!pressed) return
+                    var globalX = mapToItem(null, mouse.x, mouse.y).x
+                    var dx = globalX - startX
+                    root.sizeMode = root.modeForWidth(startWidth + dx)
+                }
+                onReleased: {
+                    root.configEntry.sizeMode = root.sizeMode
+                }
             }
         }
     }

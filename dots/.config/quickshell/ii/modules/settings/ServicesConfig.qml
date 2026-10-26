@@ -404,15 +404,17 @@ ContentPage {
                 }
                 options: [
                     { displayName: "Google", icon: "public", value: "google" },
-                    { displayName: "Local (offline)", icon: "wifi_off", value: "local" }
+                    { displayName: "Local (offline)", icon: "wifi_off", value: "local" },
+                    { displayName: "Free (online)", icon: "translate", value: "free" }
                 ]
             }
         }
 
-        // Local-only options
+        // Local OCR options (the local and free providers both use Tesseract)
         Loader {
             Layout.fillWidth: true
             active: Config.options.screenTranslator.provider === "local"
+                || Config.options.screenTranslator.provider === "free"
             sourceComponent: ColumnLayout {
                 id: localOptions
                 spacing: 8
@@ -583,6 +585,119 @@ ContentPage {
                 wrapMode: Text.Wrap
                 text: Translation.tr("Configure your Google Cloud service account key inside the Screen Translator panel (SUPER+SHIFT+T → key icon).")
             }
+        }
+    }
+
+    ContentSection {
+        icon: "vpn"
+        title: Translation.tr("Tailscale")
+
+        ConfigSwitch {
+            buttonIcon: "check"
+            text: Translation.tr("Enable Tailscale sidebar tab")
+            checked: Config.options.tailscale.enabled
+            onCheckedChanged: Config.options.tailscale.enabled = checked
+        }
+
+        ConfigSwitch {
+            enabled: Config.options.tailscale.enabled
+            buttonIcon: "link"
+            text: Translation.tr("Auto-connect on startup")
+            checked: Config.options.tailscale.autoConnect
+            onCheckedChanged: Config.options.tailscale.autoConnect = checked
+        }
+
+        ConfigSwitch {
+            enabled: Config.options.tailscale.enabled
+            buttonIcon: "dns"
+            text: Translation.tr("Accept DNS")
+            checked: Config.options.tailscale.acceptDns
+            onCheckedChanged: Config.options.tailscale.acceptDns = checked
+        }
+
+        ConfigSwitch {
+            enabled: Config.options.tailscale.enabled
+            buttonIcon: "terminal"
+            text: Translation.tr("Enable SSH")
+            checked: Config.options.tailscale.ssh
+            onCheckedChanged: Config.options.tailscale.ssh = checked
+        }
+    }
+
+    ContentSection {
+        icon: "shield"
+        title: Translation.tr("VPN")
+
+        ConfigSwitch {
+            buttonIcon: "check"
+            text: Translation.tr("Enable VPN sidebar tab")
+            checked: Config.options.vpn.enabled
+            onCheckedChanged: Config.options.vpn.enabled = checked
+        }
+
+        ConfigSwitch {
+            enabled: Config.options.vpn.enabled
+            buttonIcon: "link"
+            text: Translation.tr("Auto-connect on startup")
+            checked: Config.options.vpn.autoConnect
+            onCheckedChanged: Config.options.vpn.autoConnect = checked
+        }
+
+        ContentSubsection {
+            title: Translation.tr("Default provider")
+
+            ConfigSelectionArray {
+                currentValue: Config.options.vpn.defaultProvider
+                onSelected: newValue => Config.options.vpn.defaultProvider = newValue
+                options: [
+                    { displayName: "NetworkManager", icon: "cell_tower", value: "networkmanager" },
+                    { displayName: "NordVPN", icon: "vpn_lock", value: "nordvpn" },
+                    { displayName: "ProtonVPN", icon: "shield", value: "protonvpn" }
+                ]
+            }
+        }
+    }
+
+    ContentSection {
+        icon: "mail"
+        title: Translation.tr("Email (Gmail)")
+
+        ConfigSwitch {
+            buttonIcon: "check"
+            text: Translation.tr("Enable email sidebar tab")
+            checked: Config.options.email.enabled
+            onCheckedChanged: Config.options.email.enabled = checked
+        }
+
+        ConfigSpinBox {
+            enabled: Config.options.email.enabled
+            icon: "av_timer"
+            text: Translation.tr("Refresh interval (minutes)")
+            value: Config.options.email.refreshIntervalMinutes
+            from: 1
+            to: 60
+            stepSize: 1
+            onValueChanged: Config.options.email.refreshIntervalMinutes = value
+        }
+
+        ConfigSwitch {
+            enabled: Config.options.email.enabled
+            buttonIcon: "mark_email_unread"
+            text: Translation.tr("Show unread badge on bar")
+            checked: Config.options.email.enableUnreadBadges
+            onCheckedChanged: Config.options.email.enableUnreadBadges = checked
+        }
+    }
+
+    ContentSection {
+        icon: "sticky_note_2"
+        title: Translation.tr("Notes")
+
+        ConfigSwitch {
+            buttonIcon: "check"
+            text: Translation.tr("Enable notes sidebar tab")
+            checked: Config.options.notes.enabled
+            onCheckedChanged: Config.options.notes.enabled = checked
         }
     }
 }

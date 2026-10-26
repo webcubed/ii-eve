@@ -9,6 +9,7 @@ import qs
 import qs.modules.common
 import qs.modules.common.functions
 import qs.modules.common.models
+import qs.modules.common.models.free
 import qs.modules.common.models.gCloud
 import qs.modules.common.models.local
 import qs.modules.common.utils
@@ -155,7 +156,7 @@ Item {
     Loader {
         id: ocrLoader
         active: true
-        sourceComponent: root.provider === "local" ? localOcrComponent : googleOcrComponent
+        sourceComponent: root.provider === "google" ? googleOcrComponent : localOcrComponent
 
         property var ocrInstance: item
 
@@ -189,13 +190,31 @@ Item {
     Loader {
         id: translateLoader
         active: true
-        sourceComponent: root.provider === "local" ? localTransComponent : googleTransComponent
+        sourceComponent: root.provider === "google" ? googleTransComponent
+            : root.provider === "free" ? freeTransComponent
+            : localTransComponent
 
         property var translateInstance: item
 
         Component {
             id: googleTransComponent
             GCloudTranslate {
+                onError: (msg) => { root.handleError(msg); }
+                onFinished: {
+                    var values = outputData.translations.map(t => t.translatedText);
+                    const keys = root.translationKeys;
+                    root.translation = ({});
+                    for (var i = 0; i < keys.length; i++) {
+                        Object.assign(root.translation, { [keys[i]]: values[i] });
+                    }
+                    root.loading = false;
+                }
+            }
+        }
+
+        Component {
+            id: freeTransComponent
+            FreeTranslate {
                 onError: (msg) => { root.handleError(msg); }
                 onFinished: {
                     var values = outputData.translations.map(t => t.translatedText);

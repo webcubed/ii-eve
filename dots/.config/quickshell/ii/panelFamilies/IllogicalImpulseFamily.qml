@@ -4,7 +4,9 @@ import Quickshell
 import qs.modules.common
 import qs.modules.ii.background
 import qs.modules.ii.bar
+import qs.modules.ii.bedtimeOverlay
 import qs.modules.ii.bluetoothConnectionPopup
+import qs.modules.ii.bluetoothPairing
 import qs.modules.ii.cheatsheet
 import qs.modules.ii.dock
 import qs.modules.ii.lock
@@ -16,6 +18,7 @@ import qs.modules.ii.overview
 import qs.modules.ii.polkit
 import qs.modules.ii.regionSelector
 import qs.modules.ii.screenCorners
+import qs.modules.ii.screenTimeOverlay
 import qs.modules.ii.screenTranslator
 import qs.modules.ii.sessionScreen
 import qs.modules.ii.sidebarPolicies
@@ -24,6 +27,7 @@ import qs.modules.ii.overlay
 import qs.modules.ii.verticalBar
 import qs.modules.ii.wallpaperSelector
 import qs.modules.ii.wrappedFrame
+import qs.services
 
 Scope {
     property bool barExtraCondition: true
@@ -46,6 +50,15 @@ Scope {
     PanelLoader { extraCondition: !Config.options.bar.vertical && barExtraCondition; component: Bar {} }
     PanelLoader { extraCondition: Config.options.background.enable; component: Background {} }
     PanelLoader { component: BluetoothConnectionPopup {} }
+    PanelLoader { component: BluetoothPairing {} }
+    PanelLoader {
+        extraCondition: (Config.options.screenTime?.enable ?? true) && ScreenTimeLimits.activeBlock !== null
+        component: ScreenTimeOverlay {}
+    }
+    PanelLoader {
+        extraCondition: BedtimeService.intrusiveDue
+        component: BedtimeOverlay {}
+    }
     PanelLoader { component: Cheatsheet {} }
     PanelLoader { extraCondition: Config.options.dock.enable; component: Dock {} }
     PanelLoader { component: Lock {} }

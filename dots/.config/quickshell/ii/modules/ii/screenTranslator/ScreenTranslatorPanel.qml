@@ -262,6 +262,7 @@ PanelWindow {
         }
 
         ToolbarPairedFab {
+            Layout.alignment: Qt.AlignVCenter
             iconText: "close"
             onClicked: root.dismiss()
             StyledToolTip {

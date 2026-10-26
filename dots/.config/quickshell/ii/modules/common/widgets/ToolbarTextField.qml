@@ -7,6 +7,18 @@ import qs.modules.common.widgets
 TextField {
     id: filterField
 
+    // Set this to the item that should receive focus (and key events)
+    // when Ctrl is held, e.g. cheatsheetBackground for tab switching.
+    property Item keyNavTarget: null
+
+    Keys.priority: Keys.BeforeItem
+    Keys.onPressed: event => {
+        if ((event.key === Qt.Key_Control || (event.modifiers & Qt.ControlModifier)) && keyNavTarget) {
+            keyNavTarget.forceActiveFocus();
+            event.accepted = false;
+        }
+    }
+
     property alias colBackground: background.color
 
     Layout.fillHeight: true

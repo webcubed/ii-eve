@@ -9,6 +9,14 @@ Item {
     property bool showPing: false
     visible: (ExtensionManager.ready ? ExtensionManager.getContributionPoint("sidebarLeftPages").length : 0) > 0
 
+    // Icon color picked in settings (Interface/Bar → Left sidebar button). The
+    // "onLayer0" default keeps this widget's designed color.
+    readonly property color customIconColor: {
+        const name = Config.options.custom.iconColor
+        if (!name || name === "onLayer0") return Appearance.colors.colOnPrimaryContainer
+        return Appearance.colors[`col${name.charAt(0).toUpperCase()}${name.slice(1)}`] ?? Appearance.colors.colOnPrimaryContainer
+    }
+
     implicitWidth: loader.implicitWidth
     implicitHeight: loader.implicitHeight
 
@@ -51,9 +59,10 @@ Item {
                 anchors.centerIn: parent
                 width: 19.5
                 height: 19.5
-                source: Config.options.bar.topLeftIcon == 'distro' ? SystemInfo.distroIcon : `${Config.options.bar.topLeftIcon}-symbolic`
-                colorize: true
-                color: Appearance.colors.colOnPrimaryContainer
+                source: Config.options.custom.distroIcon || (Config.options.bar.topLeftIcon == 'distro' ? SystemInfo.distroIcon : `${Config.options.bar.topLeftIcon}-symbolic`)
+                customFolder: Config.options.custom.iconsPath
+                colorize: Config.options.custom.colorizeIcon
+                color: root.customIconColor
 
                 Rectangle {
                     opacity: root.showPing ? 1 : 0

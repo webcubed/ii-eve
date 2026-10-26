@@ -13,15 +13,24 @@ AbstractBackgroundWidget {
 
     configEntryName: "clock"
 
-    implicitHeight: contentColumn.implicitHeight
-    implicitWidth: contentColumn.implicitWidth
+    // Fixed 2x2 grid slot; contentColumn centers itself inside
+    implicitHeight: WidgetGrid.spanHeight(2)
+    implicitWidth: WidgetGrid.spanWidth(2)
 
     readonly property string clockStyle: GlobalStates.screenLocked ? Config.options.background.widgets.clock.styleLocked : Config.options.background.widgets.clock.style
     readonly property bool forceCenter: (GlobalStates.screenLocked && Config.options.lock.centerClock)
     readonly property bool shouldShow: (!Config.options.background.widgets.clock.showOnlyWhenLocked || GlobalStates.screenLocked)
+    readonly property color colTextSecondary: Appearance.colors.colOnLayer3
+    readonly property color colTextTertiary: Appearance.colors.colOnLayer3
+    readonly property string customClockColorKey: Config.options.background.widgets.clock.color ?? ""
+    readonly property color resolvedClockColor: {
+        if (customClockColorKey === "") return root.colText;
+        const propName = "col" + customClockColorKey.charAt(0).toUpperCase() + customClockColorKey.slice(1);
+        return Appearance.colors[propName] ?? root.colText;
+    }
     property bool wallpaperSafetyTriggered: false
     property bool isCovered: false
-    needsColText: clockStyle === "digital"
+    needsColText: clockStyle === "digital" || clockStyle === "daily"
     x: forceCenter ? ((root.screenWidth - root.width) / 2) : targetX
     y: forceCenter ? ((root.screenHeight - root.height) / 2) : targetY
     visibleWhenLocked: true
@@ -66,10 +75,32 @@ AbstractBackgroundWidget {
             shown: root.clockStyle === "digital" && (root.shouldShow)
             fade: false
             sourceComponent: DigitalClock {
-                colText: root.colText
+                colText: root.resolvedClockColor
                 colTextSecondary: root.colTextSecondary
                 colTextTertiary: root.colTextTertiary
                 textHorizontalAlignment: root.textHorizontalAlignment
+            }
+        }
+
+        FadeLoader {
+            id: dailyClockLoader
+            anchors.horizontalCenter: parent.horizontalCenter
+            shown: root.clockStyle === "daily" && (root.shouldShow)
+            fade: false
+            sourceComponent: DailyClock {
+                colText: root.resolvedClockColor
+            }
+        }
+
+        FadeLoader {
+            id: pixelClockLoader
+            anchors.horizontalCenter: parent.horizontalCenter
+            shown: root.clockStyle === "pixel" && (root.shouldShow)
+            fade: false
+            sourceComponent: PixelClock {
+                wallpaperItem: root.wallpaperItem
+                originX: root.x
+                originY: root.y
             }
         }
         StatusRow {
@@ -140,7 +171,7 @@ AbstractBackgroundWidget {
         property alias statusIcon: statusIconWidget.text
         property alias statusText: statusTextWidget.text
         property bool shown: true
-        property color textColor: root.clockStyle === "cookie" ? Appearance.colors.colOnSecondaryContainer : root.colText
+        property color textColor: root.clockStyle === "cookie" ? Appearance.colors.colOnSecondaryContainer : root.resolvedClockColor
         opacity: shown ? 1 : 0
         visible: opacity > 0
         Behavior on opacity {

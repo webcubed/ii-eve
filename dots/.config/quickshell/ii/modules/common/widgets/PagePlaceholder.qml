@@ -10,6 +10,8 @@ Item {
 
     property bool shown: true
     property alias icon: shapeWidget.text
+    property alias iconSize: shapeWidget.iconSize
+    property alias iconPadding: shapeWidget.padding
     property alias title: widgetNameText.text
     property alias description: widgetDescriptionText.text
     property alias shape: shapeWidget.shape
@@ -22,6 +24,20 @@ Item {
 
     property alias triggerAnimationOn: openingAnimation.trigger
     property alias rotateToRight: openingAnimation.rotateToRight
+    property bool animateIconOnShow: false
+    property real titlePixelSize: Appearance.font.pixelSize.larger
+    property real descriptionPixelSize: Appearance.font.pixelSize.small
+    property int entranceTrigger: -1
+    
+    onEntranceTriggerChanged: {
+        if (entranceTrigger >= 0 && shown && animateIconOnShow) {
+            triggerEntrance();
+        }
+    }
+    
+    function triggerEntrance() {
+        openingAnimation.trigger = true;
+    }
     PlaceholderOpeningAnimation {
         id: openingAnimation
         targetPlaceholder: root
@@ -61,7 +77,7 @@ Item {
             Layout.alignment: Qt.AlignHCenter
             font {
                 family: Appearance.font.family.title
-                pixelSize: Appearance.font.pixelSize.larger
+                pixelSize: root.titlePixelSize
                 variableAxes: Appearance.font.variableAxes.title
             }
             color: Appearance.m3colors.m3outline
@@ -71,7 +87,7 @@ Item {
             id: widgetDescriptionText
             visible: description !== ""
             Layout.fillWidth: true
-            font.pixelSize: Appearance.font.pixelSize.small
+            font.pixelSize: root.descriptionPixelSize
             color: Appearance.m3colors.m3outline
             horizontalAlignment: Text.AlignLeft
             wrapMode: Text.Wrap

@@ -17,7 +17,9 @@ import qs.modules.common
 Singleton {
 	id: root;
 	property list<MprisPlayer> allPlayers: Mpris.players.values;
-	property list<MprisPlayer> players: Mpris.players.values.filter(player => isRealPlayer(player));
+	// `values` can briefly contain a null entry while a player disappears, so drop
+	// those before any callback touches player properties.
+	property list<MprisPlayer> players: Mpris.players.values.filter(player => player).filter(player => isRealPlayer(player));
 
 	// Desktop-entry name (e.g. "spotify") of the user-pinned app. Persisted
 	// via Config so the pin survives shell reloads. Empty = no manual pin.
@@ -50,7 +52,7 @@ Singleton {
 	// reason the active player wouldn't auto-pin after a shell reload).
 	readonly property MprisPlayer activePlayer: pinnedPlayer
 		?? trackedPlayer
-		?? players.find(p => p.isPlaying)
+		?? players.find(p => p?.isPlaying)
 		?? players[0]
 		?? Mpris.players.values[0]
 		?? null;

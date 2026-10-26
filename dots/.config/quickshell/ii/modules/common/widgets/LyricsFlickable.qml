@@ -11,27 +11,38 @@ Item {
     id: root
 
     property var player: MprisController.activePlayer
-    property string geniusLyricsString: LyricsService.geniusHasLyrics ? LyricsService.plainLyrics : ""
+    property string plainLyricsString: LyricsService.plainLyrics
+    property bool hasPlainLyrics: plainLyricsString.trim().length > 0
+    property string geniusLyricsString: plainLyricsString
 
     property bool hasSyncedLines: LyricsService.syncedLines.length > 0
+    property real fontPixelSize: Appearance.font.pixelSize.hugeass * 1.2
+    property color textColor: Appearance.colors.colOnLayer0
+    property real loadingIndicatorSize: 96
+    property color indicatorColor: Appearance.colors.colPrimaryContainer
+    property color shapeColor: Appearance.colors.colOnPrimaryContainer
 
-    // Position pulses are emitted by MprisController.positionTick — no need
-    // for a per-widget timer.
+    Timer {
+        running: root.player?.playbackState == MprisPlaybackState.Playing && hasSyncedLines
+        interval: 250
+        repeat: true
+        onTriggered: root.player.positionChanged()
+    }
 
     MaterialLoadingIndicator {
-        anchors.left: parent.left
-        anchors.leftMargin: 250
-        anchors.verticalCenter: parent.verticalCenter
-        loading: geniusFlickable.opacity == 0 && !hasSyncedLines
+        anchors.centerIn: parent
+        loading: !root.hasPlainLyrics && !hasSyncedLines
         visible: loading
-        implicitSize: 96
+        implicitSize: root.loadingIndicatorSize
+        color: root.indicatorColor
+        shapeColor: root.shapeColor
     }
 
     Flickable {
         id: geniusFlickable
         anchors.fill: parent
         
-        opacity: !hasSyncedLines && LyricsService.geniusHasLyrics ? 1 : 0
+        opacity: !hasSyncedLines && root.hasPlainLyrics ? 1 : 0
         Behavior on opacity {
             animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
         }
@@ -44,16 +55,14 @@ Item {
         property bool isSyncing: true
 
         readonly property real rawTargetY: {
-            if (!root.player || !(root.player.length > 0)) return 0;
             var lines = root.geniusLyricsString.split('\n')
             var totalLines = lines.length
-            if (totalLines === 0) return 0;
-
-            var currentLineIndex = (root.player.position / root.player.length) * totalLines
-
+            
+            var currentLineIndex = ((root.player?.position ?? 0) / (root.player?.length || 1)) * totalLines
+            
             var averageLineHeight = contentHeight / totalLines
             var targetY = (currentLineIndex * averageLineHeight)
-
+            
             return Math.max(0, targetY - (geniusFlickable.height / 2))
         }
 
@@ -86,6 +95,7 @@ Item {
 
         layer.enabled: true
             layer.effect: OpacityMask {
+                source: geniusFlickable
                 maskSource: Rectangle {
                     width: geniusFlickable.width
                     height: geniusFlickable.height
@@ -103,8 +113,8 @@ Item {
             id: geniusText
             width: parent.width
             text: root.geniusLyricsString
-            color: Appearance.colors.colOnLayer0
-            font.pixelSize: Appearance.font.pixelSize.hugeass * 1.2
+            color: root.textColor
+            font.pixelSize: root.fontPixelSize
             font.weight: Font.Medium
             wrapMode: Text.Wrap
             horizontalAlignment: Text.AlignLeft

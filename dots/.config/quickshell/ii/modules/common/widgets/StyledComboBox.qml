@@ -73,12 +73,12 @@ ComboBox {
 
             Loader {
                 Layout.alignment: Qt.AlignVCenter
-                active: root.buttonIcon.length > 0 || (root.currentIndex >= 0 && typeof root.model[root.currentIndex] === 'object' && root.model[root.currentIndex]?.icon)
+                active: root.buttonIcon.length > 0 || !!(root.currentIndex >= 0 && typeof root.model?.[root.currentIndex] === 'object' && root.model?.[root.currentIndex]?.icon)
                 visible: active
                 sourceComponent: MaterialSymbol {
                     text: {
-                        if (root.currentIndex >= 0 && typeof root.model[root.currentIndex] === 'object' && root.model[root.currentIndex]?.icon) {
-                            return root.model[root.currentIndex].icon;
+                        if (root.currentIndex >= 0 && typeof root.model?.[root.currentIndex] === 'object' && root.model?.[root.currentIndex]?.icon) {
+                            return root.model?.[root.currentIndex].icon;
                         }
                         return root.buttonIcon;
                     }

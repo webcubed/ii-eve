@@ -11,7 +11,12 @@ RippleButton {
     property string iconText: "add"
     property bool expanded: false
     property real baseSize: 56
+    property real iconSize: 26
     property real elementSpacing: 5
+    // Opt-in keybind hint (NavigationRailButton pattern): while showShortcutHints
+    // is on, the icon gives way to the shortcut text without moving the button.
+    property string shortcut: ""
+    property bool showShortcutHints: false
     implicitWidth: expanded ? (Math.max(contentRowLayout.implicitWidth + 10 * 2, baseSize)) : baseSize
     implicitHeight: baseSize
 
@@ -32,14 +37,33 @@ RippleButton {
         }
         spacing: 0
 
-        MaterialSymbol {
-            id: icon
+        Item {
+            id: iconWrap
             anchors.verticalCenter: parent.verticalCenter
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            iconSize: 26
-            color: root.colOnBackground
-            text: root.iconText
+            implicitWidth: Math.max(icon.implicitWidth, shortcutHint.implicitWidth)
+            implicitHeight: Math.max(icon.implicitHeight, shortcutHint.implicitHeight)
+
+            MaterialSymbol {
+                id: icon
+                anchors.centerIn: parent
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                iconSize: root.iconSize
+                color: root.colOnBackground
+                text: root.iconText
+                opacity: root.showShortcutHints && root.shortcut.length > 0 ? 0 : 1
+                Behavior on opacity { NumberAnimation { duration: 150 } }
+            }
+            StyledText {
+                id: shortcutHint
+                anchors.centerIn: parent
+                color: root.colOnBackground
+                text: root.shortcut
+                font.pixelSize: 13
+                font.weight: Font.DemiBold
+                opacity: root.showShortcutHints && root.shortcut.length > 0 ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: 150 } }
+            }
         }
         Loader {
             anchors.verticalCenter: parent.verticalCenter

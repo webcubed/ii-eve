@@ -8,11 +8,17 @@ Canvas {
     property int dashLength: 6
     property int gapLength: 4
     property int borderWidth: 1
+    property real radius: 0
 
     onDashLengthChanged: requestPaint()
     onGapLengthChanged: requestPaint()
+    onRadiusChanged: requestPaint()
     onWidthChanged: requestPaint()
     onHeightChanged: requestPaint()
+    // A repaint on colour and stroke too: without these the dashes kept the
+    // palette they were first drawn in and survived a theme change unchanged.
+    onColorChanged: requestPaint()
+    onBorderWidthChanged: requestPaint()
     onPaint: {
         var ctx = getContext("2d");
         ctx.clearRect(0, 0, width, height);
@@ -22,7 +28,45 @@ Canvas {
         if (root.gapLength > 0) {
             ctx.setLineDash([root.dashLength, root.gapLength]); // Set dash pattern
         }
-        ctx.strokeRect(root.borderWidth / 2, root.borderWidth / 2, width - root.borderWidth, height - root.borderWidth); // Draw it
+        if (root.radius > 0) {
+            var w = width;
+            var h = height;
+            var b = root.borderWidth / 2;
+            // The stroke is centred on the path, so the path itself runs half
+            // a stroke inside the item. That leaves the corner arc only
+            // `(h - 2b) / 2` to work with — asking for more makes `arcTo`
+            // fall back on a degenerate curve, which is what turned a pill
+            // into a box with broken corners at full rounding.
+            var r = Math.max(0, Math.min(root.radius, Math.min(w - b * 2, h - b * 2) / 2));
+            if (root.gapLength > 0) {
+                // A dash pattern that does not divide the outline evenly
+                // leaves a stub where the path closes. Stretching the pattern
+                // to the nearest whole number of repeats hides that seam and
+                // costs a fraction of a pixel per dash.
+                var straight = (w - b * 2 - r * 2) * 2 + (h - b * 2 - r * 2) * 2;
+                var perimeter = straight + 2 * Math.PI * r;
+                var unit = root.dashLength + root.gapLength;
+                if (perimeter > unit) {
+                    var repeats = Math.max(1, Math.round(perimeter / unit));
+                    var factor = perimeter / (repeats * unit);
+                    ctx.setLineDash([root.dashLength * factor, root.gapLength * factor]);
+                }
+            }
+            ctx.beginPath();
+            ctx.moveTo(b + r, b);
+            ctx.lineTo(w - b - r, b);
+            ctx.arcTo(w - b, b, w - b, b + r, r);
+            ctx.lineTo(w - b, h - b - r);
+            ctx.arcTo(w - b, h - b, w - b - r, h - b, r);
+            ctx.lineTo(b + r, h - b);
+            ctx.arcTo(b, h - b, b, h - b - r, r);
+            ctx.lineTo(b, b + r);
+            ctx.arcTo(b, b, b + r, b, r);
+            ctx.closePath();
+            ctx.stroke();
+        } else {
+            ctx.strokeRect(root.borderWidth / 2, root.borderWidth / 2, width - root.borderWidth, height - root.borderWidth); // Draw it
+        }
         ctx.restore();
     }
 }

@@ -13,7 +13,13 @@ import Quickshell.Hyprland
 
 MouseArea {
     id: wallpaperSelectorContent
-    property int columns: 4
+    property int columns: Math.max(1, Config.options.wallpaperSelector.columns ?? 4)
+    /// Label for the extra quick-access folder configured in settings, if any.
+    readonly property string customFolderName: {
+        const path = String(Config.options.wallpaperSelector.userPath ?? "").replace(/\/+$/, "");
+        const parts = path.split("/");
+        return parts[parts.length - 1] || Translation.tr("Custom");
+    }
     property real previewCellAspectRatio: 4 / 3
     property bool useDarkMode: Appearance.m3colors.darkmode
     property bool favMode: false
@@ -384,7 +390,8 @@ MouseArea {
                                 Repeater {
                                     id: sideBarRepeater
                                     model: [
-                                        { icon: "home", name: Translation.tr("Home"), path: Directories.home }, 
+                                        ...(Config.options.wallpaperSelector.showHomePath ? [{ icon: "home", name: Translation.tr("Home"), path: Directories.home }] : []),
+                                        ...(Config.options.wallpaperSelector.userPath ? [{ icon: "folder", name: wallpaperSelectorContent.customFolderName, path: Config.options.wallpaperSelector.userPath }] : []),
                                         { icon: "docs", name: Translation.tr("Documents"), path: Directories.documents }, 
                                         { icon: "download", name: Translation.tr("Downloads"), path: Directories.downloads }, 
                                         { icon: "image", name: Translation.tr("Pictures"), path: Directories.pictures }, 
@@ -678,7 +685,10 @@ MouseArea {
     Connections {
         target: Wallpapers
         function onChanged() {
-            GlobalStates.wallpaperSelectorOpen = false;
+            // Picking a wallpaper closes the selector unless the user turned that off to
+            // keep browsing after each pick.
+            if (Config.options.wallpaperSelector.closeAfterSelection)
+                GlobalStates.wallpaperSelectorOpen = false;
         }
         function onColorCacheChanged() {
             if (wallpaperSelectorContent.activeColorFilter) {

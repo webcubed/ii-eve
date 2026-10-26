@@ -331,7 +331,9 @@ Widgets can be snapped to a grid instead of free-positioned:
 - **Now enabled**: config has `cullWhenOccluded: true`. Additionally, bar
   widgets that tick every second (`BarComponent.liveUpdateIds`: clock, date,
   system_monitor, network_speed, music_player, timer) unload entirely while
-  `GlobalStates.fullscreenActive` (the bar is covered in fullscreen).
+  `GlobalStates.fullscreenActive` — focused window is in TRUE fullscreen
+  (hyprctl `fullscreen === 2`; `1` = maximized never culls: maximized
+  windows respect the bar's exclusive zone, the bar stays visible).
 - When grid is enabled, widgets snap to grid cells on release
 - `AbstractBackgroundWidget.qml` computes `gridCellWidth`/`gridCellHeight` from `scaledScreenWidth`/`scaledScreenHeight`
 - Grid position is saved back to config (`configEntry.gridColumn`/`gridRow`) on drag release
@@ -400,8 +402,13 @@ this first.
 
 `Connections { target: Hyprland; function onRawEvent(event) {...} }` streams
 socket2 events as `event.name`/`event.data` (precedent: `Brightness.qml`).
-`GlobalStates.fullscreenActive` = the FOCUSED window is fullscreen — but
-event-driven inference alone went stale (culling visible widgets until the
+`GlobalStates.fullscreenActive` = the FOCUSED window is in TRUE fullscreen —
+hyprctl `activewindow`'s `fullscreen` field is an enum (`0` none, `1` MAXIMIZED,
+`2` FULLSCREEN, `FullscreenTypes.hpp`); only `2` culls, because maximized
+windows still leave the bar visible (exclusive zone). A maximized window can
+be active without the user maximizing it (e.g. kitty swallowing a maximized
+window), which is why culling on `> 0` culled the bar on every terminal open —
+but event-driven inference alone also went stale (culling visible widgets until
 user forced a focus event), so detection is self-verifying:
 `fullscreen`/`activewindow`/`activewindowv2`/`workspace`/`workspacev2`
 events restart a 150 ms debounce → `requestFullscreenSync()` → queued
@@ -416,6 +423,22 @@ background resources widget visible, or dashboard open),
 and `BarComponent.cullLiveUpdates`. `DateTime`'s uptime timer runs at 60 s
 with `triggeredOnStart` — never tie it to `resources.updateInterval`.
 ResourceUsage merges its temp+GPU probes into one `hwProbeProc` fork.
+
+### 16. A Service Reference Without `import qs.services` Sticks Panels Open
+
+Referencing a service singleton from a file that lacks `import qs.services` throws
+`ReferenceError: X is not defined` at binding evaluation, and the property keeps its
+**default value** — never the computed one. `PanelLoader.extraCondition` defaults to
+`true`, so a service-gated overlay builds and stays forever, ignoring config:
+
+```qml
+// IllogicalImpulseFamily.qml — without `import qs.services` this threw and the
+// intrusive bedtime modal showed permanently even with bedtime disabled:
+PanelLoader { extraCondition: BedtimeService.intrusiveDue; component: BedtimeOverlay {} }
+```
+
+Fix: add `import qs.services` to the file (checked for `ScreenTimeLimits` too).
+Symptom check: `grep ReferenceError <log.qslog>` and `hyprctl layers | grep <namespace>`.
 
 ## Module Import Reference
 

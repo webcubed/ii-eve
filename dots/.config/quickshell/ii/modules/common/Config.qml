@@ -104,6 +104,93 @@ Singleton {
                 property list<string> disabledServices: []
             }
 
+            property JsonObject screenTime: JsonObject {
+                property bool enable: true
+                // { id, kind: "app" | "total", name, keys: [window classes], minutes,
+                //   days: [7 bools, Sunday first], enabled, strict }
+                property list<var> limits: []
+                // Focus schedules: apps blocked between two times of day.
+                // { id, name, start: "HH:mm", end: "HH:mm", days, keys, allApps,
+                //   enabled, strict }
+                property list<var> schedules: []
+                // Never blocked by the total limit or an all-apps schedule.
+                property list<string> alwaysAllowed: []
+                property int warnMinutes: 5
+                property bool warnLastMinute: true
+                property bool notifyOnLimit: true
+                // Minutes between reminders once a limit was ignored; 0 turns them off.
+                property int overdueReminderMinutes: 15
+                // Seconds the block screen waits before closing the app on its own;
+                // 0 waits for a choice.
+                property int autoCloseSeconds: 0
+                // Salted md5 of the PIN. A speed bump, not a vault.
+                property string pinHash: ""
+                // Ask for the PIN before a limit is edited, removed or paused.
+                property bool pinForEdits: false
+            }
+
+            property JsonObject clockApp: JsonObject {
+                property JsonObject bedtime: JsonObject {
+                    property bool enable: false
+                    property string time: "23:30"
+                    // Nights it applies to, indexed like Date.getDay() of the evening.
+                    property list<var> days: [true, true, true, true, true, true, true]
+                    property int windDownMinutes: 30
+                    // 0 turns the "still up" reminders off.
+                    property int remindEveryMinutes: 15
+                    // A night ends at this hour of the next morning.
+                    property int nightEndsHour: 5
+                    // Intrusive mode: past bedtime a full-screen modal takes over; a few
+                    // short snoozes, then a countdown and a forced shutdown.
+                    property bool intrusive: false
+                    property int snoozeMinutes: 5
+                    property int maxSnoozes: 3
+                    property int shutdownGraceSeconds: 30
+                }
+            }
+
+            property JsonObject phone: JsonObject {
+                property bool kdeconnectEnabled: true
+                property bool showPeripheralCards: true
+                property JsonObject scrcpy: JsonObject {
+                    property bool stayAwake: false
+                    property bool turnScreenOff: false
+                    property bool noPowerOn: false
+                    property bool noAudio: false
+                    property bool showTouches: false
+                    property bool fullscreen: false
+                    property bool alwaysOnTop: false
+                    property int maxFps: 0
+                    property string bitRate: "8M"
+                    property int maxSize: 0
+                    property int videoBuffer: 0
+                    property bool useWireless: false
+                    property bool autoWirelessIp: true
+                    property string wirelessIp: ""
+                    property string wirelessPort: "5555"
+                    property bool showTerminal: false
+                }
+                property JsonObject webcam: JsonObject {
+                    property string cameraFacing: "front" // "front" | "back"
+                    property string resolution: "1280x720" // "640x480" | "1280x720" | "1920x1080"
+                    property int fps: 30
+                    property bool mirrorHorizontally: false
+                    property int rotateDegrees: 0 // 0 | 90 | 180 | 270
+                    property string connection: "wifi" // "wifi" | "usb"
+                    property string wifiIp: ""
+                    property int port: 4747
+                }
+                property JsonObject microphone: JsonObject {
+                    property string connection: "wifi"
+                    property string wifiIp: ""
+                    property int port: 4748
+                    property bool noiseSuppression: false
+                    property bool echoCancellation: false
+                    property bool autoGainControl: false
+                    property int micGain: 100
+                }
+            }
+
             property JsonObject localsend: JsonObject {
                 property bool autoStart: true
                 property string downloadPath: Directories.localSendDownloadPath.replace("file://", "")
@@ -113,6 +200,8 @@ Singleton {
             property JsonObject ai: JsonObject {
                 property string systemPrompt: "## Style\n- Use casual tone, don't be formal!\n- Always be brief and to the point, unless asked otherwise\n- Don't repeat the user's question\n- Be approachable: Avoid using overly complicated, domain-specific terms and provide analogies when asked to explain a concept\n\n## Context (ignore when irrelevant)\n- You are a helpful and inspiring sidebar assistant on a {DISTRO} Linux system\n- Desktop environment: {DE}\n- Current date & time: {DATETIME}\n- Focused app: {WINDOWCLASS}\n\n## Presentation\n- Use Markdown features in your response: \n  - **Bold** text to **highlight keywords** in your response\n  - **Split long information into small sections** with h2 headers and a relevant emoji at the start of it (for example `## 🐧 Linux`). Bullet points are preferred over long paragraphs, unless you're offering writing support or instructed otherwise by the user.\n- Asked to compare different options? You should firstly use a table to compare the main aspects, then elaborate or include relevant comments from online forums *after* the table. Make sure to provide a final recommendation for the user's use case!\n- Use LaTeX formatting for mathematical and scientific notations whenever appropriate. Enclose all LaTeX '$$' delimiters. NEVER generate LaTeX code in a latex block unless the user explicitly asks for it. DO NOT use LaTeX for regular documents (resumes, letters, essays, CVs, etc.).\n\nThanks!\n"
                 property string tool: "functions" // search, functions, or none
+                property bool showOpenRouterSessionCost: false
+                property bool showTokensPerSecond: true
                 property list<var> models: [
                     // Needed entries in the object: title, value, modelProvider (only for openrouter)
                     {
@@ -163,47 +252,21 @@ Singleton {
                 property JsonObject vision: JsonObject {
                     property bool ocrEnabled: true
                 }
-            }
-
-            property JsonObject phone: JsonObject {
-                property bool showPeripheralCards: false
-                property JsonObject scrappy: JsonObject {
-                    property bool alwaysOnTop: false
-                    property bool autoWirelessIp: true
-                    property string bitRate: "8M"
-                    property bool fullscreen: false
-                    property int maxFps: 60
-                    property int maxSize: 1280
-                    property bool noAudio: false
-                    property bool noPowerOn: false
-                    property bool showTerminal: false
-                    property bool showTouches: false
-                    property bool stayAwake: false
-                    property bool turnScreenOff: false
-                    property bool useWireless: false
-                    property int videoBuffer: 200
-                    property string wirelessIp: ""
-                    property int wirelessPort: 27183
-                }
-                property JsonObject webcam: JsonObject {
-                    property string cameraFacing: "back"
-                    property string connection: "local"
-                    property int fps: 30
-                    property bool mirrorHorizontally: true
-                    property string port: "8080"
-                    property string resolution: "1280x720"
-                    property int rotateDegrees: 0
-                    property string wifiIp: ""
-                }
-                property JsonObject microphone: JsonObject {
-                    property bool autoGainControl: true
-                    property string connection: "local"
-                    property bool echoCancellation: true
-                    property int micGain: 100
-                    property bool noiseSuppression: true
-                    property string port: "8081"
-                    property string wifiIp: ""
-                }
+                property string vllmEndpoint: "http://localhost:8000"
+                property list<var> extraModels: [
+                    {
+                        "api_format": "openai", // Most of the time you want "openai". Use "gemini" for Google's models
+                        "description": "This is a custom model. Edit the config to add more! | Anyway, this is DeepSeek R1 Distill LLaMA 70B",
+                        "endpoint": "https://openrouter.ai/api/v1/chat/completions",
+                        "homepage": "https://openrouter.ai/deepseek/deepseek-r1-distill-llama-70b:free", // Not mandatory
+                        "icon": "spark-symbolic", // Not mandatory
+                        "key_get_link": "https://openrouter.ai/settings/keys", // Not mandatory
+                        "key_id": "openrouter",
+                        "model": "deepseek/deepseek-r1-distill-llama-70b:free",
+                        "name": "Custom: DS R1 Dstl. LLaMA 70B",
+                        "requires_key": true
+                    }
+                ]
             }
 
             property JsonObject profile: JsonObject {
@@ -211,6 +274,8 @@ Singleton {
                 property string avatarPicture: ""
                 property string displayName: ""
                 property string descriptionText: ""
+                property bool onlinePresets: false
+                property bool uploadGuideSeen: false
             }
 
             property JsonObject appearance: JsonObject {
@@ -246,12 +311,26 @@ Singleton {
                         property real termFgBoost: 0.35
                         property bool forceDarkMode: false
                     }
+                    property bool lockKonsoleColors: true
                 }
                 property JsonObject palette: JsonObject {
                     property string type: "auto" // Allowed: auto, scheme-content, scheme-expressive, scheme-fidelity, scheme-fruit-salad, scheme-monochrome, scheme-neutral, scheme-rainbow, scheme-tonal-spot
                     property string accentColor: ""
+                    property string namedScheme: "" // "" = from wallpaper. Allowed: any file name in scripts/colors/schemes (gruvbox)
+                    property string namedSchemePrimary: ""
+                    property string namedSchemeSecondary: ""
                 }
                 property list<string> customColorSchemes: []
+                property string uiBackground: "themed"
+                property JsonObject icons: JsonObject {
+                    property string theme: "Tela"
+                    property bool followScheme: true
+                    property bool dynamicColor: true
+                    property bool preventBreezeOverride: true
+                    property int keepGenerated: 6
+                    property string lightVariant: "" // Optional explicit override, empty = auto
+                    property string darkVariant: ""
+                }
             }
 
             property JsonObject audio: JsonObject {
@@ -312,6 +391,7 @@ Singleton {
                         property int gridRow: 0
                         property string style: "cookie"        // Options: "cookie", "digital"
                         property string styleLocked: "cookie"  // Options: "cookie", "digital"
+                        property string color: ""  // e.g. "onSecondaryContainer"; empty = adaptive colText
                         property JsonObject cookie: JsonObject {
                             property bool aiStyling: false
                             property string aiStylingModel: "gemini" // Options "gemini", "openrouter"
@@ -328,6 +408,7 @@ Singleton {
                             property bool dateInClock: true
                             property bool constantlyRotate: false
                             property bool turnOffRotationOnTiledApps: false
+                            property bool useSineCookie: false
                         }
                         property JsonObject digital: JsonObject {
                             property bool adaptiveAlignment: true
@@ -347,6 +428,14 @@ Singleton {
                         property JsonObject quote: JsonObject {
                             property bool enable: false
                             property string text: ""
+                            property bool followClock: false
+                        }
+                        property real z: 0
+                        property JsonObject daily: JsonObject {
+                            property string variant: "badge" // Options: "badge", "morning", "script", "bold"
+                        }
+                        property JsonObject pixel: JsonObject {
+                            property string orientation: "vertical"
                         }
                     }
                     property JsonObject media: JsonObject {
@@ -371,6 +460,11 @@ Singleton {
                             property int smoothing: 2
                             property int blur: 1
                         }
+                        property bool showControls: true
+                        property bool showLyrics: false
+                        property bool showTitles: true
+                        property real z: 0
+                        property string sizeMode: "1x3" 
                     }
                     property JsonObject weather: JsonObject {
                         property bool enable: false
@@ -379,6 +473,9 @@ Singleton {
                         property real y: 100
                         property int gridColumn: 0
                         property int gridRow: 0
+                        property string sizeMode: "2x2"  // Options: "1x1", "2x2", "1x3"
+                        property real z: 0
+                        property bool expanded: false
                     }
                     property JsonObject calendar: JsonObject {
                         property bool enable: false
@@ -387,6 +484,8 @@ Singleton {
                         property real y: 100
                         property int gridColumn: 6
                         property int gridRow: 0
+                        property real z: 0
+                        property string sizeMode: "2x2"
                     }
                     property JsonObject customImage: JsonObject {
                         property bool enable: false
@@ -395,6 +494,10 @@ Singleton {
                         property real y: 300
                         property int gridColumn: 0
                         property int gridRow: 4
+                        property real z: 0
+                        property string path: ""
+                        property string shape: "Cookie4Sided"
+                        property real size: 200
                     }
                     property JsonObject imageConverter: JsonObject {
                         property bool enable: false
@@ -411,6 +514,7 @@ Singleton {
                         property real y: 700
                         property int gridColumn: 0
                         property int gridRow: 6
+                        property real z: 0
                     }
                     property JsonObject resources: JsonObject {
                         property bool enable: false
@@ -420,6 +524,7 @@ Singleton {
                         property int gridColumn: 10
                         property int gridRow: 0
                         property bool vertical: false
+                        property real z: 0
                     }
                     property JsonObject usercard: JsonObject {
                         property bool enable: false
@@ -436,6 +541,12 @@ Singleton {
                         property real y: 900
                         property int gridColumn: 1
                         property int gridRow: 6
+                        property real z: -1000
+                        property string style: "bars" // "bars", "mirror", "aurora", "ring", "dots"
+                        property string colorSource: "theme" // "theme", "cover"
+                        property real sensitivity: 1
+                        property int height: 260 // mirror, aurora and dots
+                        property int ringSize: 380
                     }
                     property JsonObject worldclock: JsonObject {
                         property bool enable: false
@@ -453,6 +564,91 @@ Singleton {
                         property real y: 1100
                         property int gridColumn: 2
                         property int gridRow: 8
+                    }
+                    property bool blurWidgets: false
+                    property real blurRadius: 32
+                    property JsonObject glass: JsonObject {
+                        property bool enable: false
+                    }
+                    property bool shadow: true
+                    property list<string> menuHidden: []
+                    property JsonObject worldClock: JsonObject {
+                        property bool enable: false
+                        property list<string> timezones: ["Australia/Sydney", "Asia/Tokyo", "Europe/London", "America/New_York"]
+                        property string placementStrategy: "free"
+                        property real x: 400
+                        property real y: 100
+                        property real z: 0
+                        property string sizeMode: "2x2"
+                        property bool vertical: false
+                        property int clockCount: 4 
+                    }
+                    property JsonObject todo: JsonObject {
+                        property bool enable: false
+                        property string placementStrategy: "free"
+                        property real x: 400
+                        property real y: 100
+                        property real z: 0
+                    }
+                    property JsonObject userCard: JsonObject {
+                        property bool enable: false
+                        property string placementStrategy: "free"
+                        property real x: 400
+                        property real y: 100
+                        property real z: 0
+                        property string sizeMode: "1x2" 
+                    }
+                    property JsonObject images: JsonObject {
+                        property bool enable: false
+                        property string placementStrategy: "free"
+                        property real x: 400
+                        property real y: 100
+                        property real z: 0
+                    }
+                    property JsonObject imageCard: JsonObject {
+                        property bool enable: false
+                        property string placementStrategy: "free"
+                        property real x: 400
+                        property real y: 100
+                        property real z: 0
+                        property string path: ""
+                        property string sizeMode: "1x2"
+                    }
+                    property JsonObject sticker: JsonObject {
+                        property bool enable: false
+                        property list<var> items: [] // if someone sees this and wants to add more stickers, make a PR too lazy 
+                        property string placementStrategy: "free"
+                        property real x: 400
+                        property real y: 100
+                        property real z: 0
+                        property string path: ""
+                        property real size: 200
+                        property real rotation: 0
+                        property string outlineColor: "#ffffff" //dont work =(
+                        property real outlineWidth: 8
+                    }
+                    property JsonObject timers: JsonObject {
+                        property bool enable: false
+                        property string placementStrategy: "free"
+                        property real x: 400
+                        property real y: 100
+                        property real z: 0
+                        property int gridColumn: 0
+                        property int gridRow: 6
+                        property bool vertical: false
+                    }
+                    property JsonObject customText: JsonObject {
+                        property bool enable: false
+                        property string placementStrategy: "free"
+                        property real x: 400
+                        property real y: 300
+                        property real z: 0
+                        property string content: "Hello world"
+                        property string fontFamily: "Caveat"
+                        property int fontSize: 72
+                        property string color: "" // "" = automatic, otherwise an Appearance color name
+                        property string alignment: "center" // "left", "center", "right"
+                        property bool shadow: true
                     }
                 }
                 property bool animateWallpaperChanges: true
@@ -487,6 +683,36 @@ Singleton {
                         property int textHighlightStyle: 0 // 0: vertical, 1: horizontal (not perfect bc its not synced in a word level, but a cool animation to have)
                     }
                 }
+                property string lockWall: ""
+                property bool widgetsLocked: false
+                property JsonObject collage: JsonObject {
+                    property bool enable: false
+                    property int gap: 30
+                    property int margin: 30
+                    property int radius: 30
+                    property int primaryId: 1
+                    property int nextId: 2
+                    property string tree: "{\"t\":\"leaf\",\"id\":1,\"img\":\"\"}"
+                }
+                property bool showGrid: true
+                property bool showBlur: false
+                property real blurRadius: 32
+                property string splitRatio: "100" // 25 50 100
+                property string splitSide: "left"
+                property bool showSnapLines: true
+                property JsonObject liveWallpaper: JsonObject {
+                    property bool pauseOnBattery: false // Pause as soon as the charger is out
+                    property real pauseBelowPercent: 0 // Or only under this charge, 0 to ignore
+                }
+                property list<string> screenList: [] 
+                property bool centeredWallpaper: false
+                property string centeredWallpaperShape: "Cookie7Sided"
+                property int centeredWallpaperSize: 400
+                property string centeredWallpaperColor: "primaryContainer"
+                property bool centeredWallpaperOnlyWhenLocked: false
+                property string centeredWallpaperImage: ""
+                property string wallpaperAnimation: "magic"
+                property bool enableWallpaperPreview: false
             }
 
             property JsonObject bar: JsonObject {
@@ -560,11 +786,22 @@ Singleton {
                     property bool showSwap: true // Show swap resource
                     property bool showCpu: true // Show CPU resource
                     property bool showGpu: true // Show GPU resource
+                    property string style: "filled"
+                    property bool showValue: false
+                    property bool alwaysShowSwap: false
+                    property bool alwaysShowCpu: true
+                    property bool alwaysShowCpuTemp: false
+                    property bool alwaysShowDisk: false
+                    property bool alwaysShowRam: true
                 }
 
                 property JsonObject dynamicIsland: JsonObject {
                     property bool enabled: false
                     property bool animate: true
+                    property string visualizerStyle: "dots" // "dots", "wave", "none"
+                    property bool showMediaControls: false
+                    property string leftWidget: "none"
+                    property string rightWidget: "none"
                 }
 
                 property list<string> screenList: [] // List of names, like "eDP-1", find out with 'hyprctl monitors' command
@@ -581,6 +818,8 @@ Singleton {
                     property bool showDarkModeToggle: true
                     property bool showPerformanceProfileToggle: false
                     property bool showScreenRecord: false
+                    property bool showWallpaperToggle: true
+                    property bool isRecording: false
                 }
                 property JsonObject workspaces: JsonObject {
                     property bool monochromeIcons: true
@@ -601,6 +840,8 @@ Singleton {
                     property bool activeIndicatorUseAccent: false // true = colPrimary (accent), false = m3secondaryContainer (ii-vynx default)
                     property bool useMaterialShapeForActiveIndicator: false // Use MaterialShape component (minimal style)
                     property string materialShapeIndicator: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" // MaterialShape SVG path
+                    property string indicatorStyle: "dot" // "dot" or "icon"
+                    property string style: "default" // "default", "gnome", "dots", "ticks"
                 }
                 property JsonObject weather: JsonObject {
                     property bool enable: false
@@ -624,9 +865,6 @@ Singleton {
                     property list<var> left: [
                         {
                             id: "policies_panel_button"
-                        },
-                        {
-                            id: "active_window"
                         }
                     ]
                     property list<var> center: [
@@ -667,6 +905,9 @@ Singleton {
                             id: "dashboard_panel_button"
                         }
                     ]
+                    property list<string> leftLayout: ["launcherButton", "workspaces", "activeWindow"]
+                    property list<string> middleLayout: ["clockWidget"]
+                    property list<string> rightLayout: ["sysTray", "utilButtons", "systemIcons", "powerButton"]
                 }
                 // Separate layout used only by the vertical bar (left/center/right
                 // map to top/middle/bottom). Curated to avoid wide components that
@@ -717,6 +958,8 @@ Singleton {
                     property bool clickToShow: false
                     property bool compactPopups: false
                     property bool enableBluetoothConnectionPopup: true
+                    property bool enable: true
+                    property string style: "default"
                 }
                 property JsonObject sizes: JsonObject {
                     property int height: 40 // horizontal mode
@@ -730,6 +973,36 @@ Singleton {
                     property int updateInterval: 1000 // ms
                     property bool autoHide: true
                 }
+                property bool showFrame: false
+                property real frameThickness: 4
+                property string frameColor: "black"
+                property bool followFrameColor: false
+                property bool centerOnlyReserveFrame: false
+                property string groupColor: "layer1"
+                property string borderless: "pills"
+                property list<var> widgetStyles: []
+                property bool showBackground: true
+                property JsonObject aiUsage: JsonObject {
+                    property int tokenLimit: 1000000
+                    property int updateInterval: 60
+                }
+                property JsonObject divider: JsonObject {
+                    property string style: "rect" // rect - dot - space
+                    property int spacing: 20
+                }
+                property JsonObject battery: JsonObject {
+                    property string style: "bar"
+                    property bool showPercentage: true
+                    property bool showCharging: true
+                }
+                property JsonObject media: JsonObject {
+                    property string preferredPlayer: ""
+                    property bool alwaysVisible: false
+                    property bool onlyTitle: false
+                    property int maxWidth: 280
+                    property int minWidth: 100
+                    property bool showLyrics: false
+                }
             }
 
             property JsonObject battery: JsonObject {
@@ -738,6 +1011,9 @@ Singleton {
                 property int full: 101
                 property bool automaticSuspend: true
                 property int suspend: 3
+                property int peripheralLow: 20
+                property int peripheralCritical: 5
+                property bool peripheralNotify: true
             }
 
             property JsonObject calendar: JsonObject {
@@ -787,10 +1063,86 @@ Singleton {
                 property list<string> pinnedApps: ["org.kde.dolphin", "kitty",]
                 property list<string> ignoredAppRegexes: []
                 property list<string> pinnedFiles: []
+                property bool showBackground: true
+                property string style: "float" // float | hug
+                property bool showBorder: true
+                property real borderWidth: 1
+                property string borderColor: "layer0Border"
+                property string backgroundColor: "layer0"
+                property real radius: 23
+                property bool followFrameColor: false
+                property bool showPreviews: true
+                property real iconSize: 33
+                property real iconSpacing: 0
+                property bool showPinButton: true
+                property bool showAppsButton: true
+                property bool showMedia: true
+                property real magnification: 1.2
+                property bool magnify: false
+                property bool hoverToReveal: true // When false, only reveals on empty workspace
             }
 
             property JsonObject hyprland: JsonObject {
                 property string defaultHyprlandLayout: "dwindle" // Options: dwindle, monocle, master // It's best to not use scrolling
+                property JsonObject animations: JsonObject {
+                    property string animation: "normal"
+                    property bool enable: true
+                }
+                property JsonObject autostartApps: JsonObject {
+                    property bool enable: false
+                    property list<var> apps: []
+                }
+                property JsonObject decoration: JsonObject {
+                    property int rounding: 22
+                    property real activeOpacity: 1.0
+                    property real inactiveOpacity: 0.9
+                    property JsonObject blur: JsonObject {
+                        property bool enabled: true
+                        property int size: 1
+                        property int passes: 3
+                    }
+                    property JsonObject shadow: JsonObject {
+                        property bool enabled: true
+                        property int range: 4
+                    }
+                }
+                property JsonObject general: JsonObject {
+                    property int borderSize: 1
+                    property int gapsIn: 2
+                    property int gapsOut: 5
+                    property string layout: "dwindle"
+                    // Window border colors. Disabled by default so the colors
+                    // generated by matugen in hyprland/colors.lua keep applying.
+                    property JsonObject borderColor: JsonObject {
+                        property bool enable: false
+                        // Palette roles, resolved by Appearance.getColorFromName()
+                        property string activeRole: "layer0Border"
+                        property string inactiveRole: "layer0Border"
+                        property real activeOpacity: 0.47
+                        property real inactiveOpacity: 0.2
+                    }
+                }
+                property JsonObject idle: JsonObject {
+                    property int lock: 300
+                    property int screenOff: 600
+                    property int suspend: 10800
+                }
+                property JsonObject input: JsonObject {
+                    property string kbLayout: "us"
+                    property bool numlock: true
+                    property int repeatDelay: 250
+                    property int repeatRate: 35
+                    property int followMouse: 1
+                    property JsonObject touchpad: JsonObject {
+                        property bool naturalScroll: false
+                        property bool disableWhileTyping: true
+                        property bool clickfingerBehavior: false
+                        property real scrollFactor: 0.7
+                    }
+                }
+                property JsonObject misc: JsonObject {
+                    property bool focusOnActivate: false
+                }
             }
 
             property JsonObject interactions: JsonObject {
@@ -799,6 +1151,13 @@ Singleton {
                     property int mouseScrollDeltaThreshold: 120 // delta >= this then it gets detected as mouse scroll rather than touchpad
                     property int mouseScrollFactor: 120
                     property int touchpadScrollFactor: 450
+                    property real touchpadSensitivity: 3.5
+                    property real flingFriction: 0.002
+                    property real flingStopThreshold: 0.01
+                    property real bounceDamping: 0.3
+                    property int wheelScrollAmount: 100
+                    property int wheelDurationMin: 200
+                    property int wheelDurationMax: 400
                 }
                 property JsonObject deadPixelWorkaround: JsonObject { // Hyprland leaves out 1 pixel on the right for interactions
                     property bool enable: false
@@ -838,6 +1197,7 @@ Singleton {
                     property bool enable: true
                     property real radius: 100
                     property real extraZoom: 1.1
+                    property int size: 20
                 }
                 property bool centerClock: true
                 property bool showLockedText: true
@@ -846,6 +1206,8 @@ Singleton {
                     property bool requirePasswordToPower: false
                 }
                 property bool materialShapeChars: true
+                property bool showMedia: true
+                property bool showToolbars: true
             }
 
             property JsonObject media: JsonObject {
@@ -867,6 +1229,7 @@ Singleton {
                     property bool enable: false
                     property string name: "" // Name of the monitor to show notifications on, like "eDP-1". Find out with 'hyprctl monitors' command
                 }
+                property string position: "top_right"
             }
 
             property JsonObject osd: JsonObject {
@@ -917,6 +1280,7 @@ Singleton {
                     property string backgroundStyle: "blur" // Options: transparent, blur, dim
                     property string zoomStyle: "in"         // Options: in, out
                 }
+                property string style: "default"
             }
 
             property JsonObject regionSelector: JsonObject {
@@ -1021,11 +1385,15 @@ Singleton {
                     property string math: "="
                     property string shellCommand: "$"
                     property string webSearch: "?"
+                    property string keybinds: "<"
+                    property string symbols: "."
                 }
                 property JsonObject imageSearch: JsonObject {
                     property string imageSearchEngineBaseUrl: "https://lens.google.com/uploadbyurl?url="
                     property bool useCircleSelection: false
                 }
+                property list<var> clipboardPins: []
+                property bool clipboardPreviewPopup: false
             }
 
             property JsonObject sidebar: JsonObject {
@@ -1079,6 +1447,8 @@ Singleton {
                     property bool visualize: false
                     property bool clicklessCornerEnd: true
                     property int clicklessCornerVerticalOffset: 1
+                    property string bottomLeftAction: "sidebarLeftOpen"
+                    property string bottomRightAction: "sidebarRightOpen"
                 }
 
                 property JsonObject quickToggles: JsonObject {
@@ -1121,6 +1491,36 @@ Singleton {
                     property bool showVolume: true
                     property bool showBrightness: false // gamma setting also works for brightness
                 }
+                property list<string> sectionOrder: ["banner", "quickToggles", "sliders", "media", "notifications", "bottom"]
+                property bool banner: true
+                property bool bottomGroup: true
+                property bool mediaPlayer: false
+                property string bannerImage: ""
+                property real bannerFocusX: 0.5
+                property real bannerFocusY: 0.5
+                property string leftLastPage: "home"
+                property bool leftRememberPage: true
+                property JsonObject football: JsonObject {
+                    property bool enable: false
+                    property int legs: 4
+                    property list<string> markets: ["result", "goals", "corners"]
+                    property bool alerts: false
+                    property string alertsScope: "parlay"
+                    property bool goalSound: false
+                    property string goalSoundPath: ""
+                    property bool cornerSound: false
+                    property string cornerSoundPath: ""
+                    property int soundVolume: 100
+                    property bool notify: true
+                }
+                property JsonObject media: JsonObject {
+                    property bool enable: true
+                    property bool artColors: false
+                    property string artShape: "Oval"
+                    property bool showLyrics: true
+                    property bool shapeArt: false
+                    property bool blurredBackground: false
+                }
             }
 
             property JsonObject screenRecord: JsonObject {
@@ -1130,6 +1530,8 @@ Singleton {
                 property int framerate: 60 // 0 = native monitor rate
                 property int quality: 24 // qp (vaapi) / crf (x264); lower = better
                 property string audioCodec: "" // empty = wf-recorder default
+                property bool systemAudio: false
+                property bool microphone: false
             }
 
             property JsonObject screenSnip: JsonObject {
@@ -1137,7 +1539,7 @@ Singleton {
             }
 
             property JsonObject screenTranslator: JsonObject {
-                property string provider: "google" // "google" | "local"
+                property string provider: "google" // "google" | "local" | "free"
                 property string targetLanguage: "" // empty = fallback to language.ui
                 property JsonObject local: JsonObject {
                     property string tesseractDataDir: "" // empty = ~/.local/share/tessdata
@@ -1169,6 +1571,7 @@ Singleton {
                 }
 
                 property bool secondPrecision: false
+                property bool showDate: true
             }
 
             property JsonObject updates: JsonObject {
@@ -1176,6 +1579,16 @@ Singleton {
                 property int checkInterval: 120 // minutes
                 property int adviseUpdateThreshold: 75 // packages
                 property int stronglyAdviseUpdateThreshold: 200 // packages
+            }
+
+            property JsonObject wallpapers: JsonObject {
+                property string service: "wallhaven" // wallhaven | unsplash
+                property string sort: "favourites"
+                property bool showAnimeResults: false
+                property JsonObject paths: JsonObject {
+                    property string download: FileUtils.trimFileProtocol(`${Directories.pictures}/wallpapers`)
+                    property string nsfw: FileUtils.trimFileProtocol(`${Directories.pictures}/wallpapers/nsfw`)
+                }
             }
 
             property JsonObject wallpaperSelector: JsonObject {
@@ -1188,6 +1601,24 @@ Singleton {
                         "path": `${Directories.pictures}/Wallpapers`
                     }
                 ]
+                property bool showBlurBackground: false
+                property bool showHomePath: true
+                property string userPath: "" // This can be set to any path and it will show up as a quick access in the wallpaper selector"
+                property string liveWallpapersPath: ""
+                property bool showSearchbar: true
+                property int columns: 4
+                property bool closeAfterSelection: true
+                property int changeInterval: 0 
+                property string sortMode: "time"
+                property string wallhavenApiKey: "" // fallback; keyring ("/wallhaven <key>") takes precedence
+                property string wallhavenCategories: "111"
+                property string wallhavenPurity: "100"
+                property string wallhavenSorting: "relevance"
+                property string wallhavenOrder: "desc"
+                property string wallhavenRatios: ""
+                property string wallhavenColors: ""
+                property string wallhavenQuery: ""
+                property string wallhavenTopRange: "1y"
             }
 
             property JsonObject windows: JsonObject {
@@ -1230,6 +1661,19 @@ Singleton {
                 property JsonObject calendar: JsonObject {
                     property bool force2CharDayOfWeek: true
                 }
+            }
+            property JsonObject custom: JsonObject {
+                property string distroIcon: "google-gemini-symbolic"
+                property bool colorizeIcon: true
+                property string iconColor: "onLayer0"
+                property string iconsPath: ""
+            }
+            property JsonObject settings: JsonObject {
+                property string style: "default" // default - minimal - dashboard
+                property real borderSize: 1
+                property real animationSpeed: 1
+                property string borderColor: "layer0Border"
+                property list<string> collapsedSections: []
             }
         }
     }

@@ -13,10 +13,11 @@ MaterialShape {
     property real padding: 8
 
     property bool rotateIconWithShape: false
+    property var wrappedShape: MaterialShape.Shape.Clover4Leaf
 
     color: Appearance.colors.colSecondaryContainer
     colSymbol: Appearance.colors.colOnSecondaryContainer
-    shape: MaterialShape.Shape.Clover4Leaf
+    shape: root.wrappedShape
     implicitSize: iconSize + padding * 2
 
     Behavior on rotation {

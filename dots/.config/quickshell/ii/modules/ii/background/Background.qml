@@ -27,6 +27,9 @@ import qs.modules.ii.background.widgets.usercard
 import qs.modules.ii.background.widgets.visualizer
 import qs.modules.ii.background.widgets.worldclock
 import qs.modules.ii.background.widgets.timer
+import qs.modules.ii.background.widgets.timers
+import qs.modules.ii.background.widgets.customtext
+import qs.modules.ii.background.widgets.todo
 
 Variants {
     id: root
@@ -386,7 +389,7 @@ Variants {
                 sourceComponent: GaussianBlur {
                     source: wallpaper
                     radius: GlobalStates.screenLocked ? Config.options.lock.blur.radius : 0
-                    samples: radius * 2 + 1
+                    samples: Math.max(1, Math.round(Config.options.lock.blur.size ?? 20))
 
                     Rectangle {
                         opacity: GlobalStates.screenLocked ? 1 : 0
@@ -505,21 +508,25 @@ Variants {
                         var ctx = getContext('2d');
                         ctx.clearRect(0, 0, width, height);
                         if (!Config.options.background.widgets.grid.enabled || Config.options.background.widgetsLocked) return;
-                        var cols = Config.options.background.widgets.grid.columns;
-                        var rows = Config.options.background.widgets.grid.rows;
-                        var cellW = width / cols;
-                        var cellH = height / rows;
+                        var scaledW = bgRoot.screen.width / bgRoot.effectiveWallpaperScale;
+                        var scaledH = bgRoot.screen.height / bgRoot.effectiveWallpaperScale;
+                        var cols = WidgetGrid.effectiveColumns(scaledW, Config.options.background.widgets.grid.columns);
+                        var rows = WidgetGrid.effectiveRows(scaledH, Config.options.background.widgets.grid.rows);
+                        var originX = WidgetGrid.originX(scaledW, cols);
+                        var originY = WidgetGrid.originY(scaledH, rows);
+                        var cellW = WidgetGrid.cellWidth;
+                        var cellH = WidgetGrid.cellHeight;
                         ctx.strokeStyle = Qt.rgba(1, 1, 1, 0.7);
                         ctx.lineWidth = 2;
                         ctx.setLineDash([4, 3]);
                         ctx.beginPath();
                         for (var i = 0; i <= cols; i++) {
-                            var x = i * cellW;
+                            var x = originX + i * cellW;
                             ctx.moveTo(x, 0);
                             ctx.lineTo(x, height);
                         }
                         for (var j = 0; j <= rows; j++) {
-                            var y = j * cellH;
+                            var y = originY + j * cellH;
                             ctx.moveTo(0, y);
                             ctx.lineTo(width, y);
                         }
@@ -535,12 +542,12 @@ Variants {
                     color: Qt.rgba(1, 1, 1, 0.1)
                     border.color: Qt.rgba(1, 1, 1, 0.5)
                     border.width: 2
-                    readonly property real cellW: parent.width / Config.options.background.widgets.grid.columns
-                    readonly property real cellH: parent.height / Config.options.background.widgets.grid.rows
-                    x: bgRoot.draggingWidgetCell.x * cellW
-                    y: bgRoot.draggingWidgetCell.y * cellH
-                    width: cellW
-                    height: cellH
+                    readonly property real scaledW: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
+                    readonly property real scaledH: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                    x: WidgetGrid.originX(scaledW, WidgetGrid.effectiveColumns(scaledW, Config.options.background.widgets.grid.columns)) + bgRoot.draggingWidgetCell.x * WidgetGrid.cellWidth
+                    y: WidgetGrid.originY(scaledH, WidgetGrid.effectiveRows(scaledH, Config.options.background.widgets.grid.rows)) + bgRoot.draggingWidgetCell.y * WidgetGrid.cellHeight
+                    width: WidgetGrid.cellWidth
+                    height: WidgetGrid.cellHeight
                     radius: 4
                 }
 
@@ -567,6 +574,7 @@ Variants {
                         wallpaperScale: bgRoot.effectiveWallpaperScale
                         wallpaperSafetyTriggered: bgRoot.wallpaperSafetyTriggered
                         isCovered: bgRoot.isCovered
+                        wallpaperItem: wallpaper
                     }
                 }
 
@@ -651,6 +659,45 @@ Variants {
                 shown: Config.options.background.widgets.resources.enable && !bgRoot.widgetsOccluded
                 sourceComponent: ResourcesWidget {
                     bgRoot: bgRoot
+                    screenWidth: bgRoot.screen.width
+                    screenHeight: bgRoot.screen.height
+                    scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
+                    scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                    wallpaperScale: bgRoot.effectiveWallpaperScale
+                }
+            }
+
+            FadeLoader {
+                shown: Config.options.background.widgets.customText.enable && !bgRoot.widgetsOccluded
+                sourceComponent: CustomTextWidget {
+                    bgRoot: bgRoot
+                    wallpaperItem: wallpaper
+                    screenWidth: bgRoot.screen.width
+                    screenHeight: bgRoot.screen.height
+                    scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
+                    scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                    wallpaperScale: bgRoot.effectiveWallpaperScale
+                }
+            }
+
+            FadeLoader {
+                shown: Config.options.background.widgets.todo.enable && !bgRoot.widgetsOccluded
+                sourceComponent: TodoWidget {
+                    bgRoot: bgRoot
+                    wallpaperItem: wallpaper
+                    screenWidth: bgRoot.screen.width
+                    screenHeight: bgRoot.screen.height
+                    scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
+                    scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                    wallpaperScale: bgRoot.effectiveWallpaperScale
+                }
+            }
+
+            FadeLoader {
+                shown: Config.options.background.widgets.timers.enable && !bgRoot.widgetsOccluded
+                sourceComponent: MultiTimerWidget {
+                    bgRoot: bgRoot
+                    wallpaperItem: wallpaper
                     screenWidth: bgRoot.screen.width
                     screenHeight: bgRoot.screen.height
                     scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale

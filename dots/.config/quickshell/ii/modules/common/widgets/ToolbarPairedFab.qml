@@ -9,19 +9,21 @@ Item {
     property alias iconText: fabWidget.iconText
     default property alias fabData: fabWidget.data
     property bool enableShadow: true
+    property real baseSize: fabWidget.baseSize
 
-    anchors {
-        verticalCenter: parent.verticalCenter
-    }
+    // No self-anchoring: this component is usually placed inside a RowLayout, where
+    // layout-managed anchors are invalid (Qt warns and the alignment is undefined).
+    // Call sites that need vertical centering set Layout.alignment / anchors there.
     implicitWidth: fabWidget.implicitWidth
     implicitHeight: fabWidget.implicitHeight
-    Loader {
-        active: root.enableShadow
-        anchors.fill: parent
-        sourceComponent: StyledRectangularShadow {
-            target: fabWidget
-            radius: fabWidget.buttonRadius
-        }
+    // Direct child (not inside a Loader): StyledRectangularShadow anchors itself to
+    // `target`, and an anchor target must be a parent or sibling — inside a Loader it
+    // is neither, which Qt rejects with "Cannot anchor to an item that isn't a
+    // parent or sibling" and the shadow silently never renders.
+    StyledRectangularShadow {
+        target: fabWidget
+        radius: fabWidget.buttonRadius
+        visible: root.enableShadow
     }
     FloatingActionButton {
         id: fabWidget

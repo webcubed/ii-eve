@@ -17,6 +17,7 @@ GroupButton {
     property string buttonShape
     property string buttonSymbol
     property string buttonColor
+    property bool isDragging: false
     property bool leftmost: false
     property bool rightmost: false
     

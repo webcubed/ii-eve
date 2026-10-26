@@ -19,6 +19,7 @@ Item {
     property int dialogMargins: 20
     property int fabSize: 48
     property int fabMargins: 14
+    property string deadlineDate: ""
 
     Keys.onPressed: (event) => {
         // Open add dialog on "N" (any modifiers)
@@ -129,6 +130,7 @@ Item {
         onVisibleChanged: {
             if (!visible) {
                 todoInput.text = "";
+                root.deadlineDate = "";
                 fabButton.focus = true;
             }
         }
@@ -154,10 +156,12 @@ Item {
 
             function addTask() {
                 if (todoInput.text.length > 0) {
-                    Todo.addTask(todoInput.text);
+                    const deadline = root.deadlineDate.length > 0 ? root.deadlineDate : null;
+                    Todo.addTask(todoInput.text, deadline);
                     todoInput.text = "";
+                    root.deadlineDate = "";
                     root.showAddDialog = false;
-                    tabBar.setCurrentIndex(0); // Show unfinished tasks
+                    tabBar.setCurrentIndex(0);
                 }
             }
 
@@ -216,6 +220,51 @@ Item {
                         radius: 1
                     }
 
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 16
+                    Layout.rightMargin: 16
+                    spacing: 8
+
+                    MaterialSymbol {
+                        iconSize: 20
+                        text: "event"
+                        color: Appearance.m3colors.m3onSurfaceVariant
+                    }
+
+                    TextField {
+                        id: deadlineInput
+                        Layout.fillWidth: true
+                        placeholderText: Translation.tr("Deadline (YYYY-MM-DD)")
+                        placeholderTextColor: Appearance.m3colors.m3outline
+                        color: Appearance.m3colors.m3onSurface
+                        font.pixelSize: Appearance.font.pixelSize.normal
+                        inputMethodHints: Qt.ImhDate
+                        onTextChanged: root.deadlineDate = text
+                        background: Rectangle {
+                            radius: Appearance.rounding.verysmall
+                            border.width: 1
+                            border.color: deadlineInput.activeFocus ? Appearance.colors.colPrimary : Appearance.m3colors.m3outline
+                            color: "transparent"
+                        }
+                    }
+
+                    MaterialSymbol {
+                        iconSize: 20
+                        text: "close"
+                        color: Appearance.m3colors.m3onSurfaceVariant
+                        visible: root.deadlineDate.length > 0
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                root.deadlineDate = "";
+                                deadlineInput.text = "";
+                            }
+                        }
+                    }
                 }
 
                 RowLayout {
