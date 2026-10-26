@@ -118,8 +118,11 @@ AbstractBackgroundWidget {
                 StyledText {
                     text: statRow.valueText
                     font.pixelSize: Appearance.font.pixelSize.hugeass
-                    font.weight: Font.Bold
+                    font.weight: Font.DemiBold
                     color: Appearance.colors.colOnPrimaryContainer
+                    // The widget canvas is drawn scaled, where native rasterisation leaves the
+                    // glyphs uneven; QtRendering stays smooth.
+                    renderType: Text.QtRendering
                 }
             }
 

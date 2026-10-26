@@ -13,13 +13,14 @@ AbstractBackgroundWidget {
     configEntryName: "weather"
     hoverEnabled: true
 
-    readonly property real cardSpacing: 12
-    readonly property real singleWidth: 132
-    readonly property real cardHeight: root.sizeMode === "2x2" ? WidgetGrid.spanHeight(2) : root.sizeMode === "1x1" ? WidgetGrid.spanHeight(1) : 120
+    // Sizes come straight from the shared design grid (WidgetGrid), so the card lines up with
+    // the resources/notes/timers cards instead of carrying its own 132/12 copy of the pitch.
+    readonly property real cardSpacing: WidgetGrid.gutter
+    readonly property real cardHeight: root.sizeMode === "1x1" ? WidgetGrid.spanHeight(1) : WidgetGrid.spanHeight(2)
 
-    readonly property real snapWidth1: root.singleWidth
-    readonly property real snapWidth2: root.singleWidth * 2 + root.cardSpacing
-    readonly property real snapWidth3: root.singleWidth * 3 + root.cardSpacing * 2
+    readonly property real snapWidth1: WidgetGrid.spanWidth(1)
+    readonly property real snapWidth2: WidgetGrid.spanWidth(2)
+    readonly property real snapWidth3: WidgetGrid.spanWidth(3)
 
     property string sizeMode: root.configEntry.sizeMode ?? "2x2"
 

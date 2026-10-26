@@ -96,7 +96,8 @@ AbstractBackgroundWidget {
                         Layout.topMargin: -4
                         Layout.leftMargin: 8
                         font.pixelSize: Appearance.font.pixelSize.huge
-                        font.weight: Font.Medium
+                        font.weight: Font.DemiBold
+                        renderType: Text.QtRendering
                         color: Appearance.colors.colOnPrimaryContainer
                         text: "Notes"
                     }

@@ -93,10 +93,12 @@ AbstractBackgroundWidget {
                 Layout.leftMargin: 1
                 text: timerCard.value
                 font.pixelSize: Appearance.font.pixelSize.large
-                font.weight: Font.Bold
-                font.features: { "tnum": 1 }
+                font.weight: Font.DemiBold
+                // Tabular figures made the readout look wide and uneven at this size; the value
+                // never needs column alignment, so let the font space it naturally.
                 color: timerCard.fgColor
                 elide: Text.ElideRight
+                renderType: Text.QtRendering
             }
 
             StyledText {
