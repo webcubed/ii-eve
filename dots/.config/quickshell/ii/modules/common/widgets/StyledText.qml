@@ -7,7 +7,11 @@ Text {
     property real animationDistanceX: 0
     property real animationDistanceY: 6
 
-    renderType: Text.NativeRendering
+    // Grayscale antialiasing instead of the native engine's subpixel rendering:
+    // on the composited, often translucent surfaces we draw on, subpixel AA shows
+    // up as coloured fringing ("aliased" text). QtRendering keeps glyphs smooth
+    // and equally legible over wallpapers and cards.
+    renderType: Text.QtRendering
     verticalAlignment: Text.AlignVCenter
     property bool shouldUseNumberFont: /^\d+$/.test(root.text)
     property var defaultFont: shouldUseNumberFont ? Appearance.font.family.numbers : Appearance.font.family.main

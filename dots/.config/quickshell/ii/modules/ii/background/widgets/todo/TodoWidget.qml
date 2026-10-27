@@ -14,9 +14,10 @@ AbstractBackgroundWidget {
     configEntryName: "todo"
     hoverEnabled: true
 
-    readonly property real cardWidth: 276
-    readonly property real cardHeight: 120
-    readonly property real cardSpacing: 12
+    // Shares the desktop design grid with the other cards (WidgetGrid.qml)
+    readonly property real cardWidth: WidgetGrid.spanWidth(2)
+    readonly property real cardHeight: WidgetGrid.cardUnitHeight
+    readonly property real cardSpacing: WidgetGrid.gutter
 
     implicitWidth: root.cardWidth
     implicitHeight: root.cardHeight * 2 + root.cardSpacing

@@ -40,12 +40,14 @@ AbstractWidget {
         const row = configEntry.gridRow ?? 0;
         return Math.max(0, Math.min(row, gridRows - 1));
     }
-    property real targetX: gridEnabled
+    // Whole-pixel positions: a card sitting on a half pixel renders its text with
+    // fuzzy subpixel offsets no matter how the glyphs themselves are rasterised.
+    property real targetX: Math.round(gridEnabled
         ? Math.max(0, Math.min(gridOriginX + gridColumn * gridCellWidth, scaledScreenWidth - width))
-        : Math.max(0, Math.min(configEntry.x ?? 0, scaledScreenWidth - width))
-    property real targetY: gridEnabled
+        : Math.max(0, Math.min(configEntry.x ?? 0, scaledScreenWidth - width)))
+    property real targetY: Math.round(gridEnabled
         ? Math.max(0, Math.min(gridOriginY + gridRow * gridCellHeight, scaledScreenHeight - height))
-        : Math.max(0, Math.min(configEntry.y ?? 0, scaledScreenHeight - height))
+        : Math.max(0, Math.min(configEntry.y ?? 0, scaledScreenHeight - height)))
     x: targetX
     y: targetY
     opacity: {

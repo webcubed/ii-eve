@@ -21,23 +21,39 @@ Item {
     property int fabMargins: 14
     property string deadlineDate: ""
 
-    Keys.onPressed: (event) => {
-        // Open add dialog on "N" (any modifiers)
-        // Close dialog on Esc if open
+    function subTabNext() {
+        tabBar.incrementCurrentIndex();
+    }
 
+    function subTabPrev() {
+        tabBar.decrementCurrentIndex();
+    }
+
+    /**
+     * Keys the sidebar's bottom group forwards here while it holds focus, so the
+     * to-do tab answers the keyboard the same way the timer tab does.
+     */
+    function handleSidebarKey(event) {
         if ((event.key === Qt.Key_PageDown || event.key === Qt.Key_PageUp) && event.modifiers === Qt.NoModifier) {
             if (event.key === Qt.Key_PageDown)
                 tabBar.incrementCurrentIndex();
-            else if (event.key === Qt.Key_PageUp)
+            else
                 tabBar.decrementCurrentIndex();
-            event.accepted = true;
-        } else if (event.key === Qt.Key_N) {
-            root.showAddDialog = true;
-            event.accepted = true;
-        } else if (event.key === Qt.Key_Escape && root.showAddDialog) {
-            root.showAddDialog = false;
-            event.accepted = true;
+            return true;
         }
+        if (event.key === Qt.Key_N) {
+            root.showAddDialog = true;
+            return true;
+        }
+        if (event.key === Qt.Key_Escape && root.showAddDialog) {
+            root.showAddDialog = false;
+            return true;
+        }
+        return false;
+    }
+
+    Keys.onPressed: (event) => {
+        if (root.handleSidebarKey(event)) event.accepted = true;
     }
 
     ColumnLayout {

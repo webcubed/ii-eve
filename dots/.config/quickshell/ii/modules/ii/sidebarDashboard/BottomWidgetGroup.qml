@@ -107,6 +107,11 @@ Rectangle {
         }
     }
 
+    // The group takes focus when the sidebar opens so arrow keys work right away;
+    // keys the group itself does not use are handed to the visible tab, which is
+    // how timers, stopwatches and to-do can be driven without touching the mouse.
+    activeFocusOnTab: true
+
     Keys.onPressed: event => {
         if ((event.key === Qt.Key_PageDown || event.key === Qt.Key_PageUp) && event.modifiers === Qt.ControlModifier) {
             if (event.key === Qt.Key_PageDown) {
@@ -122,16 +127,25 @@ Rectangle {
             root.selectedTab = Math.min(root.selectedTab + 1, root.tabs.length - 1);
             event.accepted = true;
         } else if (event.key === Qt.Key_Right) {
-            if (root.selectedTab === 2 && tabStack.item && "subTabNext" in tabStack.item) {
+            if (tabStack.item && "subTabNext" in tabStack.item) {
                 tabStack.item.subTabNext();
+                event.accepted = true;
             }
-            event.accepted = true;
         } else if (event.key === Qt.Key_Left) {
-            if (root.selectedTab === 2 && tabStack.item && "subTabPrev" in tabStack.item) {
+            if (tabStack.item && "subTabPrev" in tabStack.item) {
                 tabStack.item.subTabPrev();
+                event.accepted = true;
             }
-            event.accepted = true;
+        } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+            // Enter drops the keyboard into whatever the tab offers; the timer
+            // widget treats it as the primary action (start/pause).
+            if (tabStack.item && "handleSidebarKey" in tabStack.item && tabStack.item.handleSidebarKey(event))
+                event.accepted = true;
         }
+
+        if (event.accepted) return;
+        if (tabStack.item && "handleSidebarKey" in tabStack.item && tabStack.item.handleSidebarKey(event))
+            event.accepted = true;
     }
 
     // The thing when collapsed

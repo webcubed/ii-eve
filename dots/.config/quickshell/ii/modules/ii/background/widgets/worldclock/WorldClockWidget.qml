@@ -10,13 +10,14 @@ import qs.modules.ii.background.widgets
 
 AbstractBackgroundWidget {
     id: root
-    configEntryName: "worldclock"
+    configEntryName: "worldClock"
     hoverEnabled: true
 
     property string sizeMode: root.configEntry.sizeMode ?? "2x2"
 
-    property real widgetWidth:  sizeMode === "2x2" ? 276 : 420
-    property real widgetHeight: sizeMode === "2x2" ? 252 : 120
+    // Whole grid spans, so the card shares its edges with the other widgets
+    property real widgetWidth:  sizeMode === "2x2" ? WidgetGrid.spanWidth(2) : WidgetGrid.spanWidth(3)
+    property real widgetHeight: sizeMode === "2x2" ? WidgetGrid.spanHeight(2) : WidgetGrid.cardUnitHeight
 
     readonly property real widthToggleFraction: 0.3
     readonly property real widthToggleDelta: (420 - 276) * root.widthToggleFraction

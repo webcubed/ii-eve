@@ -41,6 +41,9 @@ Singleton {
     property int manualActiveMinute
 
     onClockMinuteChanged: reEvaluate()
+    // New schedule times should apply straight away, not on the next minute tick
+    onFromChanged: reEvaluate()
+    onToChanged: reEvaluate()
     onAutomaticChanged: {
         root.manualActive = undefined;
         root.firstEvaluation = true;

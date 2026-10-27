@@ -38,7 +38,11 @@ Item {
                 root.showBluetoothDialog = false;
                 root.showAudioOutputDialog = false;
                 root.showAudioInputDialog = false;
+                return;
             }
+            // Opening the sidebar should leave the keyboard on the bottom group,
+            // otherwise arrow navigation needs a click on a nav button first.
+            Qt.callLater(() => bottomWidgetGroup.forceActiveFocus());
         }
     }
 
@@ -104,6 +108,7 @@ Item {
             }
 
             BottomWidgetGroup {
+                id: bottomWidgetGroup
                 Layout.alignment: Qt.AlignHCenter
                 Layout.fillHeight: false
                 Layout.fillWidth: true

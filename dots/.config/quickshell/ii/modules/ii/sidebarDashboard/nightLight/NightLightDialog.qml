@@ -202,6 +202,44 @@ WindowDialog {
                         onCheckedChanged: Config.options.light.night.automatic = checked
                     }
 
+                    // Schedule: only relevant while the automatic mode is on
+                    Item {
+                        visible: Config.options.light.night.automatic
+                        anchors {
+                            left: parent.left
+                            right: parent.right
+                        }
+                        implicitHeight: Config.options.light.night.automatic ? scheduleRow.implicitHeight + 6 : 0
+
+                        RowLayout {
+                            id: scheduleRow
+                            anchors {
+                                left: parent.left
+                                right: parent.right
+                                top: parent.top
+                                leftMargin: 4
+                                rightMargin: 4
+                            }
+                            spacing: 8
+
+                            TimeField {
+                                Layout.fillWidth: true
+                                icon: ""
+                                text: Translation.tr("Turns on")
+                                value: Config.options.light.night.from
+                                onEdited: (value) => Config.options.light.night.from = value
+                            }
+
+                            TimeField {
+                                Layout.fillWidth: true
+                                icon: ""
+                                text: Translation.tr("Turns off")
+                                value: Config.options.light.night.to
+                                onEdited: (value) => Config.options.light.night.to = value
+                            }
+                        }
+                    }
+
                     WindowDialogSlider {
                         anchors {
                             left: parent.left

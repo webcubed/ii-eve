@@ -643,9 +643,35 @@ Variants {
             }
 
             FadeLoader {
-                z: Config.options.background.widgets.imageConverter.z ?? 0
-                shown: Config.options.background.widgets.imageConverter.enable && !bgRoot.widgetsOccluded
+                z: Config.options.background.widgets.images.z ?? 0
+                shown: Config.options.background.widgets.images.enable && !bgRoot.widgetsOccluded
                 sourceComponent: ImageConverterWidget {
+                    bgRoot: bgRoot
+                    screenWidth: bgRoot.screen.width
+                    screenHeight: bgRoot.screen.height
+                    scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
+                    scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                    wallpaperScale: bgRoot.effectiveWallpaperScale
+                }
+            }
+
+            FadeLoader {
+                z: Config.options.background.widgets.imageCard.z ?? 0
+                shown: Config.options.background.widgets.imageCard.enable && !bgRoot.widgetsOccluded
+                sourceComponent: ImageCardWidget {
+                    bgRoot: bgRoot
+                    screenWidth: bgRoot.screen.width
+                    screenHeight: bgRoot.screen.height
+                    scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
+                    scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                    wallpaperScale: bgRoot.effectiveWallpaperScale
+                }
+            }
+
+            FadeLoader {
+                z: Config.options.background.widgets.sticker.z ?? 0
+                shown: Config.options.background.widgets.sticker.enable && !bgRoot.widgetsOccluded
+                sourceComponent: StickerWidget {
                     bgRoot: bgRoot
                     screenWidth: bgRoot.screen.width
                     screenHeight: bgRoot.screen.height
@@ -724,8 +750,8 @@ Variants {
             }
 
             FadeLoader {
-                z: Config.options.background.widgets.usercard.z ?? 0
-                shown: Config.options.background.widgets.usercard.enable && !bgRoot.widgetsOccluded
+                z: Config.options.background.widgets.userCard.z ?? 0
+                shown: Config.options.background.widgets.userCard.enable && !bgRoot.widgetsOccluded
                 sourceComponent: UserCardWidget {
                     bgRoot: bgRoot
                     screenWidth: bgRoot.screen.width
@@ -750,8 +776,8 @@ Variants {
             }
 
             FadeLoader {
-                z: Config.options.background.widgets.worldclock.z ?? 0
-                shown: Config.options.background.widgets.worldclock.enable && !bgRoot.widgetsOccluded
+                z: Config.options.background.widgets.worldClock.z ?? 0
+                shown: Config.options.background.widgets.worldClock.enable && !bgRoot.widgetsOccluded
                 sourceComponent: WorldClockWidget {
                     bgRoot: bgRoot
                     screenWidth: bgRoot.screen.width

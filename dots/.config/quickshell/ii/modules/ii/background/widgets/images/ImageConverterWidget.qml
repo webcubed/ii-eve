@@ -13,7 +13,7 @@ import qs.modules.ii.background.widgets
 AbstractBackgroundWidget {
     id: root
 
-    configEntryName: "imageConverter"
+    configEntryName: "images"
 
     property list<var> formatOptions: [
         { displayName: "PNG",  icon: "image",            value: "png"  },
@@ -36,8 +36,9 @@ AbstractBackgroundWidget {
     property int queueDone: 0
     property var batchPaths: []
 
-    implicitWidth:  276
-    implicitHeight: 252
+    // Matching 2x2 card footprint (see WidgetGrid.qml)
+    implicitWidth:  WidgetGrid.spanWidth(2)
+    implicitHeight: WidgetGrid.spanHeight(2)
 
     Process {
         id: converter
@@ -145,8 +146,8 @@ AbstractBackgroundWidget {
         id: contentItem
         color: Appearance.colors.colPrimaryContainer
         radius: Appearance.rounding?.verylarge ?? 30
-        implicitWidth: 276
-        implicitHeight: 252
+        implicitWidth: WidgetGrid.spanWidth(2)
+        implicitHeight: WidgetGrid.spanHeight(2)
 
         ColumnLayout {
             id: columnLayout

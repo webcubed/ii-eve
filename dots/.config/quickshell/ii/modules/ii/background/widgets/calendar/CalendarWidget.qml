@@ -13,9 +13,11 @@ AbstractBackgroundWidget {
     configEntryName: "calendar"
     hoverEnabled: true
 
-    readonly property real cardSpacing: 12
-    readonly property real singleWidth: 132
-    readonly property real cardHeight: 120
+    // Sizes come straight from the shared design grid so the card lines up with
+    // the other desktop widgets (see WidgetGrid.qml)
+    readonly property real cardSpacing: WidgetGrid.gutter
+    readonly property real singleWidth: WidgetGrid.cardUnitWidth
+    readonly property real cardHeight: WidgetGrid.cardUnitHeight
 
     readonly property real snapWidth1: singleWidth            
     readonly property real snapWidth2: singleWidth * 2 + cardSpacing  
@@ -105,6 +107,10 @@ AbstractBackgroundWidget {
 
     property var weeks: getMonthMatrix(viewingDate)
 
+    // Width of one day column in the 2x2 layout, shared by the weekday header and
+    // the month grid so the two never drift apart
+    readonly property real dayCellWidth: (card.implicitWidth - 32) / 7
+
     implicitWidth:  card.implicitWidth
     implicitHeight: card.implicitHeight
 
@@ -112,42 +118,56 @@ AbstractBackgroundWidget {
         animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
     }
 
-    component DayCell: Rectangle {
+    // One day of the month grid: the cell stretches to its grid slot and draws a
+    // circle that shrinks with it, so the whole month stays aligned with the
+    // weekday header above it.
+    component DayCell: Item {
+        id: dayCell
         property int day: 0
         property bool currentMonth: true
         property bool isToday: false
         property bool bold: false
 
-        implicitWidth: 28
-        implicitHeight: 28
-        radius: 14
-        color: isToday ? Appearance.colors.colPrimary : "transparent"
+        HoverHandler { id: dayHover }
 
-        StyledText {
+        Rectangle {
+            id: dayCircle
             anchors.centerIn: parent
-            text: parent.day
-            font.pixelSize: Appearance.font.pixelSize.smaller
-            font.weight: parent.bold || parent.isToday ? Font.Bold : Font.Normal
-            color: parent.isToday
-                ? Appearance.colors.colOnPrimary
-                : Appearance.colors.colOnLayer0
-            opacity: parent.currentMonth ? 1.0 : 0.3
+            readonly property real preferred: Math.min(parent.width, parent.height) - 4
+            width: Math.min(32, preferred)
+            height: width
+            radius: width / 2
+            color: dayCell.isToday
+                ? Appearance.colors.colPrimary
+                : dayHover.hovered && dayCell.currentMonth
+                    ? ColorUtils.transparentize(Appearance.colors.colPrimary, 0.82)
+                    : "transparent"
+
+            Behavior on color {
+                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+            }
+
+            StyledText {
+                anchors.centerIn: parent
+                text: dayCell.day
+                renderType: Text.QtRendering
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                font.weight: dayCell.bold || dayCell.isToday ? Font.DemiBold : Font.Normal
+                color: dayCell.isToday
+                    ? Appearance.colors.colOnPrimary
+                    : Appearance.colors.colOnPrimaryContainer
+                opacity: dayCell.currentMonth ? 1.0 : 0.35
+            }
         }
     }
 
-    Rectangle {
+    WidgetCard {
         id: card
+        widget: root
         implicitWidth: root.widgetWidth
         implicitHeight: root.sizeMode === "1x1" ? root.cardHeight
                       : root.sizeMode === "1x2" ? root.cardHeight
                       : root.cardHeight * 2 + root.cardSpacing
-        radius: Appearance.rounding?.verylarge ?? 30
-        color: Appearance.colors.colPrimaryContainer
-
-        StyledRectangularShadow {
-            target: card
-            z: -2
-        }
 
         Loader {
             anchors.fill: parent
@@ -296,97 +316,119 @@ AbstractBackgroundWidget {
             id: twoByTwoContent
             ColumnLayout {
                 anchors { fill: parent; margins: 16 }
-                spacing: 4
+                spacing: 8
 
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 4
 
                     StyledText {
-                        Layout.fillWidth: true
-                        font.pixelSize: Appearance.font.pixelSize.normal
+                        font.pixelSize: Appearance.font.pixelSize.huge
+                        font.weight: Font.DemiBold
+                        renderType: Text.QtRendering
+                        color: Appearance.colors.colOnPrimaryContainer
+                        text: root.viewingDate.toLocaleDateString(Qt.locale(), "MMMM")
+                    }
+
+                    StyledText {
+                        Layout.alignment: Qt.AlignBottom
+                        Layout.bottomMargin: 4
+                        font.pixelSize: Appearance.font.pixelSize.small
                         font.weight: Font.Medium
                         color: Appearance.colors.colOnPrimaryContainer
-                        text: root.viewingDate.toLocaleDateString(Qt.locale(), "MMMM yyyy")
+                        opacity: 0.45
+                        text: root.viewingDate.toLocaleDateString(Qt.locale(), "yyyy")
                     }
 
-                    Rectangle {
-                        implicitWidth: 26; implicitHeight: 26; radius: 13
-                        color: "transparent"
-                        border.width: 1
-                        border.color: Appearance.colors.colPrimary
-                        MaterialSymbol {
-                            anchors.centerIn: parent
-                            text: "chevron_left"
-                            iconSize: Appearance.font.pixelSize.normal
-                            color: Appearance.colors.colOnPrimaryContainer
-                        }
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
+                    Item { Layout.fillWidth: true }
+
+                    RowLayout {
+                        Layout.alignment: Qt.AlignVCenter
+                        spacing: 4
+
+                        RippleButton {
+                            implicitWidth: 28
+                            implicitHeight: 28
+                            buttonRadius: 14
+                            colBackground: ColorUtils.transparentize(Appearance.colors.colOnPrimaryContainer, 0.9)
+                            colBackgroundHover: ColorUtils.transparentize(Appearance.colors.colOnPrimaryContainer, 0.8)
                             onClicked: root.monthShift--
+                            contentItem: MaterialSymbol {
+                                anchors.centerIn: parent
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                text: "chevron_left"
+                                iconSize: Appearance.font.pixelSize.normal
+                                color: Appearance.colors.colOnPrimaryContainer
+                            }
                         }
-                    }
 
-                    Rectangle {
-                        implicitWidth: 26; implicitHeight: 26; radius: 13
-                        color: "transparent"
-                        border.width: 1
-                        border.color: Appearance.colors.colPrimary
-                        MaterialSymbol {
-                            anchors.centerIn: parent
-                            text: "chevron_right"
-                            iconSize: Appearance.font.pixelSize.normal
-                            color: Appearance.colors.colOnPrimaryContainer
-                        }
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
+                        RippleButton {
+                            implicitWidth: 28
+                            implicitHeight: 28
+                            buttonRadius: 14
+                            colBackground: ColorUtils.transparentize(Appearance.colors.colOnPrimaryContainer, 0.9)
+                            colBackgroundHover: ColorUtils.transparentize(Appearance.colors.colOnPrimaryContainer, 0.8)
                             onClicked: root.monthShift++
+                            contentItem: MaterialSymbol {
+                                anchors.centerIn: parent
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                text: "chevron_right"
+                                iconSize: Appearance.font.pixelSize.normal
+                                color: Appearance.colors.colOnPrimaryContainer
+                            }
                         }
                     }
                 }
 
-                RowLayout {
-                    Layout.alignment: Qt.AlignHCenter
-                    spacing: 4
+                // Weekday header, one label per day column
+                GridLayout {
+                    Layout.fillWidth: true
+                    columns: 7
+                    columnSpacing: 0
+                    rowSpacing: 0
+
                     Repeater {
-                        model: ["Mo","Tu","We","Th","Fr","Sa","Su"]
+                        model: ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
                         delegate: StyledText {
-                            Layout.preferredWidth: 28
+                            required property string modelData
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: root.dayCellWidth
                             horizontalAlignment: Text.AlignHCenter
-                            font.pixelSize: Appearance.font.pixelSize.smaller
-                            font.weight: Font.Bold
+                            renderType: Text.QtRendering
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            font.weight: Font.DemiBold
                             color: Appearance.colors.colOnPrimaryContainer
-                            opacity: 0.6
+                            opacity: 0.45
                             text: modelData
                         }
                     }
                 }
 
-                Rectangle {
+                ColumnLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    color: ColorUtils.transparentize(Appearance.colors.colLayer0, 0.8)
-                    radius: (Appearance.rounding?.verylarge ?? 30) - 8
+                    spacing: 0
 
-                    ColumnLayout {
-                        anchors.centerIn: parent
-                        spacing: -3
+                    Repeater {
+                        model: root.weeks
+                        delegate: RowLayout {
+                            required property var modelData
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            spacing: 0
 
-                        Repeater {
-                            model: root.weeks
-                            delegate: RowLayout {
-                                required property var modelData
-                                spacing: 4
-                                Repeater {
-                                    model: parent.modelData
-                                    delegate: DayCell {
-                                        required property var modelData
-                                        day: modelData.day
-                                        currentMonth: modelData.currentMonth
-                                        isToday: modelData.isToday
-                                    }
+                            Repeater {
+                                model: parent.modelData
+                                delegate: DayCell {
+                                    required property var modelData
+                                    Layout.fillWidth: true
+                                    Layout.preferredWidth: root.dayCellWidth
+                                    Layout.fillHeight: true
+                                    day: modelData.day
+                                    currentMonth: modelData.currentMonth
+                                    isToday: modelData.isToday
                                 }
                             }
                         }

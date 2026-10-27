@@ -499,14 +499,6 @@ Singleton {
                         property string shape: "Cookie4Sided"
                         property real size: 200
                     }
-                    property JsonObject imageConverter: JsonObject {
-                        property bool enable: false
-                        property string placementStrategy: "free"
-                        property real x: 200
-                        property real y: 500
-                        property int gridColumn: 3
-                        property int gridRow: 4
-                    }
                     property JsonObject notes: JsonObject {
                         property bool enable: false
                         property string placementStrategy: "free"
@@ -526,14 +518,6 @@ Singleton {
                         property bool vertical: false
                         property real z: 0
                     }
-                    property JsonObject usercard: JsonObject {
-                        property bool enable: false
-                        property string placementStrategy: "free"
-                        property real x: 100
-                        property real y: 100
-                        property int gridColumn: 0
-                        property int gridRow: 0
-                    }
                     property JsonObject visualizer: JsonObject {
                         property bool enable: false
                         property string placementStrategy: "free"
@@ -547,15 +531,6 @@ Singleton {
                         property real sensitivity: 1
                         property int height: 260 // mirror, aurora and dots
                         property int ringSize: 380
-                    }
-                    property JsonObject worldclock: JsonObject {
-                        property bool enable: false
-                        property string placementStrategy: "free"
-                        property real x: 800
-                        property real y: 500
-                        property int gridColumn: 8
-                        property int gridRow: 6
-                        property string sizeMode: "2x2"
                     }
                     property JsonObject timer: JsonObject {
                         property bool enable: false
@@ -578,6 +553,8 @@ Singleton {
                         property string placementStrategy: "free"
                         property real x: 400
                         property real y: 100
+                        property int gridColumn: 2
+                        property int gridRow: 0
                         property real z: 0
                         property string sizeMode: "2x2"
                         property bool vertical: false
@@ -588,6 +565,8 @@ Singleton {
                         property string placementStrategy: "free"
                         property real x: 400
                         property real y: 100
+                        property int gridColumn: 2
+                        property int gridRow: 2
                         property real z: 0
                     }
                     property JsonObject userCard: JsonObject {
@@ -595,6 +574,8 @@ Singleton {
                         property string placementStrategy: "free"
                         property real x: 400
                         property real y: 100
+                        property int gridColumn: 0
+                        property int gridRow: 0
                         property real z: 0
                         property string sizeMode: "1x2" 
                     }
@@ -603,6 +584,8 @@ Singleton {
                         property string placementStrategy: "free"
                         property real x: 400
                         property real y: 100
+                        property int gridColumn: 4
+                        property int gridRow: 0
                         property real z: 0
                     }
                     property JsonObject imageCard: JsonObject {
@@ -610,6 +593,8 @@ Singleton {
                         property string placementStrategy: "free"
                         property real x: 400
                         property real y: 100
+                        property int gridColumn: 6
+                        property int gridRow: 0
                         property real z: 0
                         property string path: ""
                         property string sizeMode: "1x2"
@@ -620,6 +605,8 @@ Singleton {
                         property string placementStrategy: "free"
                         property real x: 400
                         property real y: 100
+                        property int gridColumn: 8
+                        property int gridRow: 2
                         property real z: 0
                         property string path: ""
                         property real size: 200

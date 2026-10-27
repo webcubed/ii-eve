@@ -104,7 +104,7 @@ Singleton {
     // The world clock widget is the only consumer; tick only while it's shown
     // (enable flag + not occluded — mirrors cullWhenOccluded — not fullscreen).
     readonly property bool widgetVisible: Config.ready
-        && (Config.options.background.widgets.worldclock?.enable ?? false)
+        && (Config.options.background.widgets.worldClock?.enable ?? false)
         && GlobalStates.widgetsVisible && !GlobalStates.fullscreenActive
 
     property var now: new Date()

@@ -12,11 +12,14 @@ import qs.modules.ii.background.widgets
 
 AbstractBackgroundWidget {
     id: root
-    configEntryName: "usercard"
-    implicitWidth: 276
-    implicitHeight: 252
+    configEntryName: "userCard"
 
-    property int cardWidth: 276
+    // Same 2x2 footprint as the other desktop cards so the grid lines up
+    readonly property real cardWidth: WidgetGrid.spanWidth(2)
+    readonly property real cardHeight: WidgetGrid.spanHeight(2)
+
+    implicitWidth: root.cardWidth
+    implicitHeight: root.cardHeight
     property int blurMargin: 18   
     property int avatarSize: 64
     property string hostname: SystemInfo.hostname
@@ -45,8 +48,8 @@ AbstractBackgroundWidget {
 
     Item {
         id: outerRect
-        implicitWidth: root.cardWidth 
-        implicitHeight: 252
+        implicitWidth: root.cardWidth
+        implicitHeight: root.cardHeight
 
         Item {
             id: bgImage

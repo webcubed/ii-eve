@@ -24,6 +24,42 @@ Item {
         tabBar.setCurrentIndex(index);
     }
 
+    /**
+     * Slide the tab strip so the active tab is inside the visible slice. Without
+     * this, keyboard/wheel navigation can select a tab that sits past the right
+     * edge of the Flickable and the highlight disappears off screen.
+     */
+    function ensureCurrentVisible() {
+        const item = contentItem.children[root.currentIndex];
+        if (!item || flickable.width <= 0) return;
+        const margin = 10;
+        const maxContentX = Math.max(0, flickable.contentWidth - flickable.width);
+        const left = item.x - margin;
+        const right = item.x + item.width + margin;
+        let target = flickable.contentX;
+        if (left < flickable.contentX) target = left;
+        else if (right > flickable.contentX + flickable.width) target = right - flickable.width;
+        else return;
+        scrollAnim.to = Math.max(0, Math.min(maxContentX, target));
+        scrollAnim.restart();
+    }
+
+    NumberAnimation {
+        id: scrollAnim
+        target: flickable
+        property: "contentX"
+        duration: Appearance.animation.elementMoveFast.duration
+        easing.type: Easing.BezierSpline
+        easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+    }
+
+    Connections {
+        target: tabBar
+        function onCurrentIndexChanged() { Qt.callLater(root.ensureCurrentVisible); }
+    }
+
+    onWidthChanged: ensureCurrentVisible()
+
     Layout.fillWidth: true
     // Natural width, not 0: toolbars sized from implicitWidth (region selector,
     // cheatsheet) need the tab width in the sum, else the pill collapses and

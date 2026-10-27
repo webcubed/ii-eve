@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Window
 import Quickshell
 import Quickshell.Io
 import Qt5Compat.GraphicalEffects
@@ -17,25 +18,70 @@ Item {
     property int currentPage: 0
     property bool showingProfile: false
     property bool isMinimal: Config.options.settings.style === "minimal"
+
+    // ── Settings search ────────────────────────────────────────────────
+    property string searchQuery: ""
+    property var searchResults: []
+
+    Timer {
+        id: searchDebounce
+        interval: 110
+        onTriggered: {
+            const query = root.searchQuery.trim();
+            root.searchResults = query === "" ? [] : SettingsSearchIndex.search(query, 14);
+        }
+    }
+
+    onSearchQueryChanged: searchDebounce.restart()
+
+    Shortcut {
+        sequence: "Ctrl+F"
+        onActivated: searchInput.forceActiveFocus()
+    }
+
+    function clearSearch() {
+        root.searchQuery = "";
+        searchInput.text = "";
+        root.searchResults = [];
+    }
+
+    function goToSearchResult(result) {
+        if (!result) return;
+        root.clearSearch();
+        searchInput.focus = false;
+        root.goToTarget({
+            page: result.pageId,
+            label: result.rawLabel,
+            section: result.kind === "page" ? "" : result.rawSection
+        });
+    }
     // Page crossfade duration, scaled by the settings app's animation speed setting.
     readonly property int pageTransitionDuration: Math.max(60, Math.round(200 / Math.max(0.5, Config.options.settings.animationSpeed ?? 1)))
 
+    /**
+     * Switch to a page and, when a section is named, scroll to it. Sections
+     * scroll themselves through SearchRegistry + their own SearchHandler, which
+     * is the only scroll-to hook the pages expose.
+     */
     function goToTarget(target) {
+        if (!target) return;
         const idx = root.pages.findIndex(p => p.id === target.page);
         if (idx < 0) return;
         root.currentPage = idx;
         root.showingProfile = false;
-        if (!target.label) return;
 
+        const section = target.section || target.label;
+        if (!section) return;
+
+        const scrollToSection = () => Qt.callLater(() => { SearchRegistry.currentSearch = section; });
         const loader = pagesRepeater.itemAt(idx);
         if (!loader) return;
-        const run = () => loader.item?.goTo(target.label, target.section, target.subsection);
         if (loader.item) {
-            run();
+            scrollToSection();
         } else {
             const onceLoaded = () => {
                 loader.loaded.disconnect(onceLoaded);
-                run();
+                scrollToSection();
             };
             loader.loaded.connect(onceLoaded);
         }
@@ -89,6 +135,200 @@ Item {
         anchors {
             fill: parent
             margins: contentPadding
+        }
+
+        // Top bar: search across every settings page, plus a way out of the app
+        Item {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 42
+            z: 100
+
+            RowLayout {
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    verticalCenter: parent.verticalCenter
+                }
+                spacing: 10
+
+                Item { Layout.fillWidth: true }
+
+                Rectangle {
+                    id: searchBox
+                    Layout.preferredWidth: 320
+                    Layout.maximumWidth: 420
+                    Layout.preferredHeight: 40
+                    radius: 20
+                    color: Appearance.colors.colLayer1
+                    border.width: (searchInput.activeFocus || root.searchQuery !== "") ? 1 : 0
+                    border.color: Appearance.colors.colPrimary
+
+                    RowLayout {
+                        anchors {
+                            fill: parent
+                            leftMargin: 14
+                            rightMargin: 8
+                        }
+                        spacing: 8
+
+                        MaterialSymbol {
+                            Layout.alignment: Qt.AlignVCenter
+                            text: "search"
+                            iconSize: 18
+                            color: Appearance.colors.colSubtext
+                        }
+
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 24
+
+                            StyledTextInput {
+                                id: searchInput
+                                anchors.fill: parent
+                                verticalAlignment: TextInput.AlignVCenter
+                                color: Appearance.colors.colOnLayer1
+                                font.pixelSize: Appearance.font.pixelSize.normal
+                                onTextChanged: root.searchQuery = text
+                                Keys.onEscapePressed: root.clearSearch()
+                                Keys.onDownPressed: searchResultsList.incrementCurrentIndex()
+                                Keys.onUpPressed: searchResultsList.decrementCurrentIndex()
+                                Keys.onReturnPressed: root.goToSearchResult(root.searchResults[searchResultsList.currentIndex])
+                            }
+
+                            StyledText {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: Translation.tr("Search settings…")
+                                visible: searchInput.text === ""
+                                font.pixelSize: Appearance.font.pixelSize.normal
+                                color: Appearance.colors.colSubtext
+                            }
+                        }
+
+                        RippleButton {
+                            Layout.alignment: Qt.AlignVCenter
+                            visible: searchInput.text !== ""
+                            implicitWidth: 26
+                            implicitHeight: 26
+                            buttonRadius: 13
+                            colBackground: "transparent"
+                            colBackgroundHover: Appearance.colors.colLayer2Hover
+                            onClicked: root.clearSearch()
+                            contentItem: MaterialSymbol {
+                                anchors.centerIn: parent
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                text: "close"
+                                iconSize: 16
+                                color: Appearance.colors.colOnLayer1
+                            }
+                        }
+                    }
+                }
+
+                RippleButton {
+                    Layout.alignment: Qt.AlignVCenter
+                    implicitWidth: 40
+                    implicitHeight: 40
+                    buttonRadius: 20
+                    colBackground: Appearance.colors.colLayer1
+                    colBackgroundHover: Appearance.colors.colLayer2Hover
+                    onClicked: Window.window?.close()
+                    StyledToolTip {
+                        text: Translation.tr("Close settings")
+                    }
+                    contentItem: MaterialSymbol {
+                        anchors.centerIn: parent
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        text: "close"
+                        iconSize: 20
+                        color: Appearance.colors.colOnLayer1
+                    }
+                }
+            }
+
+            // Results float over the page, anchored under the search field
+            Rectangle {
+                id: searchResultsPanel
+                visible: root.searchQuery.trim() !== ""
+                anchors {
+                    right: searchBox.right
+                    top: searchBox.bottom
+                    topMargin: 8
+                }
+                width: Math.max(320, Math.min(460, root.width - 40))
+                height: Math.min(searchResultsList.contentHeight + 16, 380)
+                radius: Appearance.rounding.normal
+                color: Appearance.colors.colLayer1
+                border.width: 1
+                border.color: Appearance.colors.colLayer0Border
+                z: 200
+
+                StyledListView {
+                    id: searchResultsList
+                    anchors {
+                        fill: parent
+                        margins: 8
+                    }
+                    animateAppearance: false
+                    animatePopulate: false
+                    model: root.searchResults
+
+                    delegate: RippleButton {
+                        id: resultRow
+                        required property var modelData
+                        required property int index
+
+                        width: ListView.view.width
+                        implicitHeight: 48
+                        buttonRadius: Appearance.rounding.small
+                        colBackground: "transparent"
+                        colBackgroundHover: Appearance.colors.colLayer2Hover
+                        onClicked: root.goToSearchResult(resultRow.modelData)
+
+                        contentItem: RowLayout {
+                            spacing: 10
+                            MaterialSymbol {
+                                Layout.leftMargin: 8
+                                Layout.alignment: Qt.AlignVCenter
+                                text: resultRow.modelData.icon ?? "settings"
+                                iconSize: 18
+                                color: Appearance.colors.colPrimary
+                            }
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                Layout.alignment: Qt.AlignVCenter
+                                spacing: -2
+                                StyledText {
+                                    Layout.fillWidth: true
+                                    text: resultRow.modelData.label
+                                    font.pixelSize: Appearance.font.pixelSize.normal
+                                    color: Appearance.colors.colOnLayer1
+                                    elide: Text.ElideRight
+                                }
+                                StyledText {
+                                    Layout.fillWidth: true
+                                    visible: resultRow.modelData.kind !== "page"
+                                    text: resultRow.modelData.kind === "section"
+                                        ? resultRow.modelData.pageName
+                                        : `${resultRow.modelData.pageName} › ${resultRow.modelData.section}`
+                                    font.pixelSize: Appearance.font.pixelSize.smaller
+                                    color: Appearance.colors.colSubtext
+                                    elide: Text.ElideRight
+                                }
+                            }
+                        }
+                    }
+                }
+
+                StyledText {
+                    anchors.centerIn: parent
+                    visible: root.searchResults.length === 0
+                    text: Translation.tr("No matches")
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    color: Appearance.colors.colSubtext
+                }
+            }
         }
 
         RowLayout {
