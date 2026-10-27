@@ -69,6 +69,13 @@ Singleton {
 	property bool hasActivePlasmaIntegration: Mpris.players.values.some(p => p.dbusName?.startsWith('org.mpris.MediaPlayer2.plasma-browser-integration'))
 
 	function isRealPlayer(player) {
+		// Players that advertise a bus but no track at all — KDE Connect mirrors a
+		// paused phone player like this — would otherwise win the fallback chain
+		// below and swallow the bar's play/pause button with an empty "Untitled".
+		const hasMetadata = (player.trackTitle ?? "") !== ""
+			|| (player.trackArtist ?? "") !== ""
+			|| (player.trackArtUrl ?? "") !== "";
+		if (!hasMetadata) return false;
 		if (!Config.options.media.filterDuplicatePlayers) {
 			return true;
 		}

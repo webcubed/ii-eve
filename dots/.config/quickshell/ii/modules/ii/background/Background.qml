@@ -45,6 +45,15 @@ Variants {
         property var activeWorkspaceWithFullscreen: workspacesForMonitor.filter(workspace => ((workspace.toplevels.values.filter(window => window.wayland?.fullscreen)[0] != undefined) && workspace.active))[0]
         visible: GlobalStates.screenLocked || (!(activeWorkspaceWithFullscreen != undefined)) || !Config?.options.background.hideWhenFullscreen
 
+        // The background normally never takes keyboard focus, so clicking a card
+        // leaves focus with the active window. Widget text inputs raise the flag
+        // while they are open; on-demand then lets the click that lands in the
+        // input focus it, without holding the keyboard hostage once focus moves
+        // back to an app window.
+        WlrLayershell.keyboardFocus: GlobalStates.desktopWidgetKeyboardFocus
+            ? WlrKeyboardFocus.OnDemand
+            : WlrKeyboardFocus.None
+
         // Workspaces
         property HyprlandMonitor monitor: Hyprland.monitorFor(modelData)
 

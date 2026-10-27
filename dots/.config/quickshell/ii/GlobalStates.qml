@@ -13,6 +13,13 @@ Singleton {
     property alias sidebarLeftOpen: root.policiesPanelOpen // Until all sidebars naming is fixed
     property alias sidebarRightOpen: root.dashboardPanelOpen // Until all sidebars naming is fixed
 
+    // The desktop background is a layer-shell surface with no keyboard focus by
+    // default, which left its text inputs (notes, to-do, the world clock's
+    // timezone search) unable to receive typing. Raised only while one of them is
+    // being edited, so ordinary widget clicks do not steal focus from the active
+    // window.
+    property bool desktopWidgetKeyboardFocus: false
+
     property bool appLauncherOpen: false
     property bool binarySelectorOpen: false
     property string binarySelectorTargetFolderId: ""

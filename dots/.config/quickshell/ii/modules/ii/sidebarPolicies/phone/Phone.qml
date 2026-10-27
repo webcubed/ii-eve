@@ -1031,8 +1031,9 @@ Item {
                 MaterialSymbol {
                     id: emptyIcon
                     Layout.alignment: Qt.AlignHCenter
-                    text: KdeConnectService.available
-                          ? "phonelink_off" : "phonelink_erase"
+                    text: !KdeConnectService.serviceEnabled
+                          ? "toggle_off"
+                          : (KdeConnectService.available ? "phonelink_off" : "phonelink_erase")
                     iconSize: 64
                     color: Appearance.colors.colSubtext
 
@@ -1047,9 +1048,11 @@ Item {
                     id: emptyTitle
                     Layout.alignment: Qt.AlignHCenter
                     Layout.preferredWidth: root.width * 0.85
-                    text: KdeConnectService.available
-                          ? Translation.tr("No device connected")
-                          : Translation.tr("KDE Connect not installed")
+                    text: !KdeConnectService.serviceEnabled
+                          ? Translation.tr("Phone integration is off")
+                          : (KdeConnectService.available
+                              ? Translation.tr("No device connected")
+                              : Translation.tr("KDE Connect not installed"))
                     font.pixelSize: Appearance.font.pixelSize.huge
                     font.weight: Font.Bold
                     color: Appearance.colors.colOnLayer2
@@ -1064,9 +1067,11 @@ Item {
                     id: emptyDesc
                     Layout.alignment: Qt.AlignHCenter
                     Layout.preferredWidth: root.width * 0.85
-                    text: KdeConnectService.available
-                          ? Translation.tr("Pair a device through KDE Connect on your phone — once it shows up here, sync notifications, share clipboard, dump files and launch scrcpy mirror.")
-                          : Translation.tr("Install `kdeconnect-cli` and the KDE Connect Android app, then pair a device. After pairing it will mirror here automatically.")
+                    text: !KdeConnectService.serviceEnabled
+                          ? Translation.tr("Turn the Phone tab back on in Settings → Interface → Sidebars to use KDE Connect here.")
+                          : (KdeConnectService.available
+                              ? Translation.tr("Pair a device through KDE Connect on your phone — once it shows up here, sync notifications, share clipboard, dump files and launch scrcpy mirror.")
+                              : Translation.tr("Install `kdeconnect-cli` and the KDE Connect Android app, then pair a device. After pairing it will mirror here automatically."))
                     font.pixelSize: Appearance.font.pixelSize.small
                     color: Appearance.colors.colSubtext
                     horizontalAlignment: Text.AlignHCenter
@@ -1087,7 +1092,7 @@ Item {
                     buttonRadius: Appearance.rounding.full
                     colBackground: Appearance.colors.colPrimaryContainer
                     colBackgroundHover: Appearance.colors.colPrimaryContainerHover
-                    visible: !KdeConnectService.available
+                    visible: KdeConnectService.serviceEnabled && !KdeConnectService.available
                     contentItem: RowLayout {
                         spacing: 6
                         MaterialSymbol {
