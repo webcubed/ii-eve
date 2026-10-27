@@ -26,6 +26,7 @@ Singleton {
     property int defaultColorTemperature: 6000
     property int gamma: 100
     property bool shouldBeOn
+    property bool applyingScheduleEdit: false
     property bool firstEvaluation: true
     property bool temperatureActive: false
 
@@ -70,12 +71,14 @@ Singleton {
     property int manualActiveMinute
 
     onClockMinuteChanged: reEvaluate()
-    // New schedule times should apply straight away, not on the next minute tick
-    onFromChanged: reEvaluate()
-    onToChanged: reEvaluate()
-    onFollowSunChanged: reEvaluate()
-    onEffectiveFromChanged: reEvaluate()
-    onEffectiveToChanged: reEvaluate()
+    // Editing the schedule must not switch the screen on retroactively: a start
+    // time that already passed today takes effect at its next occurrence, so the
+    // current state is only ever turned off here, never on.
+    onFromChanged: applyScheduleEdit()
+    onToChanged: applyScheduleEdit()
+    onFollowSunChanged: applyScheduleEdit()
+    onEffectiveFromChanged: applyScheduleEdit()
+    onEffectiveToChanged: applyScheduleEdit()
     onAutomaticChanged: {
         root.manualActive = undefined;
         root.firstEvaluation = true;
@@ -89,6 +92,23 @@ Singleton {
             // Wrapped around midnight
             return (t >= from || t <= to);
         }
+    }
+
+    /**
+     * Recompute the window from an edited schedule. The new value is stored so the
+     * next minute tick does not see a change and switch the screen on, and leaving
+     * the window still turns it off so the screen is never warm outside it.
+     */
+    function applyScheduleEdit() {
+        const t = clockHour * 60 + clockMinute;
+        const from = fromHour * 60 + fromMinute;
+        const to = toHour * 60 + toMinute;
+
+        applyingScheduleEdit = true;
+        root.shouldBeOn = inBetween(t, from, to);
+        applyingScheduleEdit = false;
+
+        if (!root.shouldBeOn) root.ensureState();
     }
 
     function reEvaluate() {
@@ -107,7 +127,7 @@ Singleton {
         }
     }
 
-    onShouldBeOnChanged: ensureState()
+    onShouldBeOnChanged: if (!applyingScheduleEdit) ensureState()
     function ensureState() {
         // console.log("[Hyprsunset] Ensuring state:", root.shouldBeOn, "Automatic mode:", root.automatic);
         if (!root.automatic || root.manualActive !== undefined)
