@@ -24,9 +24,13 @@ AbstractBackgroundWidget {
     readonly property bool withDetail: root.sizeMode === "3x3"
     property real widgetWidth: root.withDetail ? root.spanWidth(3) : root.spanWidth(2)
     property real widgetHeight: root.withDetail ? root.spanHeight(3) : root.spanHeight(2)
-    // Minimum only: the grid stretches to whatever the card has left, so the month
-    // fills the card instead of sitting in a strip with dead space below it.
-    readonly property int cellHeight: root.withDetail ? 22 : 20
+    // The month grid sizes its own tiles from the card (see gridSlot) and turns the
+    // leftover into spacing, so a roomier card means more air between days rather
+    // than bigger day tiles.
+    readonly property real cellMaxWidth: root.withDetail ? 34 : 32
+    readonly property real cellMaxHeight: root.withDetail ? 34 : 22
+    readonly property real cellBaseSpacing: 9
+    readonly property real cellMaxSpacing: 14
     implicitWidth: widgetWidth
     implicitHeight: widgetHeight
 
@@ -39,6 +43,14 @@ AbstractBackgroundWidget {
 
     function modeForWidth(value) {
         return value < (root.spanWidth(2) + root.spanWidth(3)) / 2 ? "2x2" : "3x3";
+    }
+
+    // How many week rows the month actually uses (five or six), so the grid can size
+    // its tiles to the rows it draws instead of always assuming six.
+    function usedWeekRows(cells) {
+        let last = -1;
+        for (let i = 0; i < cells.length; ++i) if (cells[i] !== null) last = i;
+        return Math.max(1, Math.floor(last / 7) + 1);
     }
 
     property int cursorYear: new Date().getFullYear()
@@ -176,83 +188,103 @@ AbstractBackgroundWidget {
                 }
             }
 
-            GridLayout {
+            Item {
+                id: gridSlot
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.minimumHeight: (root.cellHeight + 4) * 6
-                columns: 7
-                columnSpacing: 4
-                rowSpacing: 4
 
-                Repeater {
-                    model: root.cells
-                    delegate: Rectangle {
-                        id: dayCell
-                        required property var modelData
+                // The tiles are sized here instead of by the layout: GridLayout stretched
+                // them to fill the card, which made the days large and the gutters thin.
+                // Tiles stay capped and spread out; a month that only spans five weeks
+                // keeps the same tile size as a six-week one and centres its block
+                // instead of stretching the days to fill the card.
+                readonly property int weekCount: root.usedWeekRows(root.cells)
+                readonly property real cellWidth: Math.min(root.cellMaxWidth, Math.max(14, (width - 6 * root.cellBaseSpacing) / 7))
+                readonly property real cellHeight: Math.max(14, Math.min(root.cellMaxHeight, (height - (weekCount - 1) * root.cellBaseSpacing) / weekCount))
+                readonly property real columnSpacing: Math.max(2, (width - 7 * cellWidth) / 6)
+                readonly property real rowSpacing: Math.max(2, weekCount > 1
+                    ? Math.min(root.cellMaxSpacing, (height - weekCount * cellHeight) / (weekCount - 1))
+                    : 0)
+                readonly property real gridHeight: weekCount * cellHeight + (weekCount - 1) * rowSpacing
 
-                        readonly property var cellKey: dayCell.modelData ? dayCell.modelData.key : ""
-                        readonly property var dayEntry: dayCell.cellKey ? StuyCalendar.entryFor(dayCell.cellKey) : null
-                        readonly property string dot: dayCell.dayEntry ? StuyCalendar.categoryDot(dayCell.dayEntry.category) : ""
-                        readonly property bool isToday: dayCell.cellKey === StuyCalendar.todayKey
-                        readonly property bool isSelected: dayCell.cellKey === root.selectedDate
-                        readonly property bool isWeekend: dayCell.modelData
-                            ? (StuyCalendar.parseKey(dayCell.cellKey).getDay() === 0 || StuyCalendar.parseKey(dayCell.cellKey).getDay() === 6)
-                            : false
+                Grid {
+                    columns: 7
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: gridSlot.width
+                    height: gridSlot.gridHeight
+                    columnSpacing: gridSlot.columnSpacing
+                    rowSpacing: gridSlot.rowSpacing
 
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        Layout.minimumHeight: root.cellHeight
-                        radius: 6
-                        visible: dayCell.modelData !== null
-                        // A faint surface per day keeps the month reading as a grid of
-                        // days rather than numbers floating in empty card.
-                        color: dayCell.isSelected
-                            ? ColorUtils.transparentize(Appearance.colors.colOnPrimaryContainer, 0.84)
-                            : dayCell.isToday
-                                ? ColorUtils.transparentize(Appearance.colors.colPrimary, 0.8)
-                                : ColorUtils.transparentize(Appearance.colors.colOnPrimaryContainer, cellArea.containsMouse ? 0.88 : 0.94)
+                    Repeater {
+                        model: root.cells
+                        delegate: Rectangle {
+                            id: dayCell
+                            required property var modelData
 
-                        Column {
-                            anchors.centerIn: parent
-                            spacing: 0
+                            readonly property var cellKey: dayCell.modelData ? dayCell.modelData.key : ""
+                            readonly property var dayEntry: dayCell.cellKey ? StuyCalendar.entryFor(dayCell.cellKey) : null
+                            readonly property string dot: dayCell.dayEntry ? StuyCalendar.categoryDot(dayCell.dayEntry.category) : ""
+                            readonly property bool isToday: dayCell.cellKey === StuyCalendar.todayKey
+                            readonly property bool isSelected: dayCell.cellKey === root.selectedDate
+                            readonly property bool isWeekend: dayCell.modelData
+                                ? (StuyCalendar.parseKey(dayCell.cellKey).getDay() === 0 || StuyCalendar.parseKey(dayCell.cellKey).getDay() === 6)
+                                : false
 
-                            StyledText {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                text: dayCell.modelData ? dayCell.modelData.day : ""
-                                font.pixelSize: root.withDetail ? 13 : 12
-                                font.weight: dayCell.isToday || dayCell.isSelected ? Font.DemiBold : Font.Normal
-                                color: Appearance.colors.colOnPrimaryContainer
-                                opacity: dayCell.isWeekend ? 0.55 : 1
+                            width: gridSlot.cellWidth
+                            height: gridSlot.cellHeight
+                            radius: 6
+                            visible: dayCell.modelData !== null
+                            // A faint surface per day keeps the month reading as a grid of
+                            // days rather than numbers floating in empty card.
+                            color: dayCell.isSelected
+                                ? ColorUtils.transparentize(Appearance.colors.colOnPrimaryContainer, 0.84)
+                                : dayCell.isToday
+                                    ? ColorUtils.transparentize(Appearance.colors.colPrimary, 0.8)
+                                    : ColorUtils.transparentize(Appearance.colors.colOnPrimaryContainer, cellArea.containsMouse ? 0.88 : 0.94)
+
+                            Column {
+                                anchors.centerIn: parent
+                                spacing: 0
+
+                                StyledText {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: dayCell.modelData ? dayCell.modelData.day : ""
+                                    font.pixelSize: root.withDetail ? 12 : 11
+                                    font.weight: dayCell.isToday || dayCell.isSelected ? Font.DemiBold : Font.Normal
+                                    color: Appearance.colors.colOnPrimaryContainer
+                                    opacity: dayCell.isWeekend ? 0.55 : 1
+                                }
+
+                                StyledText {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: dayCell.dayEntry?.block ?? ""
+                                    font.pixelSize: root.withDetail ? 8 : 7
+                                    font.weight: Font.Bold
+                                    color: StuyCalendar.blockColor(dayCell.dayEntry?.block)
+                                    opacity: dayCell.isWeekend ? 0.6 : 1
+                                }
                             }
 
-                            StyledText {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                text: dayCell.dayEntry?.block ?? ""
-                                font.pixelSize: root.withDetail ? 9 : 8
-                                font.weight: Font.Bold
-                                color: StuyCalendar.blockColor(dayCell.dayEntry?.block)
-                                opacity: dayCell.isWeekend ? 0.6 : 1
+                            Rectangle {
+                                visible: dayCell.dot !== ""
+                                anchors.top: parent.top
+                                anchors.right: parent.right
+                                anchors.topMargin: 3
+                                anchors.rightMargin: 3
+                                width: 4
+                                height: 4
+                                radius: 2
+                                color: dayCell.dot
                             }
-                        }
 
-                        Rectangle {
-                            visible: dayCell.dot !== ""
-                            anchors.top: parent.top
-                            anchors.right: parent.right
-                            anchors.topMargin: 3
-                            anchors.rightMargin: 3
-                            width: 4
-                            height: 4
-                            radius: 2
-                            color: dayCell.dot
-                        }
-
-                        MouseArea {
-                            id: cellArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.selectedDate = dayCell.cellKey
+                            MouseArea {
+                                id: cellArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.selectedDate = dayCell.cellKey
+                            }
                         }
                     }
                 }
