@@ -179,10 +179,10 @@ AbstractBackgroundWidget {
             GridLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.minimumHeight: (root.cellHeight + 2) * 6
+                Layout.minimumHeight: (root.cellHeight + 4) * 6
                 columns: 7
-                columnSpacing: 2
-                rowSpacing: 2
+                columnSpacing: 4
+                rowSpacing: 4
 
                 Repeater {
                     model: root.cells
