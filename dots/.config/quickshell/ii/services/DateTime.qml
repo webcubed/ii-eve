@@ -22,6 +22,11 @@ Singleton {
     property string shortDate: Qt.locale().toString(clock.date, Config.options?.time.shortDateFormat ?? "dd/MM")
     property string date: Qt.locale().toString(clock.date, Config.options?.time.dateWithYearFormat ?? "dd/MM/yyyy")
     property string longDate: Qt.locale().toString(clock.date, Config.options?.time.dateFormat ?? "dddd, dd/MM")
+    // The configured date format with the weekday spelled out, for the wide surfaces
+    // (the desktop clock) rather than the bar's abbreviated "Mon". "dddd" passes
+    // through untouched because the word boundary does not fall inside it.
+    readonly property string longWeekdayDateFormat: (Config.options?.time.dateFormat ?? "dddd, dd/MM").replace(/\bddd\b/, "dddd")
+    property string longWeekdayDate: Qt.locale().toString(clock.date, longWeekdayDateFormat)
     property string collapsedCalendarFormat: Qt.locale().toString(clock.date, "dddd, MMMM dd")
     property string dayNameShort: Qt.locale().toString(clock.date, "ddd")
     readonly property bool use12HourFormat: (Config.options?.time.format ?? "hh:mm").toLowerCase().indexOf("ap") !== -1
