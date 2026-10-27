@@ -14,13 +14,15 @@ AbstractBackgroundWidget {
     configEntryName: "todo"
     hoverEnabled: true
 
-    // Shares the desktop design grid with the other cards (WidgetGrid.qml)
+    // Shares the desktop design grid with the other cards (WidgetGrid.qml). Measured
+    // as a two-cell span on both axes, like the notes and resources cards: the old
+    // `2 * cellHeight + gutter` height added the gutter instead of subtracting it, so
+    // the card was two gutters too tall and never lined up with its square neighbours.
     readonly property real cardWidth: root.spanWidth(2)
-    readonly property real cardHeight: root.gridCellHeight
-    readonly property real cardSpacing: WidgetGrid.gutter
+    readonly property real cardHeight: root.spanHeight(2)
 
     implicitWidth: root.cardWidth
-    implicitHeight: root.cardHeight * 2 + root.cardSpacing
+    implicitHeight: root.cardHeight
 
     property string mode: "list" // "list" | "edit"
     property string editingText: ""
