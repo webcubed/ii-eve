@@ -23,22 +23,36 @@ AbstractWidget {
     readonly property bool gridEnabled: Config.options.background.widgets.grid.enabled
     // Snap to the widget design grid (144x132 pitch, see WidgetGrid.qml) rather
     // than dividing the screen evenly, so card sizes and positions share one
-    // rhythm and edges land on the same lines
-    readonly property int gridColumns: WidgetGrid.effectiveColumns(scaledScreenWidth, Config.options.background.widgets.grid.columns)
-    readonly property int gridRows: WidgetGrid.effectiveRows(scaledScreenHeight, Config.options.background.widgets.grid.rows)
+    // rhythm and edges land on the same lines. The bar occupies its own band at the
+    // top (or bottom) of the screen, so it is reserved before the grid is placed.
+    readonly property real gridEdgePadding: 12
+    readonly property real gridInsetTop: (!Config.options.bar.vertical && !Config.options.bar.bottom)
+        ? Appearance.sizes.barHeight + 8 : gridEdgePadding
+    readonly property real gridInsetBottom: (!Config.options.bar.vertical && Config.options.bar.bottom)
+        ? Appearance.sizes.barHeight + 8 : gridEdgePadding
+    readonly property real gridAvailableWidth: Math.max(WidgetGrid.cellWidth, scaledScreenWidth - gridEdgePadding * 2)
+    readonly property real gridAvailableHeight: Math.max(WidgetGrid.cellHeight, scaledScreenHeight - gridInsetTop - gridInsetBottom)
+    readonly property int gridColumns: WidgetGrid.effectiveColumns(gridAvailableWidth, Config.options.background.widgets.grid.columns)
+    readonly property int gridRows: WidgetGrid.effectiveRows(gridAvailableHeight, Config.options.background.widgets.grid.rows)
     readonly property real gridCellWidth: WidgetGrid.cellWidth
     readonly property real gridCellHeight: WidgetGrid.cellHeight
-    readonly property real gridOriginX: WidgetGrid.originX(scaledScreenWidth, gridColumns)
-    readonly property real gridOriginY: WidgetGrid.originY(scaledScreenHeight, gridRows)
+    readonly property real gridOriginX: gridEdgePadding + WidgetGrid.originX(gridAvailableWidth, gridColumns)
+    readonly property real gridOriginY: gridInsetTop + WidgetGrid.originY(gridAvailableHeight, gridRows)
+    // How many cells this card covers, so it can never be snapped to a slot it would
+    // hang off the edge of (a 2x2 card has no business on the last row)
+    readonly property int gridColumnSpan: Math.max(1, Math.round((implicitWidth + WidgetGrid.gutter) / gridCellWidth))
+    readonly property int gridRowSpan: Math.max(1, Math.round((implicitHeight + WidgetGrid.gutter) / gridCellHeight))
+    readonly property int maxGridColumn: Math.max(0, gridColumns - gridColumnSpan)
+    readonly property int maxGridRow: Math.max(0, gridRows - gridRowSpan)
     property int gridColumn: {
         if (!Config.ready) return 0;
         const col = configEntry.gridColumn ?? 0;
-        return Math.max(0, Math.min(col, gridColumns - 1));
+        return Math.max(0, Math.min(col, maxGridColumn));
     }
     property int gridRow: {
         if (!Config.ready) return 0;
         const row = configEntry.gridRow ?? 0;
-        return Math.max(0, Math.min(row, gridRows - 1));
+        return Math.max(0, Math.min(row, maxGridRow));
     }
     // Whole-pixel positions: a card sitting on a half pixel renders its text with
     // fuzzy subpixel offsets no matter how the glyphs themselves are rasterised.
@@ -101,7 +115,7 @@ AbstractWidget {
             if (!bg) return;
             const col = Math.floor((root.x - root.gridOriginX) / gridCellWidth);
             const row = Math.floor((root.y - root.gridOriginY) / gridCellHeight);
-            bg.draggingWidgetCell = Qt.point(Math.max(0, Math.min(col, gridColumns - 1)), Math.max(0, Math.min(row, gridRows - 1)));
+            bg.draggingWidgetCell = Qt.point(Math.max(0, Math.min(col, root.maxGridColumn)), Math.max(0, Math.min(row, root.maxGridRow)));
         }
     }
     // `released` only fires while we still hold the implicit grab. If the grab is lost mid
@@ -118,19 +132,19 @@ AbstractWidget {
         if (gridEnabled) {
             const col = Math.round((root.x - root.gridOriginX) / gridCellWidth);
             const row = Math.round((root.y - root.gridOriginY) / gridCellHeight);
-            const snappedCol = Math.max(0, Math.min(col, gridColumns - 1));
-            const snappedRow = Math.max(0, Math.min(row, gridRows - 1));
+            const snappedCol = Math.max(0, Math.min(col, root.maxGridColumn));
+            const snappedRow = Math.max(0, Math.min(row, root.maxGridRow));
             configEntry.gridColumn = snappedCol;
             configEntry.gridRow = snappedRow;
             root.gridColumn = Qt.binding(() => {
                 if (!Config.ready) return 0;
                 const col = configEntry.gridColumn ?? 0;
-                return Math.max(0, Math.min(col, gridColumns - 1));
+                return Math.max(0, Math.min(col, root.maxGridColumn));
             });
             root.gridRow = Qt.binding(() => {
                 if (!Config.ready) return 0;
                 const row = configEntry.gridRow ?? 0;
-                return Math.max(0, Math.min(row, gridRows - 1));
+                return Math.max(0, Math.min(row, root.maxGridRow));
             });
             root.x = Qt.binding(() => root.targetX);
             root.y = Qt.binding(() => root.targetY);

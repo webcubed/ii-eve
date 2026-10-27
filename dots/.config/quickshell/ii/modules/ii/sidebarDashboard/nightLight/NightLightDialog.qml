@@ -202,14 +202,20 @@ WindowDialog {
                         onCheckedChanged: Config.options.light.night.automatic = checked
                     }
 
-                    // Schedule: only relevant while the automatic mode is on
+                    // Schedule: always shown, so the on/off times are discoverable without
+                    // first having to turn Automatic on. Dimmed while it is off, since the
+                    // times only take effect in automatic mode.
                     Item {
-                        visible: Config.options.light.night.automatic
                         anchors {
                             left: parent.left
                             right: parent.right
                         }
-                        implicitHeight: Config.options.light.night.automatic ? scheduleRow.implicitHeight + 6 : 0
+                        implicitHeight: scheduleRow.implicitHeight + 6
+                        opacity: Config.options.light.night.automatic ? 1 : 0.55
+
+                        Behavior on opacity {
+                            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                        }
 
                         RowLayout {
                             id: scheduleRow

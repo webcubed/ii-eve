@@ -175,6 +175,22 @@ Variants {
             && Config.options.background.widgets.cullWhenOccluded
         property bool draggingWidget: false
         property var draggingWidgetCell: Qt.point(-1, -1) // {x: col, y: row} or invalid
+
+        // Bar-aware widget grid. The bar is its own full-width surface, so reserve its
+        // band before laying widgets out; otherwise the first row of cards ends up
+        // underneath it. Shared by the overlay, the drag hitbox and every widget (see
+        // AbstractBackgroundWidget.qml) so all three agree on one set of lines.
+        readonly property real gridEdgePadding: 12
+        readonly property real gridInsetTop: (!Config.options.bar.vertical && !Config.options.bar.bottom)
+            ? Appearance.sizes.barHeight + 8 : gridEdgePadding
+        readonly property real gridInsetBottom: (!Config.options.bar.vertical && Config.options.bar.bottom)
+            ? Appearance.sizes.barHeight + 8 : gridEdgePadding
+        readonly property real gridAvailableWidth: Math.max(WidgetGrid.cellWidth, screen.width - gridEdgePadding * 2)
+        readonly property real gridAvailableHeight: Math.max(WidgetGrid.cellHeight, screen.height - gridInsetTop - gridInsetBottom)
+        readonly property int gridColumns: WidgetGrid.effectiveColumns(gridAvailableWidth, Config.options.background.widgets.grid.columns)
+        readonly property int gridRows: WidgetGrid.effectiveRows(gridAvailableHeight, Config.options.background.widgets.grid.rows)
+        readonly property real gridOriginX: gridEdgePadding + WidgetGrid.originX(gridAvailableWidth, gridColumns)
+        readonly property real gridOriginY: gridInsetTop + WidgetGrid.originY(gridAvailableHeight, gridRows)
         onMediaModeOpenChanged: {
             if (!mediaModeOpen && Config.options.appearance.palette.type.startsWith("scheme")) {
                 Wallpapers.apply(Config.options.background.wallpaperPath)
@@ -245,8 +261,8 @@ Variants {
                         bgRoot: bgRoot,
                         screenWidth: bgRoot.screen.width,
                         screenHeight: bgRoot.screen.height,
-                        scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale,
-                        scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale,
+                        scaledScreenWidth: bgRoot.screen.width,
+                        scaledScreenHeight: bgRoot.screen.height,
                         wallpaperScale: bgRoot.effectiveWallpaperScale
                     })
 
@@ -403,71 +419,22 @@ Variants {
                 }
             }
 
+            // Widgets live in screen space, not wallpaper space. Their grid slots, the
+            // alignment overlay and the drag hitbox all share the same origin as the real
+            // screen, so a card cannot drift under the bar or past an edge when the
+            // wallpaper is zoomed or has a different aspect ratio to the monitor.
             WidgetCanvas {
                 id: widgetCanvas
-                scale: 1 - (defaultRatio - 1)
-                Behavior on scale {
-                    animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
-                }
-                anchors {
-                    left: wallpaper.left
-                    right: wallpaper.right
-                    top: wallpaper.top
-                    bottom: wallpaper.bottom
-                    horizontalCenter: undefined
-                    verticalCenter: undefined
-                    readonly property real parallaxFactor: Config.options.background.parallax.widgetsFactor
-                    leftMargin: {
-                        const xOnWallpaper = bgRoot.movableXSpace;
-                        const extraMove = (wallpaper.effectiveValueX * 2 * bgRoot.movableXSpace) * (parallaxFactor - 1);
-                        return xOnWallpaper - extraMove;
-                    }
-                    topMargin: {
-                        const yOnWallpaper = bgRoot.movableYSpace;
-                        const extraMove = (wallpaper.effectiveValueY * 2 * bgRoot.movableYSpace) * (parallaxFactor - 1);
-                        return yOnWallpaper - extraMove;
-                    }
-                    Behavior on leftMargin {
+                anchors.fill: parent
+                readonly property real parallaxFactor: Config.options.background.parallax.widgetsFactor
+                transform: Translate {
+                    x: (wallpaper.effectiveValueX - 0.5) * -2 * bgRoot.movableXSpace * (widgetCanvas.parallaxFactor - 1)
+                    y: (wallpaper.effectiveValueY - 0.5) * -2 * bgRoot.movableYSpace * (widgetCanvas.parallaxFactor - 1)
+                    Behavior on x {
                         animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
                     }
-                    Behavior on topMargin {
+                    Behavior on y {
                         animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
-                    }
-                }
-                width: wallpaper.width
-                height: wallpaper.height
-                states: State {
-                    name: "centered"
-                    when: GlobalStates.screenLocked || bgRoot.wallpaperSafetyTriggered
-                    PropertyChanges {
-                        target: widgetCanvas
-                        width: parent.width
-                        height: parent.height
-                    }
-                    AnchorChanges {
-                        target: widgetCanvas
-                        anchors {
-                            left: undefined
-                            right: undefined
-                            top: undefined
-                            bottom: undefined
-                            horizontalCenter: parent.horizontalCenter
-                            verticalCenter: parent.verticalCenter
-                        }
-                    }
-                }
-
-                transitions: Transition {
-                    PropertyAnimation {
-                        properties: "width,height"
-                        duration: Appearance.animation.elementMove.duration
-                        easing.type: Appearance.animation.elementMove.type
-                        easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
-                    }
-                    AnchorAnimation {
-                        duration: Appearance.animation.elementMove.duration
-                        easing.type: Appearance.animation.elementMove.type
-                        easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
                     }
                 }
 
@@ -511,12 +478,10 @@ Variants {
                         var ctx = getContext('2d');
                         ctx.clearRect(0, 0, width, height);
                         if (!Config.options.background.widgets.grid.enabled || Config.options.background.widgetsLocked) return;
-                        var scaledW = bgRoot.screen.width / bgRoot.effectiveWallpaperScale;
-                        var scaledH = bgRoot.screen.height / bgRoot.effectiveWallpaperScale;
-                        var cols = WidgetGrid.effectiveColumns(scaledW, Config.options.background.widgets.grid.columns);
-                        var rows = WidgetGrid.effectiveRows(scaledH, Config.options.background.widgets.grid.rows);
-                        var originX = WidgetGrid.originX(scaledW, cols);
-                        var originY = WidgetGrid.originY(scaledH, rows);
+                        var cols = bgRoot.gridColumns;
+                        var rows = bgRoot.gridRows;
+                        var originX = bgRoot.gridOriginX;
+                        var originY = bgRoot.gridOriginY;
                         var cellW = WidgetGrid.cellWidth;
                         var cellH = WidgetGrid.cellHeight;
                         ctx.strokeStyle = Qt.rgba(1, 1, 1, 0.7);
@@ -545,10 +510,8 @@ Variants {
                     color: Qt.rgba(1, 1, 1, 0.1)
                     border.color: Qt.rgba(1, 1, 1, 0.5)
                     border.width: 2
-                    readonly property real scaledW: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
-                    readonly property real scaledH: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
-                    x: WidgetGrid.originX(scaledW, WidgetGrid.effectiveColumns(scaledW, Config.options.background.widgets.grid.columns)) + bgRoot.draggingWidgetCell.x * WidgetGrid.cellWidth
-                    y: WidgetGrid.originY(scaledH, WidgetGrid.effectiveRows(scaledH, Config.options.background.widgets.grid.rows)) + bgRoot.draggingWidgetCell.y * WidgetGrid.cellHeight
+                    x: bgRoot.gridOriginX + bgRoot.draggingWidgetCell.x * WidgetGrid.cellWidth
+                    y: bgRoot.gridOriginY + bgRoot.draggingWidgetCell.y * WidgetGrid.cellHeight
                     width: WidgetGrid.cellWidth
                     height: WidgetGrid.cellHeight
                     radius: 4
@@ -564,8 +527,8 @@ Variants {
                         bgRoot: bgRoot
                         screenWidth: bgRoot.screen.width
                         screenHeight: bgRoot.screen.height
-                        scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
-                        scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                        scaledScreenWidth: bgRoot.screen.width
+                        scaledScreenHeight: bgRoot.screen.height
                         wallpaperScale: bgRoot.effectiveWallpaperScale
                     }
                 }
@@ -577,8 +540,8 @@ Variants {
                         bgRoot: bgRoot
                         screenWidth: bgRoot.screen.width
                         screenHeight: bgRoot.screen.height
-                        scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
-                        scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                        scaledScreenWidth: bgRoot.screen.width
+                        scaledScreenHeight: bgRoot.screen.height
                         wallpaperScale: bgRoot.effectiveWallpaperScale
                         wallpaperSafetyTriggered: bgRoot.wallpaperSafetyTriggered
                         isCovered: bgRoot.isCovered
@@ -601,8 +564,8 @@ Variants {
                         bgRoot: bgRoot
                         screenWidth: bgRoot.screen.width
                         screenHeight: bgRoot.screen.height
-                        scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
-                        scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                        scaledScreenWidth: bgRoot.screen.width
+                        scaledScreenHeight: bgRoot.screen.height
                         wallpaperScale: bgRoot.effectiveWallpaperScale
                     }
                     onLoaded: {
@@ -614,17 +577,16 @@ Variants {
                         }
                     }
                 }
-            }
 
-            FadeLoader {
+                FadeLoader {
                 z: Config.options.background.widgets.calendar.z ?? 0
                 shown: Config.options.background.widgets.calendar.enable && !bgRoot.widgetsOccluded
                 sourceComponent: CalendarWidget {
                     bgRoot: bgRoot
                     screenWidth: bgRoot.screen.width
                     screenHeight: bgRoot.screen.height
-                    scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
-                    scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                    scaledScreenWidth: bgRoot.screen.width
+                    scaledScreenHeight: bgRoot.screen.height
                     wallpaperScale: bgRoot.effectiveWallpaperScale
                 }
             }
@@ -636,8 +598,8 @@ Variants {
                     bgRoot: bgRoot
                     screenWidth: bgRoot.screen.width
                     screenHeight: bgRoot.screen.height
-                    scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
-                    scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                    scaledScreenWidth: bgRoot.screen.width
+                    scaledScreenHeight: bgRoot.screen.height
                     wallpaperScale: bgRoot.effectiveWallpaperScale
                 }
             }
@@ -649,8 +611,8 @@ Variants {
                     bgRoot: bgRoot
                     screenWidth: bgRoot.screen.width
                     screenHeight: bgRoot.screen.height
-                    scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
-                    scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                    scaledScreenWidth: bgRoot.screen.width
+                    scaledScreenHeight: bgRoot.screen.height
                     wallpaperScale: bgRoot.effectiveWallpaperScale
                 }
             }
@@ -662,8 +624,8 @@ Variants {
                     bgRoot: bgRoot
                     screenWidth: bgRoot.screen.width
                     screenHeight: bgRoot.screen.height
-                    scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
-                    scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                    scaledScreenWidth: bgRoot.screen.width
+                    scaledScreenHeight: bgRoot.screen.height
                     wallpaperScale: bgRoot.effectiveWallpaperScale
                 }
             }
@@ -675,8 +637,8 @@ Variants {
                     bgRoot: bgRoot
                     screenWidth: bgRoot.screen.width
                     screenHeight: bgRoot.screen.height
-                    scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
-                    scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                    scaledScreenWidth: bgRoot.screen.width
+                    scaledScreenHeight: bgRoot.screen.height
                     wallpaperScale: bgRoot.effectiveWallpaperScale
                 }
             }
@@ -688,8 +650,8 @@ Variants {
                     bgRoot: bgRoot
                     screenWidth: bgRoot.screen.width
                     screenHeight: bgRoot.screen.height
-                    scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
-                    scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                    scaledScreenWidth: bgRoot.screen.width
+                    scaledScreenHeight: bgRoot.screen.height
                     wallpaperScale: bgRoot.effectiveWallpaperScale
                 }
             }
@@ -701,8 +663,8 @@ Variants {
                     bgRoot: bgRoot
                     screenWidth: bgRoot.screen.width
                     screenHeight: bgRoot.screen.height
-                    scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
-                    scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                    scaledScreenWidth: bgRoot.screen.width
+                    scaledScreenHeight: bgRoot.screen.height
                     wallpaperScale: bgRoot.effectiveWallpaperScale
                 }
             }
@@ -715,8 +677,8 @@ Variants {
                     wallpaperItem: wallpaper
                     screenWidth: bgRoot.screen.width
                     screenHeight: bgRoot.screen.height
-                    scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
-                    scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                    scaledScreenWidth: bgRoot.screen.width
+                    scaledScreenHeight: bgRoot.screen.height
                     wallpaperScale: bgRoot.effectiveWallpaperScale
                 }
             }
@@ -729,8 +691,8 @@ Variants {
                     wallpaperItem: wallpaper
                     screenWidth: bgRoot.screen.width
                     screenHeight: bgRoot.screen.height
-                    scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
-                    scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                    scaledScreenWidth: bgRoot.screen.width
+                    scaledScreenHeight: bgRoot.screen.height
                     wallpaperScale: bgRoot.effectiveWallpaperScale
                 }
             }
@@ -743,8 +705,8 @@ Variants {
                     wallpaperItem: wallpaper
                     screenWidth: bgRoot.screen.width
                     screenHeight: bgRoot.screen.height
-                    scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
-                    scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                    scaledScreenWidth: bgRoot.screen.width
+                    scaledScreenHeight: bgRoot.screen.height
                     wallpaperScale: bgRoot.effectiveWallpaperScale
                 }
             }
@@ -756,8 +718,8 @@ Variants {
                     bgRoot: bgRoot
                     screenWidth: bgRoot.screen.width
                     screenHeight: bgRoot.screen.height
-                    scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
-                    scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                    scaledScreenWidth: bgRoot.screen.width
+                    scaledScreenHeight: bgRoot.screen.height
                     wallpaperScale: bgRoot.effectiveWallpaperScale
                 }
             }
@@ -769,8 +731,8 @@ Variants {
                     bgRoot: bgRoot
                     screenWidth: bgRoot.screen.width
                     screenHeight: bgRoot.screen.height
-                    scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
-                    scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                    scaledScreenWidth: bgRoot.screen.width
+                    scaledScreenHeight: bgRoot.screen.height
                     wallpaperScale: bgRoot.effectiveWallpaperScale
                 }
             }
@@ -782,8 +744,8 @@ Variants {
                     bgRoot: bgRoot
                     screenWidth: bgRoot.screen.width
                     screenHeight: bgRoot.screen.height
-                    scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
-                    scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                    scaledScreenWidth: bgRoot.screen.width
+                    scaledScreenHeight: bgRoot.screen.height
                     wallpaperScale: bgRoot.effectiveWallpaperScale
                 }
             }
@@ -795,11 +757,12 @@ Variants {
                     bgRoot: bgRoot
                     screenWidth: bgRoot.screen.width
                     screenHeight: bgRoot.screen.height
-                    scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
-                    scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
+                    scaledScreenWidth: bgRoot.screen.width
+                    scaledScreenHeight: bgRoot.screen.height
                     wallpaperScale: bgRoot.effectiveWallpaperScale
                 }
             }
+            } // WidgetCanvas: every desktop card above is a child of it, in screen space
 
         }
 

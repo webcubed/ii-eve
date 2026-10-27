@@ -297,18 +297,24 @@ AbstractBackgroundWidget {
         ColumnLayout {
             x: avatarRect.x + avatarRect.width + 13
             y: avatarRect.y + (avatarRect.height - implicitHeight) / 2 + 20
+            // Keep the handle inside the card instead of running under the next widget
+            width: Math.max(0, root.cardWidth - x - 14)
             spacing: 0
             z: 2
             
 
             StyledText {
+                Layout.fillWidth: true
                 text: root.userDisplay
+                elide: Text.ElideRight
                 font.pixelSize: Appearance.font.pixelSize.small
                 font.weight: Font.DemiBold
                 color: Appearance.colors.colOnLayer1
             }
             StyledText {
+                Layout.fillWidth: true
                 text: "Up • " + DateTime.uptime
+                elide: Text.ElideRight
                 font.pixelSize: Appearance.font.pixelSize.smaller
                 color: Appearance.colors.colOnLayer1
                 opacity: 0.6
