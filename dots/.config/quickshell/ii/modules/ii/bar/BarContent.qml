@@ -36,27 +36,21 @@ Item { // Bar content region
         }
     }
 
-    ////// Definning places of center modules //////
+    ////// Defining places of center modules //////
     property var fullModel: Config.options.bar.layouts.center
 
-    property var leftList: []
-    property var centerList: []
-    property var rightList: []
-
-    onFullModelChanged: {
-        const idx = fullModel.findIndex(item => item.centered)
-        
-        if (idx === -1) {
-            leftList = []
-            centerList = fullModel
-            rightList = []
-            return
+    // Which center component claims the true center of the screen. This is read
+    // inside a binding rather than once when the model is assigned, so flipping the
+    // flag in settings moves the bar right away instead of waiting for a restart.
+    readonly property int centeredIndex: {
+        for (let i = 0; i < root.fullModel.length; i++) {
+            if (root.fullModel[i].centered) return i;
         }
-
-        leftList = fullModel.slice(0, idx)
-        centerList = [fullModel[idx]]
-        rightList = fullModel.slice(idx + 1)
+        return -1;
     }
+    readonly property var leftList: root.centeredIndex > 0 ? root.fullModel.slice(0, root.centeredIndex) : []
+    readonly property var centerList: root.centeredIndex >= 0 ? [root.fullModel[root.centeredIndex]] : root.fullModel
+    readonly property var rightList: root.centeredIndex >= 0 ? root.fullModel.slice(root.centeredIndex + 1) : []
 
     BarThemes {
         id: barThemes
@@ -97,7 +91,7 @@ Item { // Bar content region
             top: parent.top
             bottom: parent.bottom
             left: parent.left
-            right: middleSection.left
+            right: middleLeftSection.left
         }
         implicitHeight: Appearance.sizes.baseBarHeight
 
@@ -150,54 +144,64 @@ Item { // Bar content region
         }
     }
 
-    RowLayout { // Middle section
-        id: middleSection
+    // Middle section. The component flagged "centered" is pinned to the exact
+    // horizontal center of the screen and the rest of the center list is placed
+    // around it: earlier entries to its left, later ones to its right. With nothing
+    // flagged the whole group is centered, which is the old behaviour.
+    RowLayout { // the true center
+        id: centerCenter
         anchors {
             top: parent.top
             bottom: parent.bottom
             horizontalCenter: parent.horizontalCenter
         }
-        spacing: 0
-
-        RowLayout {
-            Layout.fillHeight: true
-            spacing: 4
-            Repeater {
-                id: middleLeftRepeater
-                model: root.leftList
-                delegate: BarComponent {
-                    list: Config.options.bar.layouts.center
-                    barSection: 1
-                    originalIndex: Config.options.bar.layouts.center.findIndex(e => e.id === modelData.id) // we have to recalculate the index because repeater.model has changed
-                }
+        spacing: 4
+        Repeater {
+            model: root.centerList
+            delegate: BarComponent {
+                list: Config.options.bar.layouts.center
+                barSection: 1
+                originalIndex: Config.options.bar.layouts.center.findIndex(e => e.id === modelData.id)
             }
         }
+    }
 
-        RowLayout { //center
-            id: centerCenter
-            Layout.fillHeight: true
-            spacing: 4
-            Repeater {
-                model: root.centerList
-                delegate: BarComponent {
-                    list: Config.options.bar.layouts.center
-                    barSection: 1
-                    originalIndex: Config.options.bar.layouts.center.findIndex(e => e.id === modelData.id)
-                }
+    RowLayout { // center entries before the flagged one, to its left
+        id: middleLeftSection
+        anchors {
+            top: parent.top
+            bottom: parent.bottom
+            right: centerCenter.left
+            rightMargin: 4
+        }
+        spacing: 4
+        Repeater {
+            id: middleLeftRepeater
+            model: root.leftList
+            delegate: BarComponent {
+                list: Config.options.bar.layouts.center
+                barSection: 1
+                originalIndex: Config.options.bar.layouts.center.findIndex(e => e.id === modelData.id) // we have to recalculate the index because repeater.model has changed
             }
         }
+    }
 
-        RowLayout {
-            Layout.fillHeight: true
-            spacing: 4
-            Repeater {
-                id: middleRightRepeater
-                model: root.rightList
-                delegate: BarComponent {
-                    list: Config.options.bar.layouts.center
-                    barSection: 1
-                    originalIndex: Config.options.bar.layouts.center.findIndex(e => e.id === modelData.id)
-                }
+    RowLayout { // center entries after the flagged one, to its right
+        id: middleRightSection
+        anchors {
+            top: parent.top
+            bottom: parent.bottom
+            left: centerCenter.right
+            leftMargin: 4
+        }
+        spacing: 4
+        Repeater {
+            id: middleRightRepeater
+            model: root.rightList
+            delegate: BarComponent {
+                list: Config.options.bar.layouts.center
+                barSection: 1
+                originalIndex: Config.options.bar.layouts.center.findIndex(e => e.id === modelData.id)
             }
         }
     }
@@ -242,7 +246,7 @@ Item { // Bar content region
         anchors {
             top: parent.top
             bottom: parent.bottom
-            left: middleSection.right
+            left: middleRightSection.right
             right: parent.right
         }
         implicitHeight: Appearance.sizes.baseBarHeight

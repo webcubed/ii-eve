@@ -22,6 +22,7 @@ AbstractBackgroundWidget {
         { displayName: "AVIF", icon: "hd",               value: "avif" },
         { displayName: "BMP",  icon: "grid_on",          value: "bmp"  },
         { displayName: "TIFF", icon: "photo_library",    value: "tiff" },
+        { displayName: "ICO",  icon: "apps",             value: "ico"  },
         { displayName: "PDF",  icon: "picture_as_pdf",   value: "pdf"  },
     ]
 
@@ -29,7 +30,8 @@ AbstractBackgroundWidget {
     property string dropStatus: "idle"   // idle | hover | converting | done | error
     property string statusMessage: ""
 
-    readonly property var acceptedExtensions: ["png","jpg","jpeg","webp","avif","bmp","gif","tiff","tif"]
+    // "svg" is rasterized on the way out; every other entry is a raster source.
+    readonly property var acceptedExtensions: ["png","jpg","jpeg","webp","avif","bmp","gif","tiff","tif","svg"]
 
     property var fileQueue: []
     property int queueTotal: 0
@@ -40,16 +42,36 @@ AbstractBackgroundWidget {
     implicitWidth:  root.spanWidth(2)
     implicitHeight: root.spanHeight(2)
 
+    // ffmpeg covers raster to raster conversions and is cheap to spawn. Two cases
+    // need ImageMagick instead: SVG (needs a real vector rasterizer, and a
+    // transparent background) and .ico (only ImageMagick writes the multi-size
+    // icon Windows expects).
+    function converterArgs(input, output, targetFormat) {
+        const isIcon = targetFormat === "ico";
+        const isVector = input.toLowerCase().endsWith(".svg");
+        if (isIcon || isVector) {
+            const args = ["magick", input];
+            if (isVector) args.push("-background", "none");
+            if (isIcon) args.push("-define", "icon:auto-resize=256,128,64,48,32,16");
+            args.push(output);
+            return args;
+        }
+        return ["ffmpeg", "-y", "-i", input, output];
+    }
+
     Process {
         id: converter
         property string inputPath: ""
         property string outputPath: ""
-        command: ["ffmpeg", "-y", "-i", inputPath, outputPath]
+        property string targetFormat: "webp"
+        command: root.converterArgs(inputPath, outputPath, targetFormat)
         onExited: (exitCode) => {
             root.queueDone++
             if (exitCode !== 0) {
                 root.dropStatus = "error"
                 root.statusMessage = "Failed: " + inputPath.replace(/.*\//, "")
+                    + (targetFormat === "ico" || inputPath.toLowerCase().endsWith(".svg")
+                        ? "\n(SVG and .ico need ImageMagick)" : "")
                 root.fileQueue = []
                 root.queueTotal = 0
                 root.queueDone = 0
@@ -101,6 +123,7 @@ AbstractBackgroundWidget {
         root.fileQueue = root.fileQueue.slice(1)
         converter.inputPath  = next
         converter.outputPath = next.replace(/\.[^/.]+$/, "") + "_converted." + root.selectedFormat
+        converter.targetFormat = root.selectedFormat
         converter.running = true
     }
 
@@ -139,6 +162,7 @@ AbstractBackgroundWidget {
         root.statusMessage = valid.length > 1 ? "Converting 0 / " + valid.length + "..." : "Converting..."
         converter.inputPath  = valid[0]
         converter.outputPath = valid[0].replace(/\.[^/.]+$/, "") + "_converted." + root.selectedFormat
+        converter.targetFormat = root.selectedFormat
         converter.running = true
     }
 
@@ -157,14 +181,24 @@ AbstractBackgroundWidget {
             }
             spacing: 10
 
-            StyledText {
+            RowLayout {
                 Layout.fillWidth: true
-                horizontalAlignment: Text.AlignHCenter
-                elide: Text.ElideRight
-                font.pixelSize: Appearance.font.pixelSize.smaller
-                color: Appearance.colors.colOnPrimaryContainer
-                opacity: 0.4
-                text: "PNG · JPG · WEBP · AVIF · BMP · PDF · TIFF"
+                spacing: 6
+
+                MaterialSymbol {
+                    text: "image"
+                    iconSize: 18
+                    color: Appearance.colors.colOnPrimaryContainer
+                    opacity: 0.75
+                }
+                StyledText {
+                    Layout.fillWidth: true
+                    text: "Image converter"
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    font.weight: Font.DemiBold
+                    color: Appearance.colors.colOnPrimaryContainer
+                    elide: Text.ElideRight
+                }
             }
 
             Rectangle {
@@ -253,7 +287,7 @@ AbstractBackgroundWidget {
                     opacity: root.dropStatus === "idle" ? 0.6 : 1.0
                     text: {
                         switch (root.dropStatus) {
-                            case "idle":       return "Drop image(s) here\nto convert to ." + root.selectedFormat.toUpperCase()
+                            case "idle":       return "Drop image(s) or SVG\nto convert to ." + root.selectedFormat.toUpperCase()
                             case "hover":      return "Release to convert to ." + root.selectedFormat.toUpperCase()
                             case "converting": return root.statusMessage
                             case "done":       return root.statusMessage
@@ -287,36 +321,22 @@ AbstractBackgroundWidget {
                 }
             }
 
-            RowLayout {
+            StyledComboBox {
                 Layout.fillWidth: true
-                spacing: 8
-
-                StyledText {
-                    Layout.leftMargin: 3
-                    text: "Convert to:"
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    color: Appearance.colors.colOnLayer1
-                    opacity: 0.7
-                    Layout.alignment: Qt.AlignVCenter
+                model: root.formatOptions
+                colBackground: ColorUtils.transparentize(Appearance.colors.colLayer0, 0.8)
+                colBackgroundHover: ColorUtils.transparentize(Appearance.colors.colLayer0, 0.8)
+                colBackgroundActive: ColorUtils.transparentize(Appearance.colors.colLayer0, 0.8) // same color I didn't like the hover 
+                textRole: "displayName"
+                valueRole: "value"
+                currentIndex: {
+                    for (var i = 0; i < model.length; i++) {
+                        if (model[i].value === root.selectedFormat) return i;
+                    }
+                    return 0;
                 }
-
-                StyledComboBox {
-                    Layout.fillWidth: true
-                    model: root.formatOptions
-                    colBackground: ColorUtils.transparentize(Appearance.colors.colLayer0, 0.8)
-                    colBackgroundHover: ColorUtils.transparentize(Appearance.colors.colLayer0, 0.8)
-                    colBackgroundActive: ColorUtils.transparentize(Appearance.colors.colLayer0, 0.8) // same color I didn't like the hover 
-                    textRole: "displayName"
-                    valueRole: "value"
-                    currentIndex: {
-                        for (var i = 0; i < model.length; i++) {
-                            if (model[i].value === root.selectedFormat) return i;
-                        }
-                        return 0;
-                    }
-                    onActivated: (index) => {
-                        root.selectedFormat = model[index].value
-                    }
+                onActivated: (index) => {
+                    root.selectedFormat = model[index].value
                 }
             }
         }

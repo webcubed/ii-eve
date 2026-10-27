@@ -23,6 +23,16 @@ MouseArea {
         id: screenShareProc
         running: true
         command: ["bash", "-c", Directories.screenshareStateScript]
+        // The watcher publishes the state file; if it ever dies, bring it back so the
+        // indicator cannot silently stop updating for the rest of the session.
+        onExited: respawnTimer.start()
+    }
+
+    Timer {
+        id: respawnTimer
+        interval: 3000
+        repeat: false
+        onTriggered: screenShareProc.running = true
     }
     
     FileView {
