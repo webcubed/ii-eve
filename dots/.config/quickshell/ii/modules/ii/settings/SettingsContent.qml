@@ -34,6 +34,16 @@ Item {
 
     onSearchQueryChanged: searchDebounce.restart()
 
+    // Pages index asynchronously, so a query typed right after the window opens
+    // would otherwise stay limited to page names. Re-run it as entries arrive.
+    Connections {
+        target: SettingsSearchIndex
+        function onRevisionChanged() {
+            const query = root.searchQuery.trim();
+            if (query !== "") root.searchResults = SettingsSearchIndex.search(query, 14);
+        }
+    }
+
     Shortcut {
         sequence: "Ctrl+F"
         onActivated: searchInput.forceActiveFocus()
@@ -144,6 +154,7 @@ Item {
             z: 100
 
             RowLayout {
+                id: topBarRow
                 anchors {
                     left: parent.left
                     right: parent.right
@@ -226,6 +237,7 @@ Item {
                 }
 
                 RippleButton {
+                    id: closeButton
                     Layout.alignment: Qt.AlignVCenter
                     implicitWidth: 40
                     implicitHeight: 40
@@ -248,21 +260,38 @@ Item {
             }
 
             // Results float over the page, anchored under the search field
-            Rectangle {
+            Item {
                 id: searchResultsPanel
                 visible: root.searchQuery.trim() !== ""
+                // The field lives inside the top bar's RowLayout, and anchoring to a
+                // non-sibling is ignored, which dumped the panel in the top-left
+                // corner. Mirror the row instead: the field's right edge sits one
+                // close-button plus one gap inwards from the bar's right edge.
                 anchors {
-                    right: searchBox.right
-                    top: searchBox.bottom
+                    right: parent.right
+                    rightMargin: closeButton.width + topBarRow.spacing
+                    top: parent.bottom
                     topMargin: 8
                 }
                 width: Math.max(320, Math.min(460, root.width - 40))
                 height: Math.min(searchResultsList.contentHeight + 16, 380)
-                radius: Appearance.rounding.normal
-                color: Appearance.colors.colLayer1
-                border.width: 1
-                border.color: Appearance.colors.colLayer0Border
                 z: 200
+
+                // Same elevation treatment as the other dropdowns: an opaque m3
+                // surface with a soft shadow, so the list never blends into the
+                // page it covers.
+                StyledRectangularShadow {
+                    target: searchResultsBackground
+                }
+
+                Rectangle {
+                    id: searchResultsBackground
+                    anchors.fill: parent
+                    radius: Appearance.rounding.normal
+                    color: Appearance.m3colors.m3surfaceContainerHigh
+                    border.width: 1
+                    border.color: Appearance.colors.colLayer0Border
+                }
 
                 StyledListView {
                     id: searchResultsList
@@ -282,7 +311,7 @@ Item {
                         width: ListView.view.width
                         implicitHeight: 48
                         buttonRadius: Appearance.rounding.small
-                        colBackground: "transparent"
+                        colBackground: ListView.isCurrentItem ? Appearance.colors.colLayer2Hover : "transparent"
                         colBackgroundHover: Appearance.colors.colLayer2Hover
                         onClicked: root.goToSearchResult(resultRow.modelData)
 

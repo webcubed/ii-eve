@@ -10,6 +10,9 @@ Singleton {
     id: root
 
     property var entriesByPage: ({})
+    // Bumped whenever a page finishes indexing, so an open query can be re-run
+    // against the fuller index instead of staying page-only.
+    property int revision: 0
 
     readonly property var labelledTypes: [
         "ConfigSwitch", "ConfigSpinBox", "ConfigTextArea", "ConfigSelectionArray",
@@ -51,6 +54,7 @@ Singleton {
         const next = Object.assign({}, root.entriesByPage);
         next[pageId] = root.parsePage(source);
         root.entriesByPage = next;
+        root.revision++;
     }
 
     function search(query, limit) {
