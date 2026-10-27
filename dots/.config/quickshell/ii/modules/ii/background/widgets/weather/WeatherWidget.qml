@@ -24,6 +24,36 @@ AbstractBackgroundWidget {
 
     property string sizeMode: root.configEntry.sizeMode ?? "2x2"
 
+    // Sun arc: the two providers report sunrise/sunset as wall clocks ("07:18" or
+    // "7:18 AM"), so normalize to minutes of the day and derive how far the sun is
+    // between them. Progress clamps outside the window; `sunAboveHorizon` lets the
+    // marker dim instead of pretending the sun is up at 3am.
+    function minutesOfDay(text) {
+        if (!text) return -1;
+        const match = String(text).trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+        if (!match) return -1;
+        let hour = Number(match[1]);
+        const minute = Number(match[2]);
+        const suffix = (match[3] ?? "").toUpperCase();
+        if (suffix === "PM" && hour < 12) hour += 12;
+        if (suffix === "AM" && hour === 12) hour = 0;
+        if (hour > 23 || minute > 59) return -1;
+        return hour * 60 + minute;
+    }
+    readonly property int sunriseMinutes: root.minutesOfDay(Weather.data?.sunrise)
+    readonly property int sunsetMinutes: root.minutesOfDay(Weather.data?.sunset)
+    readonly property int nowMinutes: DateTime.hour24 * 60 + Number(DateTime.minuteStr)
+    readonly property real sunProgress: {
+        if (root.sunriseMinutes < 0 || root.sunsetMinutes < 0 || root.sunsetMinutes <= root.sunriseMinutes)
+            return 0;
+        const fraction = (root.nowMinutes - root.sunriseMinutes) / (root.sunsetMinutes - root.sunriseMinutes);
+        return Math.max(0, Math.min(1, fraction));
+    }
+    readonly property bool sunAboveHorizon: root.sunriseMinutes >= 0
+        && root.sunsetMinutes > root.sunriseMinutes
+        && root.nowMinutes >= root.sunriseMinutes
+        && root.nowMinutes <= root.sunsetMinutes
+
     property real widgetWidth: {
         switch (root.sizeMode) {
             case "1x1": return root.snapWidth1
@@ -121,6 +151,10 @@ AbstractBackgroundWidget {
                     fill: parent
                     margins: 16
                 }
+                // Zero spacing: the gaps below are explicit, so the sun strip can
+                // claim its full height instead of losing it to invisible spacing around
+                // the filler item.
+                spacing: 0
 
                 RowLayout {
                     Layout.fillWidth: true
@@ -171,6 +205,7 @@ AbstractBackgroundWidget {
 
                 GridLayout {
                     Layout.fillWidth: true
+                    Layout.topMargin: 10
                     columns: 2
                     columnSpacing: 16
                     rowSpacing: 12
@@ -213,16 +248,86 @@ AbstractBackgroundWidget {
                     }
                 }
 
-                Item { Layout.fillHeight: true }
-
                 RowLayout {
                     Layout.fillWidth: true
-                    spacing: 4
-                    MaterialSymbol { iconSize: 14; text: "wb_twilight"; color: Appearance.colors.colOnPrimaryContainer; opacity: 0.6 }
-                    StyledText { text: Weather.data?.sunrise ?? "--"; font.pixelSize: Appearance.font.pixelSize.smaller; color: Appearance.colors.colOnPrimaryContainer; opacity: 0.6 }
-                    Item { Layout.fillWidth: true }
-                    StyledText { text: Weather.data?.sunset ?? "--"; font.pixelSize: Appearance.font.pixelSize.smaller; color: Appearance.colors.colOnPrimaryContainer; opacity: 0.6 }
-                    MaterialSymbol { iconSize: 14; text: "nights_stay"; color: Appearance.colors.colOnPrimaryContainer; opacity: 0.6 }
+                    Layout.topMargin: 8
+                    spacing: 6
+
+                    RowLayout {
+                        Layout.alignment: Qt.AlignBottom
+                        spacing: 4
+                        MaterialSymbol { iconSize: 14; text: "wb_twilight"; color: Appearance.colors.colOnPrimaryContainer; opacity: 0.6 }
+                        StyledText { text: Weather.data?.sunrise ?? "--"; font.pixelSize: Appearance.font.pixelSize.smaller; color: Appearance.colors.colOnPrimaryContainer; opacity: 0.6 }
+                    }
+
+                    // The sun's travel between the two times. A half-ellipse puts the
+                    // apex at solar noon, and the marker slides along it with the day.
+                    Canvas {
+                        id: sunArc
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 24
+                        Layout.alignment: Qt.AlignBottom
+
+                        property real progress: root.sunProgress
+                        property bool aboveHorizon: root.sunAboveHorizon
+                        property int startMinutes: root.sunriseMinutes
+                        property int endMinutes: root.sunsetMinutes
+                        property color arcColor: ColorUtils.transparentize(Appearance.colors.colOnPrimaryContainer, 0.45)
+                        property color markerColor: Appearance.colors.colPrimary
+
+                        onProgressChanged: requestPaint()
+                        onAboveHorizonChanged: requestPaint()
+                        onStartMinutesChanged: requestPaint()
+                        onEndMinutesChanged: requestPaint()
+                        onArcColorChanged: requestPaint()
+                        onMarkerColorChanged: requestPaint()
+                        onWidthChanged: requestPaint()
+                        onHeightChanged: requestPaint()
+
+                        onPaint: {
+                            const ctx = getContext("2d");
+                            ctx.reset();
+                            const w = width;
+                            const h = height;
+                            if (w <= 12 || h <= 10) return;
+
+                            const inset = 2;
+                            const baseY = h - 2;
+                            const cx = w / 2;
+                            const rx = (w - inset * 2) / 2;
+                            const ry = h - 8;
+
+                            // arc() under a vertical scale rather than ellipse(): the flat
+                            // half-ellipse keeps one pen width and works on every Qt Canvas.
+                            ctx.lineWidth = 1.6;
+                            ctx.strokeStyle = sunArc.arcColor;
+                            ctx.save();
+                            ctx.translate(cx, baseY);
+                            ctx.scale(1, ry / rx);
+                            ctx.beginPath();
+                            ctx.arc(0, 0, rx, Math.PI, 2 * Math.PI, false);
+                            ctx.restore();
+                            ctx.stroke();
+
+                            const angle = Math.PI * (1 + sunArc.progress);
+                            const x = cx + rx * Math.cos(angle);
+                            const y = baseY + ry * Math.sin(angle);
+
+                            ctx.fillStyle = sunArc.markerColor;
+                            ctx.globalAlpha = sunArc.aboveHorizon ? 0.2 : 0.08;
+                            ctx.beginPath(); ctx.arc(x, y, 6, 0, 2 * Math.PI); ctx.fill();
+                            ctx.globalAlpha = sunArc.aboveHorizon ? 1 : 0.45;
+                            ctx.beginPath(); ctx.arc(x, y, 3, 0, 2 * Math.PI); ctx.fill();
+                            ctx.globalAlpha = 1;
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.alignment: Qt.AlignBottom
+                        spacing: 4
+                        StyledText { text: Weather.data?.sunset ?? "--"; font.pixelSize: Appearance.font.pixelSize.smaller; color: Appearance.colors.colOnPrimaryContainer; opacity: 0.6 }
+                        MaterialSymbol { iconSize: 14; text: "nights_stay"; color: Appearance.colors.colOnPrimaryContainer; opacity: 0.6 }
+                    }
                 }
             }
         }
