@@ -124,9 +124,12 @@ AbstractBackgroundWidget {
         widget: root
         color: timerCard.bgColor
 
+        // The tile's own surface is the reset target: the only button on it is the
+        // start/pause affordance, so right or middle click anywhere else resets the
+        // timer it shows.
         MouseArea {
             anchors.fill: parent
-            acceptedButtons: Qt.RightButton
+            acceptedButtons: Qt.RightButton | Qt.MiddleButton
             cursorShape: Qt.PointingHandCursor
             onClicked: timerCard.onReset()
         }
