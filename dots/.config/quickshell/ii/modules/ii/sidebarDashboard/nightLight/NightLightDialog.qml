@@ -210,15 +210,15 @@ WindowDialog {
                             left: parent.left
                             right: parent.right
                         }
-                        implicitHeight: scheduleRow.implicitHeight + 6
+                        implicitHeight: scheduleColumn.implicitHeight + 6
                         opacity: Config.options.light.night.automatic ? 1 : 0.55
 
                         Behavior on opacity {
                             animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
                         }
 
-                        RowLayout {
-                            id: scheduleRow
+                        ColumnLayout {
+                            id: scheduleColumn
                             anchors {
                                 left: parent.left
                                 right: parent.right
@@ -226,10 +226,23 @@ WindowDialog {
                                 leftMargin: 4
                                 rightMargin: 4
                             }
-                            spacing: 8
+                            spacing: 2
 
+                            ConfigSwitch {
+                                Layout.fillWidth: true
+                                iconSize: Appearance.font.pixelSize.larger
+                                buttonIcon: "wb_twilight"
+                                text: Translation.tr("Follow sunset & sunrise")
+                                checked: Config.options.light.night.followSun
+                                onCheckedChanged: Config.options.light.night.followSun = checked
+                            }
+
+                            // Stacked rather than side by side: this dialog is too narrow
+                            // for two labels plus two time boxes, which truncated
+                            // "Turns on"/"Turns off" to "Tur…".
                             TimeField {
                                 Layout.fillWidth: true
+                                visible: !Config.options.light.night.followSun
                                 icon: ""
                                 text: Translation.tr("Turns on")
                                 value: Config.options.light.night.from
@@ -238,10 +251,36 @@ WindowDialog {
 
                             TimeField {
                                 Layout.fillWidth: true
+                                visible: !Config.options.light.night.followSun
                                 icon: ""
                                 text: Translation.tr("Turns off")
                                 value: Config.options.light.night.to
                                 onEdited: (value) => Config.options.light.night.to = value
+                            }
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Layout.topMargin: 2
+                                visible: Config.options.light.night.followSun
+                                spacing: 8
+
+                                MaterialSymbol {
+                                    Layout.alignment: Qt.AlignVCenter
+                                    text: Hyprsunset.sunTimesReady ? "wb_twilight" : "cloud_off"
+                                    iconSize: Appearance.font.pixelSize.larger
+                                    color: Appearance.colors.colSubtext
+                                }
+
+                                StyledText {
+                                    Layout.fillWidth: true
+                                    Layout.alignment: Qt.AlignVCenter
+                                    text: Hyprsunset.sunTimesReady
+                                        ? Translation.tr("On at %1, off at %2").arg(Hyprsunset.effectiveFrom).arg(Hyprsunset.effectiveTo)
+                                        : Translation.tr("Waiting for sunrise/sunset data")
+                                    color: Appearance.colors.colSubtext
+                                    font.pixelSize: Appearance.font.pixelSize.smaller
+                                    wrapMode: Text.Wrap
+                                }
                             }
                         }
                     }

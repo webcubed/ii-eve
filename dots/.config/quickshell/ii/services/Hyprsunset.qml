@@ -20,6 +20,7 @@ Singleton {
 
     property string from: Config.options?.light?.night?.from ?? "19:00" 
     property string to: Config.options?.light?.night?.to ?? "06:30"
+    property bool followSun: Config.options?.light?.night?.followSun ?? false
     property bool automatic: Config.options?.light?.night?.automatic && (Config?.ready ?? true)
     property int colorTemperature: Config.options?.light?.night?.colorTemperature ?? 5000
     property int defaultColorTemperature: 6000
@@ -28,10 +29,38 @@ Singleton {
     property bool firstEvaluation: true
     property bool temperatureActive: false
 
-    property int fromHour: Number(from.split(":")[0])
-    property int fromMinute: Number(from.split(":")[1])
-    property int toHour: Number(to.split(":")[0])
-    property int toMinute: Number(to.split(":")[1])
+    // Weather reports wall-clock strings ("07:18" or "7:18 AM" depending on the
+    // provider), so normalize to minutes and fall back to the fixed times until
+    // the first forecast lands or when following the sun is turned off.
+    function parseClock(text) {
+        if (!text) return -1;
+        const match = String(text).trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+        if (!match) return -1;
+        let hour = Number(match[1]);
+        const minute = Number(match[2]);
+        const suffix = (match[3] ?? "").toUpperCase();
+        if (suffix === "PM" && hour < 12) hour += 12;
+        if (suffix === "AM" && hour === 12) hour = 0;
+        if (hour > 23 || minute > 59) return -1;
+        return hour * 60 + minute;
+    }
+
+    function minutesToClock(minutes) {
+        const hour = Math.floor(minutes / 60);
+        const minute = minutes % 60;
+        return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+    }
+
+    readonly property int sunriseMinutes: root.parseClock(Weather?.data?.sunrise ?? "")
+    readonly property int sunsetMinutes: root.parseClock(Weather?.data?.sunset ?? "")
+    readonly property bool sunTimesReady: root.sunriseMinutes >= 0 && root.sunsetMinutes >= 0
+    readonly property string effectiveFrom: (root.followSun && root.sunTimesReady) ? root.minutesToClock(root.sunsetMinutes) : root.from
+    readonly property string effectiveTo: (root.followSun && root.sunTimesReady) ? root.minutesToClock(root.sunriseMinutes) : root.to
+
+    property int fromHour: Number(effectiveFrom.split(":")[0])
+    property int fromMinute: Number(effectiveFrom.split(":")[1])
+    property int toHour: Number(effectiveTo.split(":")[0])
+    property int toMinute: Number(effectiveTo.split(":")[1])
 
     property int clockHour: DateTime.clock.hours
     property int clockMinute: DateTime.clock.minutes
@@ -44,6 +73,9 @@ Singleton {
     // New schedule times should apply straight away, not on the next minute tick
     onFromChanged: reEvaluate()
     onToChanged: reEvaluate()
+    onFollowSunChanged: reEvaluate()
+    onEffectiveFromChanged: reEvaluate()
+    onEffectiveToChanged: reEvaluate()
     onAutomaticChanged: {
         root.manualActive = undefined;
         root.firstEvaluation = true;
