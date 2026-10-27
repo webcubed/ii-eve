@@ -134,12 +134,15 @@ AbstractBackgroundWidget {
             onClicked: timerCard.onReset()
         }
 
+        // The tile is a square, and a countdown tile also carries the +1/+5 pills, so
+        // every fixed size here is kept small enough that all five rows fit inside
+        // it — the fill spacers give way first, the pills were overflowing the card.
         ColumnLayout {
             anchors {
                 fill: parent
-                margins: 12
+                margins: 10
             }
-            spacing: 3
+            spacing: 1
 
             RowLayout {
                 Layout.fillWidth: true
@@ -153,11 +156,11 @@ AbstractBackgroundWidget {
                     color: timerCard.shapeColor
                     colSymbol: Appearance.colors.colOnPrimary
                     text: timerCard.running ? "pause" : timerCard.icon
-                    iconSize: 16
+                    iconSize: 15
                     fill: 1
-                    padding: 5
-                    implicitWidth: 30
-                    implicitHeight: 30
+                    padding: 4
+                    implicitWidth: 26
+                    implicitHeight: 26
 
                     MouseArea {
                         anchors.fill: parent
@@ -195,8 +198,8 @@ AbstractBackgroundWidget {
             Item {
                 id: extraSlot
                 Layout.fillWidth: true
-                Layout.preferredHeight: children.length > 0 ? 20 : 0
-                Layout.topMargin: children.length > 0 ? 4 : 0
+                Layout.preferredHeight: children.length > 0 ? 16 : 0
+                Layout.topMargin: children.length > 0 ? 2 : 0
             }
         }
     }
