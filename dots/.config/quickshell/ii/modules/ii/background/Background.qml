@@ -30,6 +30,7 @@ import qs.modules.ii.background.widgets.timer
 import qs.modules.ii.background.widgets.timers
 import qs.modules.ii.background.widgets.customtext
 import qs.modules.ii.background.widgets.todo
+import qs.modules.ii.background.widgets.stuy
 
 Variants {
     id: root
@@ -631,6 +632,32 @@ Variants {
                 z: Config.options.background.widgets.calendar.z ?? 0
                 shown: Config.options.background.widgets.calendar.enable && !bgRoot.widgetsOccluded
                 sourceComponent: CalendarWidget {
+                    bgRoot: bgRoot
+                    screenWidth: bgRoot.screen.width
+                    screenHeight: bgRoot.screen.height
+                    scaledScreenWidth: bgRoot.screen.width
+                    scaledScreenHeight: bgRoot.screen.height
+                    wallpaperScale: bgRoot.effectiveWallpaperScale
+                }
+            }
+
+            FadeLoader {
+                z: Config.options.background.widgets.stuySchedule.z ?? 0
+                shown: Config.options.background.widgets.stuySchedule.enable && !bgRoot.widgetsOccluded
+                sourceComponent: StuyScheduleWidget {
+                    bgRoot: bgRoot
+                    screenWidth: bgRoot.screen.width
+                    screenHeight: bgRoot.screen.height
+                    scaledScreenWidth: bgRoot.screen.width
+                    scaledScreenHeight: bgRoot.screen.height
+                    wallpaperScale: bgRoot.effectiveWallpaperScale
+                }
+            }
+
+            FadeLoader {
+                z: Config.options.background.widgets.stuyCalendar.z ?? 0
+                shown: Config.options.background.widgets.stuyCalendar.enable && !bgRoot.widgetsOccluded
+                sourceComponent: StuyCalendarWidget {
                     bgRoot: bgRoot
                     screenWidth: bgRoot.screen.width
                     screenHeight: bgRoot.screen.height

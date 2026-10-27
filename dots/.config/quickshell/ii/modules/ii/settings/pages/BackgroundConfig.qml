@@ -1441,6 +1441,18 @@ ContentPage {
                             enabled: Config.options.background.widgets.worldClock.enable
                         },
                         {
+                            icon: "school",
+                            key: "stuySchedule",
+                            name: Translation.tr("Stuy Schedule"),
+                            enabled: Config.options.background.widgets.stuySchedule.enable
+                        },
+                        {
+                            icon: "calendar_view_month",
+                            key: "stuyCalendar",
+                            name: Translation.tr("Stuy Calendar"),
+                            enabled: Config.options.background.widgets.stuyCalendar.enable
+                        },
+                        {
                             icon: "person",
                             key: "userCard",
                             name: Translation.tr("User Card"),
@@ -1521,6 +1533,10 @@ ContentPage {
                                             Config.options.background.widgets.timers.enable = checked
                                         else if (modelData.icon === "sticker")
                                             Config.options.background.widgets.sticker.enable = checked
+                                        else if (modelData.icon === "school")
+                                            Config.options.background.widgets.stuySchedule.enable = checked
+                                        else if (modelData.icon === "calendar_view_month")
+                                            Config.options.background.widgets.stuyCalendar.enable = checked
                                     }
                                 }
                             }

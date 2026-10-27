@@ -489,6 +489,26 @@ Singleton {
                         property real z: 0
                         property string sizeMode: "2x2"
                     }
+                    property JsonObject stuySchedule: JsonObject {
+                        property bool enable: true
+                        property string placementStrategy: "free"
+                        property real x: 500
+                        property real y: 90
+                        property real gridColumn: 3
+                        property real gridRow: 0.5
+                        property real z: 0
+                        property string sizeMode: "3x2" // "3x2" (with bell schedule), "2x2" (identity only)
+                    }
+                    property JsonObject stuyCalendar: JsonObject {
+                        property bool enable: true
+                        property string placementStrategy: "free"
+                        property real x: 900
+                        property real y: 90
+                        property real gridColumn: 9
+                        property real gridRow: 0.5
+                        property real z: 0
+                        property string sizeMode: "3x3" // "3x3" (grid + day detail + legend), "2x2" (grid only)
+                    }
                     property JsonObject customImage: JsonObject {
                         property bool enable: false
                         property string placementStrategy: "free"
