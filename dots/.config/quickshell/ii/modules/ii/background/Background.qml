@@ -179,19 +179,25 @@ Variants {
 
         // Bar-aware widget grid. The bar is its own full-width surface, so reserve its
         // band before laying widgets out; otherwise the first row of cards ends up
-        // underneath it. Shared by the overlay, the drag hitbox and every widget (see
-        // AbstractBackgroundWidget.qml) so all three agree on one set of lines.
-        readonly property real gridEdgePadding: 12
+        // underneath it. Everything outside that band belongs to the grid: the last
+        // column/row is stretched by the rounding remainder so the lines reach the
+        // screen edges instead of stopping at a dead strip. Shared by the overlay, the
+        // drag hitbox and every widget (see AbstractBackgroundWidget.qml) so all three
+        // agree on one set of lines.
         readonly property real gridInsetTop: (!Config.options.bar.vertical && !Config.options.bar.bottom)
-            ? Appearance.sizes.barHeight + 8 : gridEdgePadding
+            ? Appearance.sizes.barHeight : 0
         readonly property real gridInsetBottom: (!Config.options.bar.vertical && Config.options.bar.bottom)
-            ? Appearance.sizes.barHeight + 8 : gridEdgePadding
-        readonly property real gridAvailableWidth: Math.max(WidgetGrid.cellWidth, screen.width - gridEdgePadding * 2)
+            ? Appearance.sizes.barHeight : 0
+        readonly property real gridAvailableWidth: Math.max(WidgetGrid.cellWidth, screen.width)
         readonly property real gridAvailableHeight: Math.max(WidgetGrid.cellHeight, screen.height - gridInsetTop - gridInsetBottom)
         readonly property int gridColumns: WidgetGrid.effectiveColumns(gridAvailableWidth, Config.options.background.widgets.grid.columns)
         readonly property int gridRows: WidgetGrid.effectiveRows(gridAvailableHeight, Config.options.background.widgets.grid.rows)
-        readonly property real gridOriginX: gridEdgePadding + WidgetGrid.originX(gridAvailableWidth, gridColumns)
-        readonly property real gridOriginY: gridInsetTop + WidgetGrid.originY(gridAvailableHeight, gridRows)
+        readonly property real gridCellWidth: WidgetGrid.fittedCellWidth(gridAvailableWidth, gridColumns)
+        readonly property real gridCellHeight: WidgetGrid.fittedCellHeight(gridAvailableHeight, gridRows)
+        readonly property real gridOriginX: 0
+        readonly property real gridOriginY: gridInsetTop
+        function gridSpanWidth(cells) { return Math.round(cells * gridCellWidth - WidgetGrid.gutter) }
+        function gridSpanHeight(cells) { return Math.round(cells * gridCellHeight - WidgetGrid.gutter) }
         onMediaModeOpenChanged: {
             if (!mediaModeOpen && Config.options.appearance.palette.type.startsWith("scheme")) {
                 Wallpapers.apply(Config.options.background.wallpaperPath)
@@ -489,13 +495,13 @@ Variants {
                         var rows = bgRoot.gridRows;
                         var originX = bgRoot.gridOriginX;
                         var originY = bgRoot.gridOriginY;
-                        var cellW = WidgetGrid.cellWidth;
-                        var cellH = WidgetGrid.cellHeight;
+                        var cellW = bgRoot.gridCellWidth;
+                        var cellH = bgRoot.gridCellHeight;
                         // Full cell lines, plus the finer snap steps the cards actually
                         // move by, so the resolution of a drag is visible.
                         var subdivisions = WidgetGrid.subdivisions;
-                        var snapW = WidgetGrid.snapWidth;
-                        var snapH = WidgetGrid.snapHeight;
+                        var snapW = cellW / subdivisions;
+                        var snapH = cellH / subdivisions;
                         ctx.lineWidth = 1;
                         ctx.setLineDash([]);
                         ctx.strokeStyle = Qt.rgba(1, 1, 1, 0.18);
@@ -542,12 +548,12 @@ Variants {
                     color: Qt.rgba(1, 1, 1, 0.1)
                     border.color: Qt.rgba(1, 1, 1, 0.5)
                     border.width: 2
-                    x: bgRoot.gridOriginX + bgRoot.draggingWidgetCell.x * WidgetGrid.cellWidth
-                    y: bgRoot.gridOriginY + bgRoot.draggingWidgetCell.y * WidgetGrid.cellHeight
+                    x: bgRoot.gridOriginX + bgRoot.draggingWidgetCell.x * bgRoot.gridCellWidth
+                    y: bgRoot.gridOriginY + bgRoot.draggingWidgetCell.y * bgRoot.gridCellHeight
                     // Outline the card's real footprint, not a single cell: a 2x2 card
                     // lands across four cells and that is what should be previewed.
-                    width: WidgetGrid.spanWidth(bgRoot.draggingWidgetSpan.x)
-                    height: WidgetGrid.spanHeight(bgRoot.draggingWidgetSpan.y)
+                    width: bgRoot.gridSpanWidth(bgRoot.draggingWidgetSpan.x)
+                    height: bgRoot.gridSpanHeight(bgRoot.draggingWidgetSpan.y)
                     radius: 4
                 }
 

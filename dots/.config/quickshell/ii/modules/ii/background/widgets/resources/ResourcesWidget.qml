@@ -15,8 +15,8 @@ AbstractBackgroundWidget {
 
     property bool hasBattery: Battery.available
 
-    implicitWidth: WidgetGrid.spanWidth(2)
-    implicitHeight: WidgetGrid.spanHeight(2)
+    implicitWidth: root.spanWidth(2)
+    implicitHeight: root.spanHeight(2)
 
     Rectangle {
         id: card

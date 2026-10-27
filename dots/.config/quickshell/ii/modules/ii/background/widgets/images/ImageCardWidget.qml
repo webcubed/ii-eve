@@ -15,8 +15,8 @@ AbstractBackgroundWidget {
     property bool dropHover: false
 
     readonly property real cardSpacing: WidgetGrid.gutter
-    readonly property real singleWidth: WidgetGrid.cardUnitWidth
-    readonly property real cardHeight: WidgetGrid.cardUnitHeight
+    readonly property real singleWidth: root.gridCellWidth
+    readonly property real cardHeight: root.gridCellHeight
     readonly property real doubleHeight: root.cardHeight * 2 + root.cardSpacing
 
     readonly property real snapWidth1: root.singleWidth

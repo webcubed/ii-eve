@@ -13,8 +13,8 @@ AbstractBackgroundWidget {
     hoverEnabled: true
 
     // Exactly 2x2 grid cells (WidgetGrid) so the widget aligns with the grid
-    implicitWidth: WidgetGrid.spanWidth(2)
-    implicitHeight: WidgetGrid.spanHeight(2)
+    implicitWidth: root.spanWidth(2)
+    implicitHeight: root.spanHeight(2)
 
     property bool isTimerMode: true
 

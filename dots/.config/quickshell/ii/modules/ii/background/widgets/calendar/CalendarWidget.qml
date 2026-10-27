@@ -16,8 +16,8 @@ AbstractBackgroundWidget {
     // Sizes come straight from the shared design grid so the card lines up with
     // the other desktop widgets (see WidgetGrid.qml)
     readonly property real cardSpacing: WidgetGrid.gutter
-    readonly property real singleWidth: WidgetGrid.cardUnitWidth
-    readonly property real cardHeight: WidgetGrid.cardUnitHeight
+    readonly property real singleWidth: root.gridCellWidth
+    readonly property real cardHeight: root.gridCellHeight
 
     readonly property real snapWidth1: singleWidth            
     readonly property real snapWidth2: singleWidth * 2 + cardSpacing  

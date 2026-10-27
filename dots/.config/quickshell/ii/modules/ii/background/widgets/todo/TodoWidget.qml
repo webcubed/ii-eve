@@ -15,8 +15,8 @@ AbstractBackgroundWidget {
     hoverEnabled: true
 
     // Shares the desktop design grid with the other cards (WidgetGrid.qml)
-    readonly property real cardWidth: WidgetGrid.spanWidth(2)
-    readonly property real cardHeight: WidgetGrid.cardUnitHeight
+    readonly property real cardWidth: root.spanWidth(2)
+    readonly property real cardHeight: root.gridCellHeight
     readonly property real cardSpacing: WidgetGrid.gutter
 
     implicitWidth: root.cardWidth

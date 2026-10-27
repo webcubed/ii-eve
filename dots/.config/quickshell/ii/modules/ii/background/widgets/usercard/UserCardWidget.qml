@@ -15,8 +15,8 @@ AbstractBackgroundWidget {
     configEntryName: "userCard"
 
     // Same 2x2 footprint as the other desktop cards so the grid lines up
-    readonly property real cardWidth: WidgetGrid.spanWidth(2)
-    readonly property real cardHeight: WidgetGrid.spanHeight(2)
+    readonly property real cardWidth: root.spanWidth(2)
+    readonly property real cardHeight: root.spanHeight(2)
 
     implicitWidth: root.cardWidth
     implicitHeight: root.cardHeight

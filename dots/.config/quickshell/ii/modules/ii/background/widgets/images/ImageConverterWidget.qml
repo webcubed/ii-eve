@@ -37,8 +37,8 @@ AbstractBackgroundWidget {
     property var batchPaths: []
 
     // Matching 2x2 card footprint (see WidgetGrid.qml)
-    implicitWidth:  WidgetGrid.spanWidth(2)
-    implicitHeight: WidgetGrid.spanHeight(2)
+    implicitWidth:  root.spanWidth(2)
+    implicitHeight: root.spanHeight(2)
 
     Process {
         id: converter
@@ -146,8 +146,8 @@ AbstractBackgroundWidget {
         id: contentItem
         color: Appearance.colors.colPrimaryContainer
         radius: Appearance.rounding?.verylarge ?? 30
-        implicitWidth: WidgetGrid.spanWidth(2)
-        implicitHeight: WidgetGrid.spanHeight(2)
+        implicitWidth: root.spanWidth(2)
+        implicitHeight: root.spanHeight(2)
 
         ColumnLayout {
             id: columnLayout

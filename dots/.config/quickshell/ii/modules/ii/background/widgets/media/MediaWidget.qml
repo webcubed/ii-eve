@@ -51,7 +51,7 @@ AbstractBackgroundWidget {
     property string artFileName: artUrl ? Qt.md5(artUrl) : ""
     property string artFilePath: artFileName ? `${artDownloadLocation}/${artFileName}` : ""
 
-    property real widgetSize: WidgetGrid.spanWidth(2) - 2 * WidgetGrid.gutter // Square art inset by one gutter per side
+    property real widgetSize: root.spanWidth(2) - 2 * WidgetGrid.gutter // Square art inset by one gutter per side
     property real controlsSize: 55
     property real buttonIconSize: 30
     property bool showSwitchButton: false
@@ -150,8 +150,8 @@ AbstractBackgroundWidget {
         id: contentItem
 
         // 2x2 grid card: square art inset by one gutter on each side
-        implicitWidth: WidgetGrid.spanWidth(2)
-        implicitHeight: WidgetGrid.spanHeight(2)
+        implicitWidth: root.spanWidth(2)
+        implicitHeight: root.spanHeight(2)
 
     
         Image { // using a loader somehow breaks the image

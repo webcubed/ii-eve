@@ -25,19 +25,24 @@ AbstractWidget {
     // than dividing the screen evenly, so card sizes and positions share one
     // rhythm and edges land on the same lines. The bar occupies its own band at the
     // top (or bottom) of the screen, so it is reserved before the grid is placed.
-    readonly property real gridEdgePadding: 12
     readonly property real gridInsetTop: (!Config.options.bar.vertical && !Config.options.bar.bottom)
-        ? Appearance.sizes.barHeight + 8 : gridEdgePadding
+        ? Appearance.sizes.barHeight : 0
     readonly property real gridInsetBottom: (!Config.options.bar.vertical && Config.options.bar.bottom)
-        ? Appearance.sizes.barHeight + 8 : gridEdgePadding
-    readonly property real gridAvailableWidth: Math.max(WidgetGrid.cellWidth, scaledScreenWidth - gridEdgePadding * 2)
+        ? Appearance.sizes.barHeight : 0
+    readonly property real gridAvailableWidth: Math.max(WidgetGrid.cellWidth, scaledScreenWidth)
     readonly property real gridAvailableHeight: Math.max(WidgetGrid.cellHeight, scaledScreenHeight - gridInsetTop - gridInsetBottom)
     readonly property int gridColumns: WidgetGrid.effectiveColumns(gridAvailableWidth, Config.options.background.widgets.grid.columns)
     readonly property int gridRows: WidgetGrid.effectiveRows(gridAvailableHeight, Config.options.background.widgets.grid.rows)
-    readonly property real gridCellWidth: WidgetGrid.cellWidth
-    readonly property real gridCellHeight: WidgetGrid.cellHeight
-    readonly property real gridOriginX: gridEdgePadding + WidgetGrid.originX(gridAvailableWidth, gridColumns)
-    readonly property real gridOriginY: gridInsetTop + WidgetGrid.originY(gridAvailableHeight, gridRows)
+    // Pitch after the fill-fitting stretch; cards size themselves from this so their
+    // edges keep landing on the same lines the overlay draws.
+    readonly property real gridCellWidth: WidgetGrid.fittedCellWidth(gridAvailableWidth, gridColumns)
+    readonly property real gridCellHeight: WidgetGrid.fittedCellHeight(gridAvailableHeight, gridRows)
+    readonly property real gridOriginX: 0
+    readonly property real gridOriginY: gridInsetTop
+    // Whole-pixel card sizes keep borders and text on the pixel grid; the fitted
+    // pitch is fractional, so round only at the leaf.
+    function spanWidth(cells) { return Math.round(cells * gridCellWidth - WidgetGrid.gutter) }
+    function spanHeight(cells) { return Math.round(cells * gridCellHeight - WidgetGrid.gutter) }
     // How many cells this card covers, so it can never be snapped to a slot it would
     // hang off the edge of (a 2x2 card has no business on the last row)
     readonly property int gridColumnSpan: Math.max(1, Math.round((implicitWidth + WidgetGrid.gutter) / gridCellWidth))
@@ -56,8 +61,8 @@ AbstractWidget {
     }
     // Drag resolution: a fraction of the card pitch, so a card can be nudged in
     // smaller steps than its own width (see WidgetGrid.subdivisions)
-    readonly property real snapWidth: WidgetGrid.snapWidth
-    readonly property real snapHeight: WidgetGrid.snapHeight
+    readonly property real snapWidth: gridCellWidth / WidgetGrid.subdivisions
+    readonly property real snapHeight: gridCellHeight / WidgetGrid.subdivisions
     // Whole-pixel positions: a card sitting on a half pixel renders its text with
     // fuzzy subpixel offsets no matter how the glyphs themselves are rasterised.
     property real targetX: Math.round(gridEnabled

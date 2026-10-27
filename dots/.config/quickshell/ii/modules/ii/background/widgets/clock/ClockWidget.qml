@@ -16,11 +16,11 @@ AbstractBackgroundWidget {
     // Fixed 2x2 grid slot; contentColumn centers itself inside. The digital style
     // draws type far wider than a cell, so the card widens to hold it instead of
     // letting the time run off the edge of the screen (which the grid then clamps).
-    implicitHeight: WidgetGrid.spanHeight(2)
+    implicitHeight: root.spanHeight(2)
     readonly property real digitalContentWidth: (clockStyle === "digital" && digitalClockLoader.item)
         ? digitalClockLoader.item.implicitWidth + 16
         : 0
-    implicitWidth: Math.max(WidgetGrid.spanWidth(2), digitalContentWidth)
+    implicitWidth: Math.max(root.spanWidth(2), digitalContentWidth)
 
     readonly property string clockStyle: GlobalStates.screenLocked ? Config.options.background.widgets.clock.styleLocked : Config.options.background.widgets.clock.style
     readonly property bool forceCenter: (GlobalStates.screenLocked && Config.options.lock.centerClock)

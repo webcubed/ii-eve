@@ -15,9 +15,9 @@ AbstractBackgroundWidget {
 
     // Whole spans of the design grid (WidgetGrid): the card row is exactly
     // 3x1 cells so its edges land on the same lines as the other widgets
-    property real widgetWidth: WidgetGrid.spanWidth(3)
+    property real widgetWidth: root.spanWidth(3)
     property real cardSpacing: WidgetGrid.gutter
-    property real cardHeight: WidgetGrid.cardUnitHeight
+    property real cardHeight: root.gridCellHeight
     property real cardWidth: (widgetWidth - cardSpacing * 2) / 3
     property bool isVertical: root.configEntry.vertical ?? false
 

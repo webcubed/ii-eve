@@ -39,16 +39,24 @@ Singleton {
     function spanWidth(cells) { return cells * root.cellWidth - root.gutter }
     function spanHeight(cells) { return cells * root.cellHeight - root.gutter }
 
-    // Grid dimensions that fit the available area, bounded by the user's setting
+    // Fill the whole usable area: start from the pitch that the scale asks for and
+    // add columns until they reach the right edge. The user's configured count is a
+    // floor, so raising it still buys a denser grid of smaller cells.
     function effectiveColumns(availableWidth, configuredColumns) {
-        return Math.max(1, Math.min(configuredColumns, Math.floor(availableWidth / root.cellWidth)));
+        const fit = Math.max(1, Math.round(availableWidth / root.cellWidth));
+        return Math.max(fit, configuredColumns ?? 1);
     }
     function effectiveRows(availableHeight, configuredRows) {
-        return Math.max(1, Math.min(configuredRows, Math.floor(availableHeight / root.cellHeight)));
+        const fit = Math.max(1, Math.round(availableHeight / root.cellHeight));
+        return Math.max(fit, configuredRows ?? 1);
     }
 
-    // The widget block ends one gutter short of cols*cell, so centering that
-    // block keeps screen edge margins symmetric
-    function originX(availableWidth, columns) { return (availableWidth - root.spanWidth(columns)) / 2 }
-    function originY(availableHeight, rows) { return (availableHeight - root.spanHeight(rows)) / 2 }
+    // Stretch the pitch by the rounding remainder so `columns` cells span the area
+    // edge to edge instead of leaving a strip of dead space at the right/bottom.
+    function fittedCellWidth(availableWidth, columns) {
+        return columns > 0 ? (availableWidth + root.gutter) / columns : root.cellWidth;
+    }
+    function fittedCellHeight(availableHeight, rows) {
+        return rows > 0 ? (availableHeight + root.gutter) / rows : root.cellHeight;
+    }
 }
