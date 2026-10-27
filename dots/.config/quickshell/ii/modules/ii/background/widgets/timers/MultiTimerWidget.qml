@@ -14,7 +14,12 @@ AbstractBackgroundWidget {
     hoverEnabled: true
 
     // Whole spans of the design grid (WidgetGrid): the card row is exactly
-    // 3x1 cells so its edges land on the same lines as the other widgets
+    // 3x1 cells so its edges land on the same lines as the other widgets.
+    // "3x1" is the row of three square tiles; "3x2" is one expanded card for a single
+    // timer, which the corner handle switches to (drag it down to expand).
+    property string sizeMode: root.configEntry.sizeMode ?? "3x1"
+    readonly property bool expanded: root.sizeMode === "3x2"
+    property string expandedTimer: root.configEntry.expandedTimer ?? "pomodoro"
     property real widgetWidth: root.spanWidth(3)
     property real cardSpacing: WidgetGrid.gutter
     property real cardWidth: (widgetWidth - cardSpacing * 2) / 3
@@ -24,8 +29,78 @@ AbstractBackgroundWidget {
     property real cardHeight: root.cardWidth
     property bool isVertical: root.configEntry.vertical ?? false
 
-    implicitWidth: row.implicitWidth
-    implicitHeight: row.implicitHeight
+    implicitWidth: root.expanded ? root.widgetWidth : row.implicitWidth
+    implicitHeight: root.expanded ? root.spanHeight(2) : row.implicitHeight
+
+    Behavior on implicitHeight {
+        animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
+    }
+
+    readonly property color expandedFg: Appearance.colors.colOnPrimaryContainer
+    readonly property color expandedAccent: Appearance.colors.colPrimary
+
+    // --- Expanded variant: one timer at a time, with the detail a square tile has no
+    // room for (cycle position, laps, target duration) and its own controls.
+    function expandedTitle() {
+        if (root.expandedTimer === "pomodoro") return "Pomodoro";
+        if (root.expandedTimer === "stopwatch") return "Stopwatch";
+        return "Timer";
+    }
+    function expandedIcon() {
+        if (root.expandedTimer === "pomodoro") return TimerService.pomodoroBreak ? "coffee" : "visibility";
+        if (root.expandedTimer === "stopwatch") return "timer";
+        return "hourglass_top";
+    }
+    function expandedRunning() {
+        if (root.expandedTimer === "pomodoro") return TimerService.pomodoroRunning;
+        if (root.expandedTimer === "stopwatch") return TimerService.stopwatchRunning;
+        return TimerService.countdownRunning;
+    }
+    // Stopwatch ticks are 10ms, so the expanded readout can carry centiseconds
+    function formatStopwatch(ticks) {
+        const totalSeconds = Math.floor(ticks / 100);
+        const centis = Math.floor(ticks % 100);
+        return TimerService.formatSeconds(totalSeconds) + "." + centis.toString().padStart(2, "0");
+    }
+    function expandedValue() {
+        if (root.expandedTimer === "pomodoro") return TimerService.formatSeconds(TimerService.pomodoroSecondsLeft);
+        if (root.expandedTimer === "stopwatch") return root.formatStopwatch(TimerService.stopwatchTime);
+        return TimerService.formatSeconds(TimerService.countdownSecondsLeft);
+    }
+    function expandedSubtitle() {
+        if (root.expandedTimer === "pomodoro") {
+            const phase = TimerService.pomodoroLongBreak ? "Long break" : TimerService.pomodoroBreak ? "Break" : "Focus";
+            return phase + " · cycle " + (TimerService.pomodoroCycle + 1) + "/" + TimerService.cyclesBeforeLongBreak;
+        }
+        if (root.expandedTimer === "stopwatch") {
+            const laps = TimerService.stopwatchLaps;
+            if (!laps || laps.length === 0) return "No laps yet";
+            return "Lap " + laps.length + " · last " + root.formatStopwatch(laps[laps.length - 1]);
+        }
+        return "Target " + TimerService.formatSeconds(TimerService.countdownDuration);
+    }
+    // Fraction elapsed, or -1 for the stopwatch, which has no target to measure against
+    readonly property real expandedProgress: {
+        if (root.expandedTimer === "pomodoro")
+            return TimerService.pomodoroLapDuration > 0 ? 1 - TimerService.pomodoroSecondsLeft / TimerService.pomodoroLapDuration : 0;
+        if (root.expandedTimer === "countdown")
+            return TimerService.countdownDuration > 0 ? 1 - TimerService.countdownSecondsLeft / TimerService.countdownDuration : 0;
+        return -1;
+    }
+    function toggleExpandedTimer() {
+        if (root.expandedTimer === "pomodoro") TimerService.togglePomodoro();
+        else if (root.expandedTimer === "stopwatch") TimerService.toggleStopwatch();
+        else TimerService.toggleCountdown();
+    }
+    function resetExpandedTimer() {
+        if (root.expandedTimer === "pomodoro") TimerService.resetPomodoro();
+        else if (root.expandedTimer === "stopwatch") TimerService.stopwatchReset();
+        else TimerService.resetCountdown();
+    }
+    function selectExpandedTimer(id) {
+        root.expandedTimer = id;
+        root.configEntry.expandedTimer = id;
+    }
 
     component TimerCard: WidgetCard {
         id: timerCard
@@ -59,9 +134,9 @@ AbstractBackgroundWidget {
         ColumnLayout {
             anchors {
                 fill: parent
-                margins: 9
+                margins: 12
             }
-            spacing: 2
+            spacing: 3
 
             RowLayout {
                 Layout.fillWidth: true
@@ -117,14 +192,15 @@ AbstractBackgroundWidget {
             Item {
                 id: extraSlot
                 Layout.fillWidth: true
-                Layout.preferredHeight: children.length > 0 ? 18 : 0
-                Layout.topMargin: children.length > 0 ? 3 : 0
+                Layout.preferredHeight: children.length > 0 ? 20 : 0
+                Layout.topMargin: children.length > 0 ? 4 : 0
             }
         }
     }
 
     Grid {
         id: row
+        visible: !root.expanded
         columns: root.isVertical ? 1 : 3
         rows: root.isVertical ? 3 : 1
         spacing: root.cardSpacing
@@ -204,6 +280,268 @@ AbstractBackgroundWidget {
                     }
                 }
             }
+        }
+    }
+
+    component ControlPill: Rectangle {
+        id: pill
+        property string icon: ""
+        property string text: ""
+        property color fgColor: Appearance.colors.colOnPrimaryContainer
+        property color bgColor: ColorUtils.transparentize(Appearance.colors.colOnPrimaryContainer, 0.86)
+        signal activated()
+
+        implicitHeight: 36
+        implicitWidth: pill.text.length > 0
+            ? pillText.implicitWidth + (pill.icon.length > 0 ? 42 : 26)
+            : 44
+        radius: Appearance.rounding.full
+        color: pill.bgColor
+
+        Behavior on color {
+            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+        }
+
+        RowLayout {
+            anchors.centerIn: parent
+            spacing: 6
+
+            MaterialSymbol {
+                visible: pill.icon.length > 0
+                text: pill.icon
+                iconSize: 17
+                fill: 1
+                color: pill.fgColor
+            }
+            StyledText {
+                id: pillText
+                visible: pill.text.length > 0
+                text: pill.text
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                font.weight: Font.DemiBold
+                color: pill.fgColor
+            }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: pill.activated()
+        }
+    }
+
+    // The expanded variants live in one card: a header that doubles as a timer picker,
+    // the readout the tile has no room for, and controls specific to the timer.
+    WidgetCard {
+        id: expandedCard
+        anchors.fill: parent
+        visible: root.expanded
+        widget: root
+        color: Appearance.colors.colPrimaryContainer
+
+        ColumnLayout {
+            anchors {
+                fill: parent
+                margins: 16
+            }
+            spacing: 8
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                MaterialShapeWrappedMaterialSymbol {
+                    shape: MaterialShape.Shape.Cookie12Sided
+                    color: root.expandedAccent
+                    colSymbol: Appearance.colors.colOnPrimary
+                    text: root.expandedIcon()
+                    iconSize: 16
+                    fill: 1
+                    padding: 5
+                    implicitWidth: 30
+                    implicitHeight: 30
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    text: root.expandedTitle()
+                    font.pixelSize: Appearance.font.pixelSize.large
+                    font.weight: Font.DemiBold
+                    color: root.expandedFg
+                    elide: Text.ElideRight
+                }
+
+                Repeater {
+                    model: [
+                        { id: "pomodoro", icon: "visibility", name: "Pomodoro" },
+                        { id: "stopwatch", icon: "timer", name: "Stopwatch" },
+                        { id: "countdown", icon: "hourglass_top", name: "Timer" }
+                    ]
+                    delegate: Rectangle {
+                        required property var modelData
+                        readonly property bool selected: root.expandedTimer === modelData.id
+
+                        implicitWidth: 30
+                        implicitHeight: 30
+                        radius: Appearance.rounding.full
+                        color: selected
+                            ? root.expandedAccent
+                            : ColorUtils.transparentize(root.expandedFg, 0.88)
+
+                        MaterialSymbol {
+                            anchors.centerIn: parent
+                            text: modelData.icon
+                            iconSize: 16
+                            fill: selected ? 1 : 0
+                            color: selected ? Appearance.colors.colOnPrimary : root.expandedFg
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.selectExpandedTimer(modelData.id)
+                        }
+                    }
+                }
+            }
+
+            Item { Layout.fillHeight: true }
+
+            StyledText {
+                Layout.fillWidth: true
+                text: root.expandedValue()
+                font.pixelSize: Appearance.font.pixelSize.huge
+                font.weight: Font.DemiBold
+                color: root.expandedFg
+                renderType: Text.QtRendering
+                elide: Text.ElideRight
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                text: root.expandedSubtitle()
+                font.pixelSize: Appearance.font.pixelSize.small
+                color: root.expandedFg
+                opacity: 0.65
+                elide: Text.ElideRight
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.topMargin: 2
+                implicitHeight: 6
+                visible: root.expandedProgress >= 0
+                radius: 3
+                color: ColorUtils.transparentize(root.expandedFg, 0.86)
+
+                Rectangle {
+                    width: Math.max(0, Math.min(1, root.expandedProgress)) * parent.width
+                    height: parent.height
+                    radius: parent.radius
+                    color: root.expandedAccent
+
+                    Behavior on width {
+                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                    }
+                }
+            }
+
+            Item { Layout.fillHeight: true }
+
+            // Countdown amounts, which the tile's +1/+5 buttons cannot cover
+            RowLayout {
+                Layout.fillWidth: true
+                visible: root.expandedTimer === "countdown"
+                spacing: 6
+
+                StyledText {
+                    text: "Set"
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    color: root.expandedFg
+                    opacity: 0.6
+                }
+                Repeater {
+                    model: [5, 10, 25, 45]
+                    delegate: ControlPill {
+                        required property int modelData
+                        text: modelData + "m"
+                        onActivated: TimerService.countdownSet(modelData)
+                    }
+                }
+                Item { Layout.fillWidth: true }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                ControlPill {
+                    icon: root.expandedRunning() ? "pause" : "play_arrow"
+                    text: root.expandedRunning() ? "Pause" : "Start"
+                    bgColor: root.expandedAccent
+                    fgColor: Appearance.colors.colOnPrimary
+                    onActivated: root.toggleExpandedTimer()
+                }
+
+                ControlPill {
+                    visible: root.expandedTimer === "stopwatch"
+                    icon: "flag"
+                    text: "Lap"
+                    onActivated: TimerService.stopwatchRecordLap()
+                }
+
+                ControlPill {
+                    icon: "restart_alt"
+                    text: "Reset"
+                    onActivated: root.resetExpandedTimer()
+                }
+
+                Item { Layout.fillWidth: true }
+            }
+        }
+    }
+
+    // Bottom-right handle: drag it down to expand into the single-timer card, up to go
+    // back to the row of three tiles. Only visible while the card is hovered.
+    Rectangle {
+        id: sizeHandle
+        width: 16
+        height: 16
+        radius: 4
+        color: Appearance.colors.colOnPrimaryContainer
+        anchors {
+            right: parent.right
+            bottom: parent.bottom
+            margins: 4
+        }
+        opacity: (root.containsMouse || sizeArea.containsMouse || sizeArea.pressed) ? 0.5 : 0
+        visible: opacity > 0 && !Config.options.background.widgetsLocked
+
+        Behavior on opacity {
+            NumberAnimation { duration: 150 }
+        }
+
+        MouseArea {
+            id: sizeArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.SizeVerCursor
+            preventStealing: true
+
+            property real startY: 0
+            property real startHeight: 0
+
+            onPressed: (mouse) => {
+                startHeight = root.implicitHeight;
+                startY = mapToItem(null, mouse.x, mouse.y).y;
+            }
+            onPositionChanged: (mouse) => {
+                if (!pressed) return;
+                const dy = mapToItem(null, mouse.x, mouse.y).y - startY;
+                // Midway between a tile row and an expanded card is the tipping point
+                const midpoint = (root.cardHeight + root.spanHeight(2)) / 2;
+                root.sizeMode = (startHeight + dy) > midpoint ? "3x2" : "3x1";
+            }
+            onReleased: root.configEntry.sizeMode = root.sizeMode
         }
     }
 

@@ -104,9 +104,9 @@ AbstractBackgroundWidget {
         ColumnLayout {
             anchors {
                 fill: parent
-                margins: 12
+                margins: 15
             }
-            spacing: 3
+            spacing: 4
 
             RowLayout {
                 Layout.fillWidth: true

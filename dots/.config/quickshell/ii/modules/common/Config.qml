@@ -645,6 +645,8 @@ Singleton {
                         property real gridColumn: 0
                         property real gridRow: 6
                         property bool vertical: false
+                        property string sizeMode: "3x1" // "3x1" (three tiles), "3x2" (one expanded timer)
+                        property string expandedTimer: "pomodoro" // "pomodoro" | "stopwatch" | "countdown"
                     }
                     property JsonObject customText: JsonObject {
                         property bool enable: false
