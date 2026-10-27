@@ -17,8 +17,11 @@ AbstractBackgroundWidget {
     // 3x1 cells so its edges land on the same lines as the other widgets
     property real widgetWidth: root.spanWidth(3)
     property real cardSpacing: WidgetGrid.gutter
-    property real cardHeight: root.gridCellHeight
     property real cardWidth: (widgetWidth - cardSpacing * 2) / 3
+    // Square tiles: the three cards split the row's width, so deriving the height
+    // from that same width keeps them square and lands their edges on the same
+    // lines as the spacer gutters. A cell-height tile was taller than wide.
+    property real cardHeight: root.cardWidth
     property bool isVertical: root.configEntry.vertical ?? false
 
     implicitWidth: row.implicitWidth

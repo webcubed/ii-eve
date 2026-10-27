@@ -260,66 +260,12 @@ AbstractBackgroundWidget {
                         StyledText { text: Weather.data?.sunrise ?? "--"; font.pixelSize: Appearance.font.pixelSize.smaller; color: Appearance.colors.colOnPrimaryContainer; opacity: 0.6 }
                     }
 
-                    // The sun's travel between the two times. A half-ellipse puts the
-                    // apex at solar noon, and the marker slides along it with the day.
-                    Canvas {
-                        id: sunArc
+                    SunArc {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 24
                         Layout.alignment: Qt.AlignBottom
-
-                        property real progress: root.sunProgress
-                        property bool aboveHorizon: root.sunAboveHorizon
-                        property int startMinutes: root.sunriseMinutes
-                        property int endMinutes: root.sunsetMinutes
-                        property color arcColor: ColorUtils.transparentize(Appearance.colors.colOnPrimaryContainer, 0.45)
-                        property color markerColor: Appearance.colors.colPrimary
-
-                        onProgressChanged: requestPaint()
-                        onAboveHorizonChanged: requestPaint()
-                        onStartMinutesChanged: requestPaint()
-                        onEndMinutesChanged: requestPaint()
-                        onArcColorChanged: requestPaint()
-                        onMarkerColorChanged: requestPaint()
-                        onWidthChanged: requestPaint()
-                        onHeightChanged: requestPaint()
-
-                        onPaint: {
-                            const ctx = getContext("2d");
-                            ctx.reset();
-                            const w = width;
-                            const h = height;
-                            if (w <= 12 || h <= 10) return;
-
-                            const inset = 2;
-                            const baseY = h - 2;
-                            const cx = w / 2;
-                            const rx = (w - inset * 2) / 2;
-                            const ry = h - 8;
-
-                            // arc() under a vertical scale rather than ellipse(): the flat
-                            // half-ellipse keeps one pen width and works on every Qt Canvas.
-                            ctx.lineWidth = 1.6;
-                            ctx.strokeStyle = sunArc.arcColor;
-                            ctx.save();
-                            ctx.translate(cx, baseY);
-                            ctx.scale(1, ry / rx);
-                            ctx.beginPath();
-                            ctx.arc(0, 0, rx, Math.PI, 2 * Math.PI, false);
-                            ctx.restore();
-                            ctx.stroke();
-
-                            const angle = Math.PI * (1 + sunArc.progress);
-                            const x = cx + rx * Math.cos(angle);
-                            const y = baseY + ry * Math.sin(angle);
-
-                            ctx.fillStyle = sunArc.markerColor;
-                            ctx.globalAlpha = sunArc.aboveHorizon ? 0.2 : 0.08;
-                            ctx.beginPath(); ctx.arc(x, y, 6, 0, 2 * Math.PI); ctx.fill();
-                            ctx.globalAlpha = sunArc.aboveHorizon ? 1 : 0.45;
-                            ctx.beginPath(); ctx.arc(x, y, 3, 0, 2 * Math.PI); ctx.fill();
-                            ctx.globalAlpha = 1;
-                        }
+                        progress: root.sunProgress
+                        aboveHorizon: root.sunAboveHorizon
                     }
 
                     RowLayout {
@@ -439,6 +385,46 @@ AbstractBackgroundWidget {
                             color: Appearance.colors.colOnPrimaryContainer
                             opacity: 0.6
                         }
+                    }
+                }
+
+                // The narrow card still gets the sun's hill, with the times tucked
+                // under its ends since there is no room to flank it.
+                SunArc {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 20
+                    Layout.topMargin: 4
+                    progress: root.sunProgress
+                    aboveHorizon: root.sunAboveHorizon
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 2
+                    MaterialSymbol {
+                        iconSize: Appearance.font.pixelSize.smaller
+                        text: "wb_twilight"
+                        color: Appearance.colors.colOnPrimaryContainer
+                        opacity: 0.6
+                    }
+                    StyledText {
+                        text: Weather.data?.sunrise ?? "--"
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        color: Appearance.colors.colOnPrimaryContainer
+                        opacity: 0.6
+                    }
+                    Item { Layout.fillWidth: true }
+                    StyledText {
+                        text: Weather.data?.sunset ?? "--"
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        color: Appearance.colors.colOnPrimaryContainer
+                        opacity: 0.6
+                    }
+                    MaterialSymbol {
+                        iconSize: Appearance.font.pixelSize.smaller
+                        text: "nights_stay"
+                        color: Appearance.colors.colOnPrimaryContainer
+                        opacity: 0.6
                     }
                 }
             }
@@ -577,41 +563,54 @@ AbstractBackgroundWidget {
                     }
 
                     Item { Layout.fillWidth: true }
+                }
 
-                    ColumnLayout{
-                        Layout.topMargin: -5
-                        Layout.rightMargin: 5
-                        spacing: 1
-                        RowLayout {
-                            spacing: 4
-                            MaterialSymbol {
-                                iconSize: Appearance.font.pixelSize.smaller
-                                text: "wb_twilight"
-                                color: Appearance.colors.colOnPrimaryContainer
-                                opacity: 0.6
-                            }
-                            StyledText {
-                                text: Weather.data?.sunrise ?? "--"
-                                font.pixelSize: Appearance.font.pixelSize.smaller
-                                color: Appearance.colors.colOnPrimaryContainer
-                                opacity: 0.6
-                            }
+                // The wide card has room for the sun's hill to run the full width,
+                // with sunrise and sunset sitting at the two ends of the horizon.
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.topMargin: 2
+                    spacing: 8
+
+                    RowLayout {
+                        Layout.alignment: Qt.AlignBottom
+                        spacing: 4
+                        MaterialSymbol {
+                            iconSize: 14
+                            text: "wb_twilight"
+                            color: Appearance.colors.colOnPrimaryContainer
+                            opacity: 0.6
                         }
+                        StyledText {
+                            text: Weather.data?.sunrise ?? "--"
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            color: Appearance.colors.colOnPrimaryContainer
+                            opacity: 0.6
+                        }
+                    }
 
-                        RowLayout {
-                            spacing: 4
-                            MaterialSymbol {
-                                iconSize: Appearance.font.pixelSize.smaller
-                                text: "nights_stay"
-                                color: Appearance.colors.colOnPrimaryContainer
-                                opacity: 0.6
-                            }
-                            StyledText {
-                                text: Weather.data?.sunset ?? "--"
-                                font.pixelSize: Appearance.font.pixelSize.smaller
-                                color: Appearance.colors.colOnPrimaryContainer
-                                opacity: 0.6
-                            }
+                    SunArc {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 26
+                        Layout.alignment: Qt.AlignBottom
+                        progress: root.sunProgress
+                        aboveHorizon: root.sunAboveHorizon
+                    }
+
+                    RowLayout {
+                        Layout.alignment: Qt.AlignBottom
+                        spacing: 4
+                        StyledText {
+                            text: Weather.data?.sunset ?? "--"
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            color: Appearance.colors.colOnPrimaryContainer
+                            opacity: 0.6
+                        }
+                        MaterialSymbol {
+                            iconSize: 14
+                            text: "nights_stay"
+                            color: Appearance.colors.colOnPrimaryContainer
+                            opacity: 0.6
                         }
                     }
                 }
