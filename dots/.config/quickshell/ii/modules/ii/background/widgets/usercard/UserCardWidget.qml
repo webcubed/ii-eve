@@ -129,7 +129,7 @@ AbstractBackgroundWidget {
             id: contentBox
             x: root.blurMargin
             y: root.avatarSize / 2 + root.blurMargin + 30
-            width: 240
+            width: Math.max(0, root.cardWidth - root.blurMargin * 2)
             color: Appearance.colors.colPrimaryContainer
             radius: Appearance.rounding.large
             implicitHeight: contentColumn.implicitHeight + 30

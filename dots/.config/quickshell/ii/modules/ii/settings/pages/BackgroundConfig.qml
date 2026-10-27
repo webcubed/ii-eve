@@ -1588,10 +1588,19 @@ ContentPage {
                 }
             }
             ContentSubsection {
-                title: Translation.tr("Canvas")
+                title: Translation.tr("Desktop grid")
                 Layout.bottomMargin: 10
 
                 GroupedList {
+                    ConfigSwitch {
+                        Layout.fillWidth: true
+                        buttonIcon: "grid_view"
+                        text: Translation.tr("Snap widgets to the grid")
+                        checked: Config.options.background.widgets.grid.enabled
+                        onCheckedChanged: {
+                            Config.options.background.widgets.grid.enabled = checked;
+                        }
+                    }
                     ConfigSwitch {
                         Layout.fillWidth: true
                         buttonIcon: "grid_4x4"
@@ -1604,12 +1613,36 @@ ContentPage {
                     ConfigSwitch {
                         Layout.fillWidth: true
                         buttonIcon: "align_horizontal_center"
-                        text: Translation.tr("Show snap lines when dropping")
+                        text: Translation.tr("Highlight the drop area")
                         checked: Config.options.background.showSnapLines
                         onCheckedChanged: {
                             Config.options.background.showSnapLines = checked;
                         }
                     }
+                }
+
+                ConfigSlider {
+                    text: Translation.tr("Widget size")
+                    buttonIcon: "photo_size_select_large"
+                    value: Config.options.background.widgets.scale
+                    from: 0.8
+                    to: 1.15
+                    stepSize: 0.05
+                    stopIndicatorValues: [1]
+                    tooltipContent: `${Math.round(value * 100)}%`
+                    onValueChanged: Config.options.background.widgets.scale = value
+                }
+
+                ConfigSlider {
+                    text: Translation.tr("Grid steps per cell")
+                    buttonIcon: "grid_goldenratio"
+                    value: Config.options.background.widgets.grid.subdivisions
+                    from: 1
+                    to: 4
+                    stepSize: 1
+                    stopIndicatorValues: [2]
+                    tooltipContent: `${Math.round(value)}× finer`
+                    onValueChanged: Config.options.background.widgets.grid.subdivisions = Math.round(value)
                 }
             }
         }

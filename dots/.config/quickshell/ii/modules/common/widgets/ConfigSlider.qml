@@ -9,6 +9,8 @@ Item {
     property string text: ""
     property string buttonIcon: ""
     property alias value: slider.value
+    property alias stepSize: slider.stepSize
+    property alias tooltipContent: slider.tooltipContent
     property alias stopIndicatorValues: slider.stopIndicatorValues
     property bool usePercentTooltip: true
     property real from: slider.from

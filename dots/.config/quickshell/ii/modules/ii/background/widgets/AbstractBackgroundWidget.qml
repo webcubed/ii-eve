@@ -44,16 +44,20 @@ AbstractWidget {
     readonly property int gridRowSpan: Math.max(1, Math.round((implicitHeight + WidgetGrid.gutter) / gridCellHeight))
     readonly property int maxGridColumn: Math.max(0, gridColumns - gridColumnSpan)
     readonly property int maxGridRow: Math.max(0, gridRows - gridRowSpan)
-    property int gridColumn: {
+    property real gridColumn: {
         if (!Config.ready) return 0;
         const col = configEntry.gridColumn ?? 0;
         return Math.max(0, Math.min(col, maxGridColumn));
     }
-    property int gridRow: {
+    property real gridRow: {
         if (!Config.ready) return 0;
         const row = configEntry.gridRow ?? 0;
         return Math.max(0, Math.min(row, maxGridRow));
     }
+    // Drag resolution: a fraction of the card pitch, so a card can be nudged in
+    // smaller steps than its own width (see WidgetGrid.subdivisions)
+    readonly property real snapWidth: WidgetGrid.snapWidth
+    readonly property real snapHeight: WidgetGrid.snapHeight
     // Whole-pixel positions: a card sitting on a half pixel renders its text with
     // fuzzy subpixel offsets no matter how the glyphs themselves are rasterised.
     property real targetX: Math.round(gridEnabled
@@ -97,7 +101,13 @@ AbstractWidget {
         root.x = Qt.binding(() => root.targetX);
         root.y = Qt.binding(() => root.targetY);
     }
+    // Qt only starts a drag once the pointer travels past the drag threshold, so this
+    // flag is the one honest "the user moved this card" signal. Pressing a card to use
+    // its buttons, or a stray press during a workspace change, must not rewrite its slot.
+    property bool dragMoved: false
+    onPositionChanged: if (drag.active) dragMoved = true
     onPressed: {
+        dragMoved = false
         if (draggable) {
             var bg = resolveBgRoot();
             if (bg) bg.draggingWidget = true;
@@ -113,9 +123,10 @@ AbstractWidget {
         onTriggered: {
             var bg = resolveBgRoot();
             if (!bg) return;
-            const col = Math.floor((root.x - root.gridOriginX) / gridCellWidth);
-            const row = Math.floor((root.y - root.gridOriginY) / gridCellHeight);
+            const col = Math.floor((root.x - root.gridOriginX) / root.snapWidth) / WidgetGrid.subdivisions;
+            const row = Math.floor((root.y - root.gridOriginY) / root.snapHeight) / WidgetGrid.subdivisions;
             bg.draggingWidgetCell = Qt.point(Math.max(0, Math.min(col, root.maxGridColumn)), Math.max(0, Math.min(row, root.maxGridRow)));
+            bg.draggingWidgetSpan = Qt.point(root.gridColumnSpan, root.gridRowSpan);
         }
     }
     // `released` only fires while we still hold the implicit grab. If the grab is lost mid
@@ -129,15 +140,21 @@ AbstractWidget {
     onReleased: {
         var bg = resolveBgRoot();
         if (bg) bg.draggingWidget = false;
+        if (!dragMoved) {
+            root.restoreXYBinding();
+            return;
+        }
         if (gridEnabled) {
-            const col = Math.round((root.x - root.gridOriginX) / gridCellWidth);
-            const row = Math.round((root.y - root.gridOriginY) / gridCellHeight);
+            // Snap to the nearest half/third/quarter cell rather than the nearest whole one
+            const col = Math.round((root.x - root.gridOriginX) / root.snapWidth) / WidgetGrid.subdivisions;
+            const row = Math.round((root.y - root.gridOriginY) / root.snapHeight) / WidgetGrid.subdivisions;
             const snappedCol = Math.max(0, Math.min(col, root.maxGridColumn));
             const snappedRow = Math.max(0, Math.min(row, root.maxGridRow));
             // Only persist a real move: a release that never followed a press (the
             // pointer entering the desktop, a shell reload) would otherwise rewrite
             // the stored slot from a position the card did not choose.
-            if (snappedCol === (configEntry.gridColumn ?? -1) && snappedRow === (configEntry.gridRow ?? -1)) {
+            if (Math.abs(snappedCol - (configEntry.gridColumn ?? -1)) < 0.01
+                && Math.abs(snappedRow - (configEntry.gridRow ?? -1)) < 0.01) {
                 root.restoreXYBinding();
                 return;
             }

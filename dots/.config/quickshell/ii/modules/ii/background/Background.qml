@@ -175,6 +175,7 @@ Variants {
             && Config.options.background.widgets.cullWhenOccluded
         property bool draggingWidget: false
         property var draggingWidgetCell: Qt.point(-1, -1) // {x: col, y: row} or invalid
+        property var draggingWidgetSpan: Qt.point(1, 1) // footprint of the card being dragged, in cells
 
         // Bar-aware widget grid. The bar is its own full-width surface, so reserve its
         // band before laying widgets out; otherwise the first row of cards ends up
@@ -427,9 +428,12 @@ Variants {
                 id: widgetCanvas
                 anchors.fill: parent
                 readonly property real parallaxFactor: Config.options.background.parallax.widgetsFactor
+                // Every card shares this one offset: the wallpaper drifts by the parallax
+                // factor, and the cards drift with it as a block instead of each widget
+                // deciding its own position.
                 transform: Translate {
-                    x: (wallpaper.effectiveValueX - 0.5) * -2 * bgRoot.movableXSpace * (widgetCanvas.parallaxFactor - 1)
-                    y: (wallpaper.effectiveValueY - 0.5) * -2 * bgRoot.movableYSpace * (widgetCanvas.parallaxFactor - 1)
+                    x: (wallpaper.effectiveValueX - 0.5) * -2 * bgRoot.movableXSpace * widgetCanvas.parallaxFactor
+                    y: (wallpaper.effectiveValueY - 0.5) * -2 * bgRoot.movableYSpace * widgetCanvas.parallaxFactor
                     Behavior on x {
                         animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
                     }
@@ -444,7 +448,10 @@ Variants {
                     width: parent.width
                     height: parent.height
                     z: 100
-                    visible: Config.options.background.widgets.grid.enabled && !Config.options.background.widgetsLocked && bgRoot.draggingWidget
+                    visible: Config.options.background.widgets.grid.enabled
+                        && Config.options.background.showGrid
+                        && !Config.options.background.widgetsLocked
+                        && bgRoot.draggingWidget
 
                     onWidthChanged: if (visible) requestPaint()
                     onHeightChanged: if (visible) requestPaint()
@@ -484,7 +491,30 @@ Variants {
                         var originY = bgRoot.gridOriginY;
                         var cellW = WidgetGrid.cellWidth;
                         var cellH = WidgetGrid.cellHeight;
-                        ctx.strokeStyle = Qt.rgba(1, 1, 1, 0.7);
+                        // Full cell lines, plus the finer snap steps the cards actually
+                        // move by, so the resolution of a drag is visible.
+                        var subdivisions = WidgetGrid.subdivisions;
+                        var snapW = WidgetGrid.snapWidth;
+                        var snapH = WidgetGrid.snapHeight;
+                        ctx.lineWidth = 1;
+                        ctx.setLineDash([]);
+                        ctx.strokeStyle = Qt.rgba(1, 1, 1, 0.18);
+                        ctx.beginPath();
+                        for (var s = 0; s <= cols * subdivisions; s++) {
+                            if (s % subdivisions === 0) continue;
+                            var sx = originX + s * snapW;
+                            ctx.moveTo(sx, 0);
+                            ctx.lineTo(sx, height);
+                        }
+                        for (var t = 0; t <= rows * subdivisions; t++) {
+                            if (t % subdivisions === 0) continue;
+                            var sy = originY + t * snapH;
+                            ctx.moveTo(0, sy);
+                            ctx.lineTo(width, sy);
+                        }
+                        ctx.stroke();
+
+                        ctx.strokeStyle = Qt.rgba(1, 1, 1, 0.55);
                         ctx.lineWidth = 2;
                         ctx.setLineDash([4, 3]);
                         ctx.beginPath();
@@ -506,14 +536,18 @@ Variants {
                 Rectangle {
                     id: widgetHitbox
                     z: 99
-                    visible: bgRoot.draggingWidget && bgRoot.draggingWidgetCell.x >= 0 && Config.options.background.widgets.grid.enabled
+                    visible: bgRoot.draggingWidget && bgRoot.draggingWidgetCell.x >= 0
+                        && Config.options.background.widgets.grid.enabled
+                        && Config.options.background.showSnapLines
                     color: Qt.rgba(1, 1, 1, 0.1)
                     border.color: Qt.rgba(1, 1, 1, 0.5)
                     border.width: 2
                     x: bgRoot.gridOriginX + bgRoot.draggingWidgetCell.x * WidgetGrid.cellWidth
                     y: bgRoot.gridOriginY + bgRoot.draggingWidgetCell.y * WidgetGrid.cellHeight
-                    width: WidgetGrid.cellWidth
-                    height: WidgetGrid.cellHeight
+                    // Outline the card's real footprint, not a single cell: a 2x2 card
+                    // lands across four cells and that is what should be previewed.
+                    width: WidgetGrid.spanWidth(bgRoot.draggingWidgetSpan.x)
+                    height: WidgetGrid.spanHeight(bgRoot.draggingWidgetSpan.y)
                     radius: 4
                 }
 

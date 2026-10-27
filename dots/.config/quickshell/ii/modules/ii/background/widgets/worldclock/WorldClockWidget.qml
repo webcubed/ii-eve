@@ -160,7 +160,8 @@ AbstractBackgroundWidget {
                             id: cityCard
                             required property var modelData
                             required property int index
-                            Layout.preferredWidth: 120; Layout.preferredHeight: 54
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 54
                             radius: Appearance.rounding.normal
                             color: modelData.isDay
                                 ? Appearance.colors.colPrimary

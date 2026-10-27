@@ -374,10 +374,12 @@ Singleton {
                 property bool enable: true // if someone wants to use an external wallpaper manager, note that its not fully tested but it should just disable background.qml from being loaded
                 property JsonObject widgets: JsonObject {
                     property bool cullWhenOccluded: false
+                    property real scale: 0.85 // Widget size multiplier (0.6 - 1.2)
                     property JsonObject grid: JsonObject {
                         property bool enabled: false
                         property int columns: 16
                         property int rows: 10
+                        property int subdivisions: 2 // Snap steps per cell; higher = finer dragging
                         property real cellSize: 4
                     }
                     property bool widgetsLocked: false
@@ -387,8 +389,8 @@ Singleton {
                         property string placementStrategy: "leastBusy" // "free", "leastBusy", "mostBusy"
                         property real x: 100
                         property real y: 100
-                        property int gridColumn: 10
-                        property int gridRow: 0
+                        property real gridColumn: 10
+                        property real gridRow: 0
                         property string style: "cookie"        // Options: "cookie", "digital"
                         property string styleLocked: "cookie"  // Options: "cookie", "digital"
                         property string color: ""  // e.g. "onSecondaryContainer"; empty = adaptive colText
@@ -443,8 +445,8 @@ Singleton {
                         property string placementStrategy: "free" // "free", "leastBusy", "mostBusy"
                         property real x: 800
                         property real y: 100
-                        property int gridColumn: 10
-                        property int gridRow: 2
+                        property real gridColumn: 10
+                        property real gridRow: 2
                         property bool useAlbumColors: true
                         property bool hideAllButtons: false
                         property bool showPreviousToggle: true
@@ -471,8 +473,8 @@ Singleton {
                         property string placementStrategy: "free" // "free", "leastBusy", "mostBusy"
                         property real x: 400
                         property real y: 100
-                        property int gridColumn: 4
-                        property int gridRow: 4
+                        property real gridColumn: 4
+                        property real gridRow: 4
                         property string sizeMode: "2x2"  // Options: "1x1", "2x2", "1x3"
                         property real z: 0
                         property bool expanded: false
@@ -482,8 +484,8 @@ Singleton {
                         property string placementStrategy: "free"
                         property real x: 600
                         property real y: 100
-                        property int gridColumn: 6
-                        property int gridRow: 4
+                        property real gridColumn: 6
+                        property real gridRow: 4
                         property real z: 0
                         property string sizeMode: "2x2"
                     }
@@ -492,8 +494,8 @@ Singleton {
                         property string placementStrategy: "free"
                         property real x: 200
                         property real y: 300
-                        property int gridColumn: 8
-                        property int gridRow: 4
+                        property real gridColumn: 8
+                        property real gridRow: 4
                         property real z: 0
                         property string path: ""
                         property string shape: "Cookie4Sided"
@@ -504,8 +506,8 @@ Singleton {
                         property string placementStrategy: "free"
                         property real x: 200
                         property real y: 700
-                        property int gridColumn: 4
-                        property int gridRow: 2
+                        property real gridColumn: 4
+                        property real gridRow: 2
                         property real z: 0
                     }
                     property JsonObject resources: JsonObject {
@@ -513,8 +515,8 @@ Singleton {
                         property string placementStrategy: "free"
                         property real x: 1000
                         property real y: 100
-                        property int gridColumn: 0
-                        property int gridRow: 4
+                        property real gridColumn: 0
+                        property real gridRow: 4
                         property bool vertical: false
                         property real z: 0
                     }
@@ -523,8 +525,8 @@ Singleton {
                         property string placementStrategy: "free"
                         property real x: 200
                         property real y: 900
-                        property int gridColumn: 1
-                        property int gridRow: 6
+                        property real gridColumn: 1
+                        property real gridRow: 6
                         property real z: -1000
                         property string style: "bars" // "bars", "mirror", "aurora", "ring", "dots"
                         property string colorSource: "theme" // "theme", "cover"
@@ -537,8 +539,8 @@ Singleton {
                         property string placementStrategy: "free"
                         property real x: 200
                         property real y: 1100
-                        property int gridColumn: 2
-                        property int gridRow: 4
+                        property real gridColumn: 2
+                        property real gridRow: 4
                     }
                     property bool blurWidgets: false
                     property real blurRadius: 32
@@ -553,8 +555,8 @@ Singleton {
                         property string placementStrategy: "free"
                         property real x: 400
                         property real y: 100
-                        property int gridColumn: 4
-                        property int gridRow: 0
+                        property real gridColumn: 4
+                        property real gridRow: 0
                         property real z: 0
                         property string sizeMode: "2x2"
                         property bool vertical: false
@@ -565,8 +567,8 @@ Singleton {
                         property string placementStrategy: "free"
                         property real x: 400
                         property real y: 100
-                        property int gridColumn: 0
-                        property int gridRow: 2
+                        property real gridColumn: 0
+                        property real gridRow: 2
                         property real z: 0
                     }
                     property JsonObject userCard: JsonObject {
@@ -574,8 +576,8 @@ Singleton {
                         property string placementStrategy: "free"
                         property real x: 400
                         property real y: 100
-                        property int gridColumn: 0
-                        property int gridRow: 0
+                        property real gridColumn: 0
+                        property real gridRow: 0
                         property real z: 0
                         property string sizeMode: "1x2" 
                     }
@@ -584,8 +586,8 @@ Singleton {
                         property string placementStrategy: "free"
                         property real x: 400
                         property real y: 100
-                        property int gridColumn: 6
-                        property int gridRow: 0
+                        property real gridColumn: 6
+                        property real gridRow: 0
                         property real z: 0
                     }
                     property JsonObject imageCard: JsonObject {
@@ -593,8 +595,8 @@ Singleton {
                         property string placementStrategy: "free"
                         property real x: 400
                         property real y: 100
-                        property int gridColumn: 8
-                        property int gridRow: 2
+                        property real gridColumn: 8
+                        property real gridRow: 2
                         property real z: 0
                         property string path: ""
                         property string sizeMode: "1x2"
@@ -605,8 +607,8 @@ Singleton {
                         property string placementStrategy: "free"
                         property real x: 400
                         property real y: 100
-                        property int gridColumn: 8
-                        property int gridRow: 0
+                        property real gridColumn: 8
+                        property real gridRow: 0
                         property real z: 0
                         property string path: ""
                         property real size: 200
@@ -620,8 +622,8 @@ Singleton {
                         property real x: 400
                         property real y: 100
                         property real z: 0
-                        property int gridColumn: 0
-                        property int gridRow: 6
+                        property real gridColumn: 0
+                        property real gridRow: 6
                         property bool vertical: false
                     }
                     property JsonObject customText: JsonObject {

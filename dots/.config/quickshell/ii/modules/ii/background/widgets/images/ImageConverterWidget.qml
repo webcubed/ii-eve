@@ -152,16 +152,15 @@ AbstractBackgroundWidget {
         ColumnLayout {
             id: columnLayout
             anchors {
-                left: parent.left
-                right: parent.right
-                top: parent.top
-                margins: 16
+                fill: parent
+                margins: 14
             }
-            spacing: 12
+            spacing: 10
 
             StyledText {
                 Layout.fillWidth: true
                 horizontalAlignment: Text.AlignHCenter
+                elide: Text.ElideRight
                 font.pixelSize: Appearance.font.pixelSize.smaller
                 color: Appearance.colors.colOnPrimaryContainer
                 opacity: 0.4
@@ -171,7 +170,11 @@ AbstractBackgroundWidget {
             Rectangle {
                 id: dropZone
                 Layout.fillWidth: true
-                implicitHeight: 144
+                // Takes the leftover height instead of a fixed 144 so the card still fits
+                // when the widget grid is scaled down.
+                Layout.fillHeight: true
+                Layout.minimumHeight: 84
+                implicitHeight: 120
                 radius: Appearance.rounding.large
                 color: {
                     switch (root.dropStatus) {

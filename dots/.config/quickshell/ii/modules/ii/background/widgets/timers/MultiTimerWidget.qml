@@ -56,7 +56,7 @@ AbstractBackgroundWidget {
         ColumnLayout {
             anchors {
                 fill: parent
-                margins: 11
+                margins: 9
             }
             spacing: 2
 
@@ -114,8 +114,8 @@ AbstractBackgroundWidget {
             Item {
                 id: extraSlot
                 Layout.fillWidth: true
-                Layout.preferredHeight: children.length > 0 ? 20 : 0
-                Layout.topMargin: children.length > 0 ? 5 : 0
+                Layout.preferredHeight: children.length > 0 ? 18 : 0
+                Layout.topMargin: children.length > 0 ? 3 : 0
             }
         }
     }
