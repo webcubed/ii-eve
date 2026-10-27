@@ -134,6 +134,13 @@ AbstractWidget {
             const row = Math.round((root.y - root.gridOriginY) / gridCellHeight);
             const snappedCol = Math.max(0, Math.min(col, root.maxGridColumn));
             const snappedRow = Math.max(0, Math.min(row, root.maxGridRow));
+            // Only persist a real move: a release that never followed a press (the
+            // pointer entering the desktop, a shell reload) would otherwise rewrite
+            // the stored slot from a position the card did not choose.
+            if (snappedCol === (configEntry.gridColumn ?? -1) && snappedRow === (configEntry.gridRow ?? -1)) {
+                root.restoreXYBinding();
+                return;
+            }
             configEntry.gridColumn = snappedCol;
             configEntry.gridRow = snappedRow;
             root.gridColumn = Qt.binding(() => {
