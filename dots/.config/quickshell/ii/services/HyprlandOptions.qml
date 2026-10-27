@@ -17,6 +17,7 @@ Singleton {
         "misc:vrr", "misc:disable_hyprland_logo", "misc:disable_splash_rendering",
         "misc:mouse_move_enables_dpms", "misc:key_press_enables_dpms", "misc:animate_manual_resizes",
         "misc:enable_swallow", "misc:middle_click_paste", "misc:close_special_on_empty",
+        "misc:initial_workspace_tracking",
         "cursor:no_hardware_cursors", "cursor:inactive_timeout", "cursor:hide_on_key_press", "cursor:warp_on_change_workspace",
         "dwindle:preserve_split", "dwindle:smart_split", "dwindle:force_split", "dwindle:default_split_ratio",
         "master:new_status", "master:mfact", "master:orientation",

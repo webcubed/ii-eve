@@ -1008,6 +1008,11 @@ ContentPage {
                         HyprlandConfig.set("misc:focus_on_activate", checked ? 1 : 0)
                     }
                 }
+                HyprOptionSwitch {
+                    optionKey: "misc:initial_workspace_tracking"
+                    buttonIcon: "workspaces"
+                    text: Translation.tr("Open windows on the workspace they were launched from")
+                }
                     HyprOptionSelection {
                         optionKey: "misc:vrr"
                         icon: "slow_motion_video"
