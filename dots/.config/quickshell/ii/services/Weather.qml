@@ -126,6 +126,32 @@ Singleton {
         }
     }
 
+    // The fetch scripts print this marker on stdout when they fail, so failure is
+    // something they state rather than something an empty stdout implies. An empty
+    // stdout cannot mean "outage": a request that a newer one cancels (the startup
+    // pair of a config-load fetch and the first GPS fix, a provider switch, a manual
+    // refresh) is killed before it can print anything, and that empty result lands
+    // after the newer request has already started — which is why every shell start
+    // and refresh popped "weather service unreachable" while the next fetch was
+    // succeeding.
+    readonly property string fetchFailureMarker: "__weather_fetch_failed__"
+
+    // Timestamp of the last failure notification, so one outage stays one
+    // notification: a shell start alone issues several requests within seconds
+    // (config load, provider change, first GPS fix), and the retry cadence is
+    // minutes, not seconds.
+    property double _lastFailureNotification: 0
+
+    function _reportFetchFailure(message) {
+        const now = Date.now();
+        if (now - root._lastFailureNotification < 10 * 60 * 1000) return;
+        root._lastFailureNotification = now;
+        Quickshell.execDetached(["notify-send",
+            Translation.tr("Weather Service"),
+            message,
+            "-a", "Shell"]);
+    }
+
     function getData() {
         // Cancel any in-flight request before starting a new one — switching
         // provider or city while the previous fetch was still running used to
@@ -159,15 +185,15 @@ Singleton {
             "daily: [.weather[] | {date: .date, maxC: .maxtempC, minC: .mintempC, maxF: .maxtempF, minF: .mintempF, code: ((.hourly[4].weatherCode) // (.hourly | last | .weatherCode) // \"113\")}]," +
             "hourly: [.weather[0].hourly[], .weather[1].hourly[] | {time: .time, tempC: .tempC, tempF: .tempF, code: .weatherCode}]" +
             "}";
-        // Pass user-controlled values as positional args ($1, $2) instead of
+        // Pass user-controlled values as positional args ($1, $2, $3) instead of
         // string-interpolating them into the script. Bash quoting then makes
         // shell injection via city name impossible.
         const script =
             'set -o pipefail; ' +
-            'TARGET="$1"; UA="$2"; ' +
+            'TARGET="$1"; UA="$2"; MARK="$3"; ' +
             'ENC=$(printf %s "$TARGET" | jq -sRr @uri); ' +
-            'curl -fsS --max-time 15 -H "User-Agent: $UA" "wttr.in/${ENC}?format=j1" | jq ' + "'" + jqFilter + "'";
-        fetcher.command = ["bash", "-c", script, "wttr-fetch", target, ua];
+            'curl -fsS --max-time 15 -H "User-Agent: $UA" "wttr.in/${ENC}?format=j1" | jq ' + "'" + jqFilter + "'" + ' || printf %s "$MARK"';
+        fetcher.command = ["bash", "-c", script, "wttr-fetch", target, ua, root.fetchFailureMarker];
         fetcher.running = true;
     }
 
@@ -177,10 +203,7 @@ Singleton {
             // Geocoding with an empty name returns nothing; bail out loudly so
             // the spinner doesn't just stop with no UI feedback.
             root.forecastLoading = false;
-            Quickshell.execDetached(["notify-send",
-                Translation.tr("Weather Service"),
-                Translation.tr("Set a city in Settings → Services → Weather, or enable GPS."),
-                "-a", "Shell"]);
+            root._reportFetchFailure(Translation.tr("Set a city in Settings → Services → Weather, or enable GPS."));
             return;
         }
 
@@ -198,24 +221,24 @@ Singleton {
             const lon = Number(root.location.lon);
             script =
                 'set -o pipefail; ' +
-                'LAT="$1"; LON="$2"; ' +
-                'GEO=$(jq -nc --arg lat "$LAT" --arg lon "$LON" \'{latitude: ($lat|tonumber), longitude: ($lon|tonumber), name: ""}\'); ' +
-                'FC=$(curl -fsS --max-time 15 "https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&' + forecastParams + '"); ' +
-                'printf %s "$FC" | jq --argjson geo "$GEO" \'. + {geo: $geo}\'';
-            argv = ["bash", "-c", script, "om-fetch", String(lat), String(lon)];
+                'LAT="$1"; LON="$2"; MARK="$3"; ' +
+                'GEO=$(jq -nc --arg lat "$LAT" --arg lon "$LON" \'{latitude: ($lat|tonumber), longitude: ($lon|tonumber), name: ""}\') || { printf %s "$MARK"; exit 0; }; ' +
+                'FC=$(curl -fsS --max-time 15 "https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&' + forecastParams + '") || { printf %s "$MARK"; exit 0; }; ' +
+                'printf %s "$FC" | jq --argjson geo "$GEO" \'. + {geo: $geo}\' || printf %s "$MARK"';
+            argv = ["bash", "-c", script, "om-fetch", String(lat), String(lon), root.fetchFailureMarker];
         } else {
             script =
                 'set -o pipefail; ' +
-                'CITY="$1"; ' +
+                'CITY="$1"; MARK="$2"; ' +
                 'ENC=$(printf %s "$CITY" | jq -sRr @uri); ' +
-                'GEO_RAW=$(curl -fsS --max-time 15 "https://geocoding-api.open-meteo.com/v1/search?name=${ENC}&count=1&language=en&format=json"); ' +
+                'GEO_RAW=$(curl -fsS --max-time 15 "https://geocoding-api.open-meteo.com/v1/search?name=${ENC}&count=1&language=en&format=json") || { printf %s "$MARK"; exit 0; }; ' +
                 'GEO=$(printf %s "$GEO_RAW" | jq -c \'if (.results // [] | length) == 0 then null else {latitude: .results[0].latitude, longitude: .results[0].longitude, name: .results[0].name} end\'); ' +
-                'if [ "$GEO" = "null" ] || [ -z "$GEO" ]; then exit 0; fi; ' +
+                'if [ "$GEO" = "null" ] || [ -z "$GEO" ]; then printf %s "$MARK"; exit 0; fi; ' +
                 'LAT=$(printf %s "$GEO" | jq -r \'.latitude\'); ' +
                 'LON=$(printf %s "$GEO" | jq -r \'.longitude\'); ' +
-                'FC=$(curl -fsS --max-time 15 "https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&' + forecastParams + '"); ' +
-                'printf %s "$FC" | jq --argjson geo "$GEO" \'. + {geo: $geo}\'';
-            argv = ["bash", "-c", script, "om-fetch", root.city.trim()];
+                'FC=$(curl -fsS --max-time 15 "https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&' + forecastParams + '") || { printf %s "$MARK"; exit 0; }; ' +
+                'printf %s "$FC" | jq --argjson geo "$GEO" \'. + {geo: $geo}\' || printf %s "$MARK"';
+            argv = ["bash", "-c", script, "om-fetch", root.city.trim(), root.fetchFailureMarker];
         }
 
         openMeteoFetcher.command = argv;
@@ -297,6 +320,10 @@ Singleton {
         out.humidity = (cur.relative_humidity_2m !== undefined ? cur.relative_humidity_2m : 0) + "%";
         out.sunrise = (daily.sunrise && daily.sunrise[0]) ? daily.sunrise[0].slice(11, 16) : "0.0";
         out.sunset = (daily.sunset && daily.sunset[0]) ? daily.sunset[0].slice(11, 16) : "0.0";
+        // Open-Meteo reports sunrise/sunset on the location's clock and echoes its
+        // UTC offset; keeping the offset lets the sun arc stay right when the
+        // machine's clock sits in another timezone.
+        out.utcOffsetSeconds = parsed.utc_offset_seconds !== undefined ? Number(parsed.utc_offset_seconds) : undefined;
         out.windDir = root._omWindDir(cur.wind_direction_10m);
         out.wCode = wCode;
         out.wDesc = root.getWeatherDescription(wCode);
@@ -373,14 +400,13 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: {
                 if (text.length === 0) {
-                    // Guard: if another fetch already started (running=true), this
-                    // empty result is from a cancelled process — not a real error.
-                    if (fetcher.running) return;
+                    // Nothing on stdout: this request was cancelled by a newer one,
+                    // which kills it before it can print anything. Not a failure.
+                    return;
+                }
+                if (text.trim() === root.fetchFailureMarker) {
                     root.forecastLoading = false;
-                    Quickshell.execDetached(["notify-send",
-                        Translation.tr("Weather Service"),
-                        Translation.tr("Failed to fetch weather data."),
-                        "-a", "Shell"]);
+                    root._reportFetchFailure(Translation.tr("Failed to fetch weather data."));
                     return;
                 }
                 try {
@@ -392,10 +418,7 @@ Singleton {
                     root.forecastHourly = parsedData.hourly || [];
                 } catch (e) {
                     console.error(`[WeatherService] ${e.message}`);
-                    Quickshell.execDetached(["notify-send",
-                        Translation.tr("Weather Service"),
-                        Translation.tr("Could not parse weather response."),
-                        "-a", "Shell"]);
+                    root._reportFetchFailure(Translation.tr("Could not parse weather response."));
                 }
                 root.forecastLoading = false;
             }
@@ -411,14 +434,13 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: {
                 if (text.length === 0) {
-                    // Guard: cancelled process fires onStreamFinished with empty
-                    // text — not a real error if a new request is already running.
-                    if (openMeteoFetcher.running) return;
+                    // Nothing on stdout: this request was cancelled by a newer one,
+                    // which kills it before it can print anything. Not a failure.
+                    return;
+                }
+                if (text.trim() === root.fetchFailureMarker) {
                     root.forecastLoading = false;
-                    Quickshell.execDetached(["notify-send",
-                        Translation.tr("Weather Service"),
-                        Translation.tr("City not found or weather service unreachable."),
-                        "-a", "Shell"]);
+                    root._reportFetchFailure(Translation.tr("City not found or weather service unreachable."));
                     return;
                 }
                 try {
@@ -428,10 +450,7 @@ Singleton {
                     root._refineOpenMeteo(parsed);
                 } catch (e) {
                     console.error(`[WeatherService] Open-Meteo parse error: ${e.message}`);
-                    Quickshell.execDetached(["notify-send",
-                        Translation.tr("Weather Service"),
-                        Translation.tr("Could not parse weather response."),
-                        "-a", "Shell"]);
+                    root._reportFetchFailure(Translation.tr("Could not parse weather response."));
                 }
                 root.forecastLoading = false;
             }

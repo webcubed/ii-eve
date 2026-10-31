@@ -58,6 +58,7 @@ Item {
             "record_indicator": [recordIndicatorComp, recordIndicatorComp],
             "screen_share_indicator": [screenshareIndicatorComp, screenshareIndicatorComp],
             "timer": [timerComp, timerCompVert],
+            "sleep": [sleepComp, sleepComp],
             "weather": [weatherComp, weatherComp, weatherCompExpressive, weatherCompExpressive],
             "policies_panel_button": [policiesPanelButton, policiesPanelButton, policiesPanelButtonExpressive, policiesPanelButtonExpressive],
             "dashboard_panel_button": [dashboardPanelButton, dashboardPanelButtonVert, dashboardPanelButtonExpressive, dashboardPanelButtonExpressiveVert],
@@ -234,6 +235,13 @@ Item {
     Component {
         id: timerCompVert
         Vertical.VerticalTimerWidget {}
+    }
+
+    Component {
+        id: sleepComp
+        SleepBar {
+            vertical: rootItem.vertical
+        }
     }
 
     Component {

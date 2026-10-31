@@ -57,12 +57,24 @@ AbstractBackgroundWidget {
     }
 
     property int monthShift: 0
-    readonly property var today: new Date()
 
+    // The day has to come from the clock, not from `new Date()` evaluated once when
+    // the widget is built: that pinned "today" to the day the shell started, so the
+    // ring stayed on yesterday after midnight and a month boundary left the grid on
+    // the month that had just ended. SystemClock re-reads the time every minute, so
+    // these three roll over on their own; `today` is rebuilt from them rather than
+    // from the clock's Date so the month grid only rebuilds when the date changes,
+    // not on every tick.
+    readonly property int todayYear: DateTime.clock.date.getFullYear()
+    readonly property int todayMonth: DateTime.clock.date.getMonth()
+    readonly property int todayDay: DateTime.clock.date.getDate()
+    readonly property var today: new Date(root.todayYear, root.todayMonth, root.todayDay)
+
+    // Derived from today's month so the visible month follows the rollover, plus the
+    // user's own month navigation.
     property var viewingDate: {
-        let d = new Date()
-        d.setDate(1)
-        d.setMonth(d.getMonth() + monthShift)
+        const d = new Date(root.todayYear, root.todayMonth, 1)
+        d.setMonth(d.getMonth() + root.monthShift)
         return d
     }
 

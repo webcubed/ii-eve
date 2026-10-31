@@ -195,10 +195,15 @@ AbstractBackgroundWidget {
                 elide: Text.ElideRight
             }
 
+            // Fillable and capped: the pills row takes the 16px it asks for when the
+            // tile has room and gives the space back when it does not, so the tile can
+            // never push its own content past the card's edge, whatever the fonts do.
             Item {
                 id: extraSlot
                 Layout.fillWidth: true
+                Layout.fillHeight: true
                 Layout.preferredHeight: children.length > 0 ? 16 : 0
+                Layout.maximumHeight: children.length > 0 ? 16 : 0
                 Layout.topMargin: children.length > 0 ? 2 : 0
             }
         }

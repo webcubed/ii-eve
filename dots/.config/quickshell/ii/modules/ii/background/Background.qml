@@ -31,6 +31,7 @@ import qs.modules.ii.background.widgets.timers
 import qs.modules.ii.background.widgets.customtext
 import qs.modules.ii.background.widgets.todo
 import qs.modules.ii.background.widgets.stuy
+import qs.modules.ii.background.widgets.sleep
 
 Variants {
     id: root
@@ -514,21 +515,26 @@ Variants {
                         var snapH = cellH / subdivisions;
                         ctx.lineWidth = 1;
                         ctx.setLineDash([]);
-                        ctx.strokeStyle = Qt.rgba(1, 1, 1, 0.18);
-                        ctx.beginPath();
-                        for (var s = 0; s <= cols * subdivisions; s++) {
-                            if (s % subdivisions === 0) continue;
-                            var sx = originX + s * snapW;
-                            ctx.moveTo(sx, 0);
-                            ctx.lineTo(sx, height);
+                        // The finer lines are the steps a drop can land on, so they only
+                        // belong on screen while step snapping is on: with it off a card
+                        // can be dropped anywhere and the cell lines are the whole guide.
+                        if (Config.options.background.widgets.grid.snapToSteps ?? true) {
+                            ctx.strokeStyle = Qt.rgba(1, 1, 1, 0.18);
+                            ctx.beginPath();
+                            for (var s = 0; s <= cols * subdivisions; s++) {
+                                if (s % subdivisions === 0) continue;
+                                var sx = originX + s * snapW;
+                                ctx.moveTo(sx, 0);
+                                ctx.lineTo(sx, height);
+                            }
+                            for (var t = 0; t <= rows * subdivisions; t++) {
+                                if (t % subdivisions === 0) continue;
+                                var sy = originY + t * snapH;
+                                ctx.moveTo(0, sy);
+                                ctx.lineTo(width, sy);
+                            }
+                            ctx.stroke();
                         }
-                        for (var t = 0; t <= rows * subdivisions; t++) {
-                            if (t % subdivisions === 0) continue;
-                            var sy = originY + t * snapH;
-                            ctx.moveTo(0, sy);
-                            ctx.lineTo(width, sy);
-                        }
-                        ctx.stroke();
 
                         ctx.strokeStyle = Qt.rgba(1, 1, 1, 0.55);
                         ctx.lineWidth = 2;
@@ -658,6 +664,19 @@ Variants {
                 z: Config.options.background.widgets.stuyCalendar.z ?? 0
                 shown: Config.options.background.widgets.stuyCalendar.enable && !bgRoot.widgetsOccluded
                 sourceComponent: StuyCalendarWidget {
+                    bgRoot: bgRoot
+                    screenWidth: bgRoot.screen.width
+                    screenHeight: bgRoot.screen.height
+                    scaledScreenWidth: bgRoot.screen.width
+                    scaledScreenHeight: bgRoot.screen.height
+                    wallpaperScale: bgRoot.effectiveWallpaperScale
+                }
+            }
+
+            FadeLoader {
+                z: Config.options.background.widgets.sleep.z ?? 0
+                shown: Config.options.background.widgets.sleep.enable && !bgRoot.widgetsOccluded
+                sourceComponent: SleepWidget {
                     bgRoot: bgRoot
                     screenWidth: bgRoot.screen.width
                     screenHeight: bgRoot.screen.height

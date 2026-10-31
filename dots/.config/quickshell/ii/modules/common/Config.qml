@@ -380,6 +380,7 @@ Singleton {
                         property int columns: 16
                         property int rows: 10
                         property int subdivisions: 2 // Snap steps per cell; higher = finer dragging
+                        property bool snapToSteps: true // Off: a drop keeps the exact spot, the grid only guides
                         property real cellSize: 4
                     }
                     property bool widgetsLocked: false
@@ -508,6 +509,16 @@ Singleton {
                         property real gridRow: 0.5
                         property real z: 0
                         property string sizeMode: "3x3" // "3x3" (grid + day detail + legend), "2x2" (grid only)
+                    }
+                    property JsonObject sleep: JsonObject {
+                        property bool enable: true
+                        property string placementStrategy: "free"
+                        property real x: 900
+                        property real y: 90
+                        property real gridColumn: 8.5
+                        property real gridRow: 0.5
+                        property real z: 0
+                        property string sizeMode: "2x2" // "2x2" (next bedtime + the later boundaries), "2x1" (headline only)
                     }
                     property JsonObject customImage: JsonObject {
                         property bool enable: false
@@ -1029,6 +1040,18 @@ Singleton {
 
             property JsonObject calendar: JsonObject {
                 property string locale: "en-GB"
+            }
+
+            // Sleep-cycle hints (the bar indicator and the desktop widget). The times
+            // are counted back from the alarm rather than forward from "now": waking
+            // at the top of a cycle is what keeps a short night from hurting.
+            property JsonObject sleep: JsonObject {
+                property string wakeTime: "06:15" // "HH:mm"
+                property string mode: "auto" // "auto" follows the school calendar; "alarm" / "predict" override it
+                property int cycleMinutes: 90
+                property int fallAsleepMinutes: 15 // time it takes to actually drop off
+                property int maxCycles: 6
+                property int minCycles: 3 // the last boundary still offered in the evening
             }
 
             property JsonObject cheatsheet: JsonObject {

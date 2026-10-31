@@ -8,7 +8,25 @@ import qs.services
 
 Item {
     property int monthShift: 0
-    property var viewingDate: CalendarLayout.getDateInXMonthsTime(monthShift)
+
+    // The month has to come from the clock rather than from new Date() evaluated once
+    // when the dashboard is built: that pinned the view to the day it was created, so
+    // the "today" marker stayed on yesterday after midnight. SystemClock re-reads the
+    // time every minute, and these change only when the date does.
+    readonly property int todayYear: DateTime.clock.date.getFullYear()
+    readonly property int todayMonth: DateTime.clock.date.getMonth()
+    readonly property int todayDay: DateTime.clock.date.getDate()
+
+    // getCalendarLayout() reads the highlighted day straight out of this date, so the
+    // current month has to be given the actual day; shifted months only need any day
+    // and pass highlight = false.
+    property var viewingDate: {
+        if (monthShift === 0)
+            return new Date(todayYear, todayMonth, todayDay)
+        const d = new Date(todayYear, todayMonth, 1)
+        d.setMonth(d.getMonth() + monthShift)
+        return d
+    }
     property var calendarLayout: CalendarLayout.getCalendarLayout(viewingDate, monthShift === 0, Config.options.time.firstDayOfWeek)
 
     // Layout.topMargin: 10

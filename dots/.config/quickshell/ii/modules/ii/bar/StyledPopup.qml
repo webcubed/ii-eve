@@ -14,6 +14,9 @@ LazyLoader {
     property int popupRadius: Appearance.rounding.large
     property bool animate: true
     property bool stickyHover: false
+    // How long the popup survives without the pointer, so it can be crossed from the
+    // bar item to the panel: the gap and the pointer's speed both eat into this.
+    property int graceInterval: 100
 
     property bool _popupHovered: false
     property bool _stickyActive: false
@@ -25,7 +28,7 @@ LazyLoader {
     // Because if we do, we FUCKING cannot reference the timer from anywhere
     property QtObject _timers: QtObject {
         property Timer grace: Timer {
-            interval: 100
+            interval: root.graceInterval
             onTriggered: {
                 root._popupHovered = false;
                 root._stickyActive = false;

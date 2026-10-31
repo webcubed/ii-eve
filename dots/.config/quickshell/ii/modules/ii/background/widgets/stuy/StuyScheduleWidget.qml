@@ -209,8 +209,9 @@ AbstractBackgroundWidget {
 
                 StyledText {
                     text: root.entry?.block ?? "--"
+                    font.family: StuyCalendar.blockFontFamily
                     font.pixelSize: 52
-                    font.weight: Font.Bold
+                    font.variableAxes: StuyCalendar.blockFontAxes
                     color: StuyCalendar.blockColor(root.entry?.block)
                 }
                 RowLayout {
@@ -267,8 +268,9 @@ AbstractBackgroundWidget {
 
                     StyledText {
                         text: root.entry?.block ?? "--"
+                        font.family: StuyCalendar.blockFontFamily
                         font.pixelSize: 46
-                        font.weight: Font.Bold
+                        font.variableAxes: StuyCalendar.blockFontAxes
                         color: StuyCalendar.blockColor(root.entry?.block)
                     }
 

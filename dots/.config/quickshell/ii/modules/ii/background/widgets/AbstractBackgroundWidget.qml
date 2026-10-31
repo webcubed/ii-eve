@@ -21,6 +21,10 @@ AbstractWidget {
     property var configEntry: Config.options.background.widgets[configEntryName] ?? ({})
     property string placementStrategy: configEntry.placementStrategy ?? "free"
     readonly property bool gridEnabled: Config.options.background.widgets.grid.enabled
+    // The grid can dictate where a drag ends (the nearest snap step) or merely guide
+    // it: with step snapping off, a released card keeps the exact cell fraction it
+    // was dropped on, so it can be dragged anywhere the grid allows.
+    readonly property bool snapToSteps: Config.options.background.widgets.grid.snapToSteps ?? true
     // Snap to the widget design grid (144x132 pitch, see WidgetGrid.qml) rather
     // than dividing the screen evenly, so card sizes and positions share one
     // rhythm and edges land on the same lines. The bar occupies its own band at the
@@ -150,11 +154,18 @@ AbstractWidget {
             return;
         }
         if (gridEnabled) {
-            // Snap to the nearest half/third/quarter cell rather than the nearest whole one
-            const col = Math.round((root.x - root.gridOriginX) / root.snapWidth) / WidgetGrid.subdivisions;
-            const row = Math.round((root.y - root.gridOriginY) / root.snapHeight) / WidgetGrid.subdivisions;
-            const snappedCol = Math.max(0, Math.min(col, root.maxGridColumn));
-            const snappedRow = Math.max(0, Math.min(row, root.maxGridRow));
+            // Snap to the nearest half/third/quarter cell rather than the nearest whole
+            // one, unless step snapping is off — then the drop lands exactly where the
+            // card was released and the grid stays a guide.
+            const col = root.snapToSteps
+                ? Math.round((root.x - root.gridOriginX) / root.snapWidth) / WidgetGrid.subdivisions
+                : (root.x - root.gridOriginX) / root.gridCellWidth;
+            const row = root.snapToSteps
+                ? Math.round((root.y - root.gridOriginY) / root.snapHeight) / WidgetGrid.subdivisions
+                : (root.y - root.gridOriginY) / root.gridCellHeight;
+            // Thousandths of a cell are well under a pixel; keep the stored slot tidy.
+            const snappedCol = Math.round(Math.max(0, Math.min(col, root.maxGridColumn)) * 1000) / 1000;
+            const snappedRow = Math.round(Math.max(0, Math.min(row, root.maxGridRow)) * 1000) / 1000;
             // Only persist a real move: a release that never followed a press (the
             // pointer entering the desktop, a shell reload) would otherwise rewrite
             // the stored slot from a position the card did not choose.

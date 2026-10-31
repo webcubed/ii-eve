@@ -24,10 +24,10 @@ AbstractBackgroundWidget {
 
     property string sizeMode: root.configEntry.sizeMode ?? "2x2"
 
-    // Sun arc: the two providers report sunrise/sunset as wall clocks ("07:18" or
-    // "7:18 AM"), so normalize to minutes of the day and derive how far the sun is
-    // between them. Progress clamps outside the window; `sunAboveHorizon` lets the
-    // marker dim instead of pretending the sun is up at 3am.
+    // Sun row: the two providers report sunrise/sunset as wall clocks ("07:18" or
+    // "7:18 AM"), so normalize to minutes of the day. The chart draws the whole
+    // midnight-to-midnight span, so it takes the times themselves rather than a 0-1
+    // progress figure — sunrise and sunset are where the curve crosses its horizon.
     function minutesOfDay(text) {
         if (!text) return -1;
         const match = String(text).trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
@@ -43,16 +43,16 @@ AbstractBackgroundWidget {
     readonly property int sunriseMinutes: root.minutesOfDay(Weather.data?.sunrise)
     readonly property int sunsetMinutes: root.minutesOfDay(Weather.data?.sunset)
     readonly property int nowMinutes: DateTime.hour24 * 60 + Number(DateTime.minuteStr)
-    readonly property real sunProgress: {
-        if (root.sunriseMinutes < 0 || root.sunsetMinutes < 0 || root.sunsetMinutes <= root.sunriseMinutes)
-            return 0;
-        const fraction = (root.nowMinutes - root.sunriseMinutes) / (root.sunsetMinutes - root.sunriseMinutes);
-        return Math.max(0, Math.min(1, fraction));
+    // "Now" on the location's clock. The weather payload carries its UTC offset, so
+    // the marker stays right even when the machine sits in another timezone (and
+    // the providers report sunrise/sunset on the location's clock). wttr.in has no
+    // offset, so there the machine clock is the best available reading.
+    readonly property real sunNowMinutes: {
+        const tick = root.nowMinutes; // re-evaluates once a minute
+        const offset = Weather.data?.utcOffsetSeconds;
+        if (offset === undefined || offset === null) return tick;
+        return ((Date.now() / 1000 + Number(offset)) / 60) % 1440;
     }
-    readonly property bool sunAboveHorizon: root.sunriseMinutes >= 0
-        && root.sunsetMinutes > root.sunriseMinutes
-        && root.nowMinutes >= root.sunriseMinutes
-        && root.nowMinutes <= root.sunsetMinutes
 
     property real widgetWidth: {
         switch (root.sizeMode) {
@@ -168,14 +168,10 @@ AbstractBackgroundWidget {
                             font.weight: Font.Bold
                             color: Appearance.colors.colPrimary
                         }
-                        StyledText {
-                            Layout.topMargin: 2
-                            text: Weather.data?.description ?? "--"
-                            font.pixelSize: Appearance.font.pixelSize.normal
-                            font.weight: Font.DemiBold
-                            color: Appearance.colors.colOnPrimaryContainer
-                            elide: Text.ElideRight
-                        }
+                        // No condition line at this size: it spent a whole line of the
+                        // card under the temperature, and that height buys more in the
+                        // readings and the sun strip below. (It also never had text —
+                        // see the wDesc note on the compact layouts.)
                         StyledText {
                             text: Weather.data?.city ?? "--"
                             font.pixelSize: Appearance.font.pixelSize.small
@@ -248,31 +244,47 @@ AbstractBackgroundWidget {
                     }
                 }
 
+                // The day chart runs the full width with the rise/set times as a
+                // legend beneath it. Its x axis is the whole day, so the marker sits on
+                // the real timeline; the labels no longer double as the ends of the arc
+                // (flanking them squeezed the arc into 98px of a 240px card).
+                SunArc {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 26
+                    Layout.topMargin: 8
+                    sunriseMinutes: root.sunriseMinutes
+                    sunsetMinutes: root.sunsetMinutes
+                    nowMinutes: root.sunNowMinutes
+                }
+
                 RowLayout {
                     Layout.fillWidth: true
-                    Layout.topMargin: 8
-                    spacing: 6
-
-                    RowLayout {
-                        Layout.alignment: Qt.AlignBottom
-                        spacing: 4
-                        MaterialSymbol { iconSize: 14; text: "wb_twilight"; color: Appearance.colors.colOnPrimaryContainer; opacity: 0.6 }
-                        StyledText { text: Weather.data?.sunrise ?? "--"; font.pixelSize: Appearance.font.pixelSize.smaller; color: Appearance.colors.colOnPrimaryContainer; opacity: 0.6 }
+                    Layout.topMargin: 2
+                    spacing: 2
+                    MaterialSymbol {
+                        iconSize: Appearance.font.pixelSize.smaller
+                        text: "wb_twilight"
+                        color: Appearance.colors.colOnPrimaryContainer
+                        opacity: 0.6
                     }
-
-                    SunArc {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 24
-                        Layout.alignment: Qt.AlignBottom
-                        progress: root.sunProgress
-                        aboveHorizon: root.sunAboveHorizon
+                    StyledText {
+                        text: Weather.data?.sunrise ?? "--"
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        color: Appearance.colors.colOnPrimaryContainer
+                        opacity: 0.6
                     }
-
-                    RowLayout {
-                        Layout.alignment: Qt.AlignBottom
-                        spacing: 4
-                        StyledText { text: Weather.data?.sunset ?? "--"; font.pixelSize: Appearance.font.pixelSize.smaller; color: Appearance.colors.colOnPrimaryContainer; opacity: 0.6 }
-                        MaterialSymbol { iconSize: 14; text: "nights_stay"; color: Appearance.colors.colOnPrimaryContainer; opacity: 0.6 }
+                    Item { Layout.fillWidth: true }
+                    StyledText {
+                        text: Weather.data?.sunset ?? "--"
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        color: Appearance.colors.colOnPrimaryContainer
+                        opacity: 0.6
+                    }
+                    MaterialSymbol {
+                        iconSize: Appearance.font.pixelSize.smaller
+                        text: "nights_stay"
+                        color: Appearance.colors.colOnPrimaryContainer
+                        opacity: 0.6
                     }
                 }
             }
@@ -308,7 +320,11 @@ AbstractBackgroundWidget {
                             elide: Text.ElideRight
                         }
                         StyledText {
-                            text: Weather.data?.description ?? "--"
+                            // The condition lives in the service's wDesc: the old
+                            // `description` key never resolved, so this line could only
+                            // ever draw its "--" placeholder.
+                            visible: text !== ""
+                            text: Weather.data?.wDesc ?? ""
                             font.pixelSize: Appearance.font.pixelSize.small
                             color: Appearance.colors.colOnPrimaryContainer
                             opacity: 0.6
@@ -388,14 +404,15 @@ AbstractBackgroundWidget {
                     }
                 }
 
-                // The narrow card still gets the sun's hill, with the times tucked
-                // under its ends since there is no room to flank it.
+                // The narrow card gets the same day chart, with the times as its
+                // legend since there is no room to flank it.
                 SunArc {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 20
                     Layout.topMargin: 4
-                    progress: root.sunProgress
-                    aboveHorizon: root.sunAboveHorizon
+                    sunriseMinutes: root.sunriseMinutes
+                    sunsetMinutes: root.sunsetMinutes
+                    nowMinutes: root.sunNowMinutes
                 }
 
                 RowLayout {
@@ -459,7 +476,10 @@ AbstractBackgroundWidget {
                         spacing: 2
 
                         StyledText {
-                            text: Weather.data?.description ?? ""
+                            // Condition text under the provider's real key (see the
+                            // compact layouts), and nothing at all when it is missing.
+                            visible: text !== ""
+                            text: Weather.data?.wDesc ?? ""
                             font.pixelSize: Appearance.font.pixelSize.normal
                             font.weight: Font.DemiBold
                             color: Appearance.colors.colOnPrimaryContainer
@@ -565,8 +585,8 @@ AbstractBackgroundWidget {
                     Item { Layout.fillWidth: true }
                 }
 
-                // The wide card has room for the sun's hill to run the full width,
-                // with sunrise and sunset sitting at the two ends of the horizon.
+                // The wide card has room to flank the day chart with its rise/set
+                // legend; the chart itself still spans midnight to midnight.
                 RowLayout {
                     Layout.fillWidth: true
                     Layout.topMargin: 2
@@ -593,8 +613,9 @@ AbstractBackgroundWidget {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 26
                         Layout.alignment: Qt.AlignBottom
-                        progress: root.sunProgress
-                        aboveHorizon: root.sunAboveHorizon
+                        sunriseMinutes: root.sunriseMinutes
+                        sunsetMinutes: root.sunsetMinutes
+                        nowMinutes: root.sunNowMinutes
                     }
 
                     RowLayout {

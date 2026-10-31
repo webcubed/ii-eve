@@ -1453,6 +1453,12 @@ ContentPage {
                             enabled: Config.options.background.widgets.stuyCalendar.enable
                         },
                         {
+                            icon: "bedtime",
+                            key: "sleep",
+                            name: Translation.tr("Sleep Cycles"),
+                            enabled: Config.options.background.widgets.sleep.enable
+                        },
+                        {
                             icon: "person",
                             key: "userCard",
                             name: Translation.tr("User Card"),
@@ -1537,6 +1543,8 @@ ContentPage {
                                             Config.options.background.widgets.stuySchedule.enable = checked
                                         else if (modelData.icon === "calendar_view_month")
                                             Config.options.background.widgets.stuyCalendar.enable = checked
+                                        else if (modelData.icon === "bedtime")
+                                            Config.options.background.widgets.sleep.enable = checked
                                     }
                                 }
                             }
@@ -1608,6 +1616,19 @@ ContentPage {
                 Layout.bottomMargin: 10
 
                 GroupedList {
+                    // Moving a card competes with pressing it, so with this on a click
+                    // on a widget never turns into a drag — the card's own buttons and
+                    // taps get the press instead. The resize handles hide too, which is
+                    // what "locked" should mean.
+                    ConfigSwitch {
+                        Layout.fillWidth: true
+                        buttonIcon: "lock"
+                        text: Translation.tr("Lock widgets in place")
+                        checked: Config.options.background.widgetsLocked
+                        onCheckedChanged: {
+                            Config.options.background.widgetsLocked = checked;
+                        }
+                    }
                     ConfigSwitch {
                         Layout.fillWidth: true
                         buttonIcon: "grid_view"
@@ -1615,6 +1636,19 @@ ContentPage {
                         checked: Config.options.background.widgets.grid.enabled
                         onCheckedChanged: {
                             Config.options.background.widgets.grid.enabled = checked;
+                        }
+                    }
+                    // With this off a card can be dragged anywhere in grid format: the
+                    // grid still guides the drag, but the drop keeps the exact spot
+                    // instead of jumping to the nearest step.
+                    ConfigSwitch {
+                        Layout.fillWidth: true
+                        buttonIcon: "pin_drop"
+                        text: Translation.tr("Snap drops to the nearest grid step")
+                        enabled: Config.options.background.widgets.grid.enabled
+                        checked: Config.options.background.widgets.grid.snapToSteps
+                        onCheckedChanged: {
+                            Config.options.background.widgets.grid.snapToSteps = checked;
                         }
                     }
                     ConfigSwitch {

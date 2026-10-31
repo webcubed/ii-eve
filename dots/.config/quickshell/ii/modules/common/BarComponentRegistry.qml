@@ -21,6 +21,7 @@ Singleton {
         { id: "date", icon: "date_range", title: "Date" },
         { id: "battery", icon: "battery_android_6", title: "Battery" },
         { id: "timer", icon: "timer", title: "Timer & Pomodoro" },
+        { id: "sleep", icon: "bedtime", title: "Sleep cycles" },
         { id: "weather", icon: "weather_mix", title: "Weather" },
         { id: "utility_buttons", icon: "build", title: "Utility buttons" },
         { id: "network_speed", icon: "speed", title: "Network speed" },

@@ -10,8 +10,9 @@ import qs.modules.ii.background.widgets
 
 // The Sophomore Caucus events-page calendar, on the desktop: a month grid of the
 // school year with A/B block days, category dots (no school, exams, special,
-// last day) and the selected day's wording. Days are clickable; the month
-// navigates like the site's calendar.
+// last day) and the selected day's wording. Clicking a day previews it in the strip
+// under the grid; the wording line itself opens the full entry. The month navigates
+// like the site's calendar.
 AbstractBackgroundWidget {
     id: root
     configEntryName: "stuyCalendar"
@@ -24,13 +25,17 @@ AbstractBackgroundWidget {
     readonly property bool withDetail: root.sizeMode === "3x3"
     property real widgetWidth: root.withDetail ? root.spanWidth(3) : root.spanWidth(2)
     property real widgetHeight: root.withDetail ? root.spanHeight(3) : root.spanHeight(2)
-    // The month grid sizes its own tiles from the card (see gridSlot) and turns the
-    // leftover into spacing, so a roomier card means more air between days rather
-    // than bigger day tiles.
-    readonly property real cellMaxWidth: root.withDetail ? 34 : 32
-    readonly property real cellMaxHeight: root.withDetail ? 34 : 22
-    readonly property real cellBaseSpacing: 9
+    // The month grid sizes its own tiles from the card (see gridSlot). The tiles get
+    // the room first and the gutters take what is left, so the days read as the
+    // calendar's content instead of small squares floating in empty card.
+    readonly property real cellMaxWidth: 38
+    readonly property real cellMaxHeight: root.withDetail ? 38 : 22
+    readonly property real cellBaseSpacing: 8
     readonly property real cellMaxSpacing: 14
+    // The site sets its day numbers and block letters in a rounded face; Google
+    // Sans Rounded is that design with the roundness axis pinned, and it ships
+    // with the shell's fonts.
+    readonly property string dayFontFamily: "Google Sans Rounded"
     implicitWidth: widgetWidth
     implicitHeight: widgetHeight
 
@@ -53,9 +58,35 @@ AbstractBackgroundWidget {
         return Math.max(1, Math.floor(last / 7) + 1);
     }
 
-    property int cursorYear: new Date().getFullYear()
-    property int cursorMonth: new Date().getMonth()
+    // Start on today's month through todayParts rather than new Date() once at
+    // construction. Until the user navigates, the binding keeps following the clock,
+    // so midnight on the 1st carries the grid into the new month instead of leaving
+    // it on the month that just ended.
+    property int cursorYear: root.todayParts.getFullYear()
+    property int cursorMonth: root.todayParts.getMonth()
     property string selectedDate: StuyCalendar.todayKey
+
+    // The day whose whole entry is open over the card, "" when the sheet is closed.
+    // The strip under the grid gets one line, so anything the school wrote at length
+    // (special schedules especially) ends in an ellipsis with no way to read it; the
+    // sheet is that way, and its arrows walk day to day instead of making the reader
+    // close it, click the next cell and open it again.
+    property string detailDate: ""
+    readonly property var detailEntry: root.detailDate !== "" ? StuyCalendar.entryFor(root.detailDate) : null
+    readonly property string detailTitle: root.detailDate === ""
+        ? ""
+        : StuyCalendar.weekdayName(root.detailDate) + ", " + StuyCalendar.formatDate(root.detailDate)
+
+    function openDetail(key) {
+        root.selectedDate = key;
+        root.detailDate = key;
+    }
+    function shiftDetail(delta) {
+        if (root.detailDate === "") return;
+        const next = StuyCalendar.addDays(root.detailDate, delta);
+        if (next < StuyCalendar.minDate || next > StuyCalendar.maxDate) return;
+        root.openDetail(next);
+    }
 
     readonly property var cells: StuyCalendar.monthGrid(root.cursorYear, root.cursorMonth)
     readonly property var selectedEntry: StuyCalendar.entryFor(root.selectedDate)
@@ -173,11 +204,21 @@ AbstractBackgroundWidget {
 
             RowLayout {
                 Layout.fillWidth: true
+                // Seven equal shares and no gaps: the same division the day grid slots
+                // use below, so every weekday label sits over its own column.
+                spacing: 0
                 Repeater {
                     model: StuyCalendar.shortWeekdayNames.length
                     delegate: StyledText {
                         required property int index
                         Layout.fillWidth: true
+                        // fillWidth alone hands each label a share proportional to its
+                        // own text width, so the seven columns came out uneven — "Thu"
+                        // landed 21px right of its tiles on a 402px card and 30px on a
+                        // 592px one, which is what put the 1st between Wed and Thu.
+                        // Identical preferred widths make the seven shares identical;
+                        // measured centres then match the tile slots to a fifth of a pixel.
+                        Layout.preferredWidth: 0
                         horizontalAlignment: Text.AlignHCenter
                         text: StuyCalendar.shortWeekdayNames[index]
                         font.pixelSize: 9
@@ -199,9 +240,14 @@ AbstractBackgroundWidget {
                 // keeps the same tile size as a six-week one and centres its block
                 // instead of stretching the days to fill the card.
                 readonly property int weekCount: root.usedWeekRows(root.cells)
-                readonly property real cellWidth: Math.min(root.cellMaxWidth, Math.max(14, (width - 6 * root.cellBaseSpacing) / 7))
+                // Seven equal column slots, the same division the weekday labels above
+                // use. Sizing the tiles from the gaps instead (a narrower tile spread
+                // back out to the full width) stretched the pitch past a slot, so while
+                // the middle days stayed put the outer ones crept away from their
+                // labels. A seventh of the width, tile centred inside it, lines up.
+                readonly property real slotWidth: width / 7
+                readonly property real cellWidth: Math.min(root.cellMaxWidth, Math.max(14, slotWidth - root.cellBaseSpacing))
                 readonly property real cellHeight: Math.max(14, Math.min(root.cellMaxHeight, (height - (weekCount - 1) * root.cellBaseSpacing) / weekCount))
-                readonly property real columnSpacing: Math.max(2, (width - 7 * cellWidth) / 6)
                 readonly property real rowSpacing: Math.max(2, weekCount > 1
                     ? Math.min(root.cellMaxSpacing, (height - weekCount * cellHeight) / (weekCount - 1))
                     : 0)
@@ -213,12 +259,13 @@ AbstractBackgroundWidget {
                     anchors.verticalCenter: parent.verticalCenter
                     width: gridSlot.width
                     height: gridSlot.gridHeight
-                    columnSpacing: gridSlot.columnSpacing
+                    columnSpacing: 0
                     rowSpacing: gridSlot.rowSpacing
 
                     Repeater {
                         model: root.cells
-                        delegate: Rectangle {
+                        // One delegate per column slot, with the tile centred inside it.
+                        delegate: Item {
                             id: dayCell
                             required property var modelData
 
@@ -231,59 +278,91 @@ AbstractBackgroundWidget {
                                 ? (StuyCalendar.parseKey(dayCell.cellKey).getDay() === 0 || StuyCalendar.parseKey(dayCell.cellKey).getDay() === 6)
                                 : false
 
-                            width: gridSlot.cellWidth
+                            width: gridSlot.slotWidth
                             height: gridSlot.cellHeight
-                            radius: 6
-                            visible: dayCell.modelData !== null
-                            // A faint surface per day keeps the month reading as a grid of
-                            // days rather than numbers floating in empty card.
-                            color: dayCell.isSelected
-                                ? ColorUtils.transparentize(Appearance.colors.colOnPrimaryContainer, 0.84)
-                                : dayCell.isToday
-                                    ? ColorUtils.transparentize(Appearance.colors.colPrimary, 0.8)
-                                    : ColorUtils.transparentize(Appearance.colors.colOnPrimaryContainer, cellArea.containsMouse ? 0.88 : 0.94)
-
-                            Column {
-                                anchors.centerIn: parent
-                                spacing: 0
-
-                                StyledText {
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    text: dayCell.modelData ? dayCell.modelData.day : ""
-                                    font.pixelSize: root.withDetail ? 12 : 11
-                                    font.weight: dayCell.isToday || dayCell.isSelected ? Font.DemiBold : Font.Normal
-                                    color: Appearance.colors.colOnPrimaryContainer
-                                    opacity: dayCell.isWeekend ? 0.55 : 1
-                                }
-
-                                StyledText {
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    text: dayCell.dayEntry?.block ?? ""
-                                    font.pixelSize: root.withDetail ? 8 : 7
-                                    font.weight: Font.Bold
-                                    color: StuyCalendar.blockColor(dayCell.dayEntry?.block)
-                                    opacity: dayCell.isWeekend ? 0.6 : 1
-                                }
-                            }
+                            // The month's leading/trailing blanks have to keep their slot:
+                            // a positioner skips invisible items, which was pulling every
+                            // day four columns left in October (the 1st is a Thursday, and
+                            // it was landing under Sunday). Fade them out instead.
+                            opacity: dayCell.modelData !== null ? 1 : 0
 
                             Rectangle {
-                                visible: dayCell.dot !== ""
-                                anchors.top: parent.top
-                                anchors.right: parent.right
-                                anchors.topMargin: 3
-                                anchors.rightMargin: 3
-                                width: 4
-                                height: 4
-                                radius: 2
-                                color: dayCell.dot
-                            }
+                                id: dayBox
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                width: gridSlot.cellWidth
+                                height: parent.height
+                                radius: 8
+                                // Like the site's cells: nothing but the day until the
+                                // pointer is on it, a filled surface once it is the
+                                // selected day, and an inset ring on today whether or not
+                                // it is selected.
+                                color: dayCell.isSelected
+                                    ? ColorUtils.transparentize(Appearance.colors.colOnPrimaryContainer, cellArea.containsMouse ? 0.8 : 0.84)
+                                    : cellArea.containsMouse
+                                        ? ColorUtils.transparentize(Appearance.colors.colOnPrimaryContainer, 0.89)
+                                        : "transparent"
+                                border.width: dayCell.isToday ? 2 : 0
+                                border.color: Appearance.colors.colPrimary
 
-                            MouseArea {
-                                id: cellArea
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: root.selectedDate = dayCell.cellKey
+                                Column {
+                                    anchors.centerIn: parent
+                                    spacing: 0
+
+                                    StyledText {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        text: dayCell.modelData ? dayCell.modelData.day : ""
+                                        font.family: root.dayFontFamily
+                                        font.pixelSize: root.withDetail ? 13 : 11
+                                        font.variableAxes: ({ "wght": dayCell.isToday || dayCell.isSelected ? 550 : 450 })
+                                        color: Appearance.colors.colOnPrimaryContainer
+                                        opacity: dayCell.isWeekend ? 0.55 : 1
+                                    }
+
+                                    // The site keeps the category dot and the block letter on
+                                    // one line under the number, rather than tucking the dot
+                                    // into a corner where it competes with the day.
+                                    Row {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        spacing: 3
+                                        visible: dayCell.dot !== "" || (dayCell.dayEntry?.block ?? "") !== ""
+
+                                        Rectangle {
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            visible: dayCell.dot !== ""
+                                            width: 4
+                                            height: 4
+                                            radius: 2
+                                            color: dayCell.dot
+                                        }
+                                        StyledText {
+                                            text: dayCell.dayEntry?.block ?? ""
+                                            font.family: StuyCalendar.blockFontFamily
+                                            font.pixelSize: root.withDetail ? 9 : 7
+                                            font.variableAxes: StuyCalendar.blockFontAxes
+                                            color: StuyCalendar.blockColor(dayCell.dayEntry?.block)
+                                            opacity: dayCell.isWeekend ? 0.6 : 1
+                                        }
+                                    }
+                                }
+
+                                MouseArea {
+                                    id: cellArea
+                                    anchors.fill: parent
+                                    // A blank is not a day: it must not hover, click or select.
+                                    enabled: dayCell.modelData !== null
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    // A click previews the day in the strip below rather than
+                                    // covering the card: most of the time the block letter and
+                                    // one line of wording are the whole answer. The sheet is
+                                    // reserved for the wording line — the one thing the strip
+                                    // cannot show in full — and for the compact card, which has
+                                    // no strip to preview in.
+                                    onClicked: {
+                                        root.selectedDate = dayCell.cellKey;
+                                        if (!root.withDetail) root.openDetail(dayCell.cellKey);
+                                    }
+                                }
                             }
                         }
                     }
@@ -298,8 +377,9 @@ AbstractBackgroundWidget {
 
                 StyledText {
                     text: root.selectedEntry?.block ?? "--"
+                    font.family: StuyCalendar.blockFontFamily
                     font.pixelSize: 16
-                    font.weight: Font.Bold
+                    font.variableAxes: StuyCalendar.blockFontAxes
                     color: StuyCalendar.blockColor(root.selectedEntry?.block)
                 }
                 StyledText {
@@ -315,6 +395,14 @@ AbstractBackgroundWidget {
                     color: Appearance.colors.colOnPrimaryContainer
                     opacity: 0.75
                     elide: Text.ElideRight
+
+                    // The line is what gets cut off, so the line itself is the way in.
+                    MouseArea {
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.openDetail(root.selectedDate)
+                    }
                 }
             }
 
@@ -372,6 +460,147 @@ AbstractBackgroundWidget {
                 }
 
                 Item { Layout.fillWidth: true }
+            }
+        }
+
+        // The day sheet: the selected day's whole entry, wrapped, over the card.
+        // Clicking the card behind it closes it, and the arrows walk through the
+        // school year so a long wording can be compared with the days around it.
+        Rectangle {
+            id: daySheet
+            anchors.fill: parent
+            radius: card.radius
+            color: Appearance.colors.colPrimaryContainer
+            border.width: 1
+            border.color: ColorUtils.transparentize(Appearance.colors.colOnPrimaryContainer, 0.82)
+            visible: root.detailDate !== ""
+            z: 10
+
+            MouseArea {
+                anchors.fill: parent
+                onClicked: root.detailDate = ""
+            }
+
+            ColumnLayout {
+                anchors {
+                    fill: parent
+                    margins: 15
+                }
+                spacing: 4
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 2
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        text: root.detailTitle
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        font.weight: Font.DemiBold
+                        color: Appearance.colors.colOnPrimaryContainer
+                        elide: Text.ElideRight
+                    }
+
+                    NavButton {
+                        icon: "chevron_left"
+                        opacity: root.detailDate > StuyCalendar.minDate ? 1 : 0.3
+                        onActivated: root.shiftDetail(-1)
+                    }
+                    NavButton {
+                        icon: "chevron_right"
+                        opacity: root.detailDate < StuyCalendar.maxDate ? 1 : 0.3
+                        onActivated: root.shiftDetail(1)
+                    }
+
+                    Rectangle {
+                        implicitWidth: 20
+                        implicitHeight: 20
+                        radius: Appearance.rounding.full
+                        color: ColorUtils.transparentize(Appearance.colors.colOnPrimaryContainer, closeArea.containsMouse ? 0.78 : 0.88)
+
+                        Behavior on color {
+                            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                        }
+
+                        MaterialSymbol {
+                            anchors.centerIn: parent
+                            text: "close"
+                            iconSize: 14
+                            color: Appearance.colors.colOnPrimaryContainer
+                        }
+                        MouseArea {
+                            id: closeArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.detailDate = ""
+                        }
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.topMargin: 6
+                    spacing: 8
+
+                    // A holiday has no block letter: the column simply starts with the
+                    // category instead of leaving a gap where a letter would be.
+                    StyledText {
+                        visible: text !== ""
+                        text: root.detailEntry?.block ?? ""
+                        font.family: StuyCalendar.blockFontFamily
+                        font.pixelSize: root.withDetail ? 30 : 24
+                        font.variableAxes: StuyCalendar.blockFontAxes
+                        color: StuyCalendar.blockColor(root.detailEntry?.block)
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 0
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: root.detailEntry
+                                ? StuyCalendar.categoryLabel(root.detailEntry.category)
+                                : "No school information"
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            font.weight: Font.DemiBold
+                            color: Appearance.colors.colOnPrimaryContainer
+                            elide: Text.ElideRight
+                        }
+                        StyledText {
+                            visible: text !== ""
+                            text: {
+                                const schedule = root.detailEntry?.scheduleType ?? "";
+                                return schedule === "" ? "" : schedule + " schedule";
+                            }
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            color: Appearance.colors.colOnPrimaryContainer
+                            opacity: 0.6
+                            elide: Text.ElideRight
+                        }
+                    }
+                }
+
+                // The wording itself: the part that was being cut off everywhere else.
+                StyledText {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.topMargin: 4
+                    visible: text !== ""
+                    text: {
+                        const entry = root.detailEntry;
+                        if (!entry) return "";
+                        const label = StuyCalendar.categoryLabel(entry.category);
+                        return entry.sourceWording && entry.sourceWording !== label ? entry.sourceWording : "";
+                    }
+                    wrapMode: Text.WordWrap
+                    verticalAlignment: Text.AlignTop
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    color: Appearance.colors.colOnPrimaryContainer
+                    opacity: 0.8
+                    clip: true
+                }
             }
         }
 
